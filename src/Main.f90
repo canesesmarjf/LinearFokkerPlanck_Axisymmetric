@@ -233,7 +233,7 @@ ecount1 = 0; ecount2 = 0; ecount3 = 0; ecount4 = 0
 
 ! Set the number of threads:
 num_threads = OMP_SET_NUM_THREADS(threads_request)
-!$OMP PARALLEL
+!$OMP PARALLEL PRIVATE(id)
 id = OMP_GET_THREAD_NUM()
 num_threads = OMP_GET_NUM_THREADS()
 if (id .EQ. 0) write(*,*) "number of threads given: ", num_threads
@@ -253,7 +253,7 @@ TimeStepping: do j = 1,Nsteps
     ! =========================================================================
     ! PUSH PARTICLES ADIABATICALLY
     if (iPush) then
-      !$OMP PARALLEL
+      !$OMP PARALLEL PRIVATE (i)
       !$OMP DO
       do i = 1,Nparts
           call MoveParticle(zp(i),kep(i),xip(i))
@@ -265,7 +265,7 @@ TimeStepping: do j = 1,Nsteps
     ! =========================================================================
     ! RE-INJECT PARTICLES
     if (.true.) then
-      !$OMP PARALLEL PRIVATE(ecnt1, ecnt2, pcnt1, pcnt2)
+      !$OMP PARALLEL PRIVATE(i, ecnt1, ecnt2, pcnt1, pcnt2)
       ecnt1 = 0; ecnt2 = 0; pcnt1 = 0; pcnt2 = 0
       !$OMP DO
         do i = 1,Nparts
@@ -288,7 +288,7 @@ TimeStepping: do j = 1,Nsteps
     ! =========================================================================
     ! APPLY COULOMB COLLISION OPERATOR
     if (iColl) then
-    		!$OMP PARALLEL PRIVATE(ecnt, pcnt)
+    		!$OMP PARALLEL PRIVATE(i, ecnt, pcnt)
         ecnt = 0; pcnt = 0
     		species_b = 1 ! test particle on field electrons
     		!$OMP DO
@@ -315,7 +315,7 @@ TimeStepping: do j = 1,Nsteps
     ! 	Modify: kep(i), xip(i)
     ! 	Conserved: z(i)
     if (iHeat) then
-      !$OMP PARALLEL PRIVATE(ecnt, pcnt)
+      !$OMP PARALLEL PRIVATE(i, ecnt, pcnt)
       ecnt = 0; pcnt = 0
       !$OMP DO
       do i = 1,Nparts
@@ -344,7 +344,7 @@ TimeStepping: do j = 1,Nsteps
         do k = 1,jsize
             if (j .EQ. jrng(k)) then
                 t_hist(k) = tp
-				!$OMP PARALLEL DO
+				!$OMP PARALLEL DO PRIVATE(i)
                 do i = 1,Nparts
                         ! Record "ith" particle position at "kth" time
                         zp_hist(i,k) = zp(i)

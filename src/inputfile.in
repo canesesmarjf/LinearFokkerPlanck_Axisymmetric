@@ -1,7 +1,7 @@
 &indata
-fileDescriptor = 'Case1',
+fileDescriptor = 'Case3',
 
-rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck"
+rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck",
 BFieldFileDir = "/BfieldData",   ! Location of file
 !BFieldFile = "/CDa_Gap_0p0inch.txt",
 BFieldFile = "/Bfield_case_1.txt",

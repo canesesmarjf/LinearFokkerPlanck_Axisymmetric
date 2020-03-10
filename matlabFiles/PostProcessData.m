@@ -3,10 +3,10 @@ clear all
 
 homeAddress = cd;
 addpath(homeAddress);
-rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck';
+rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderNameStart = 'case1';
+folderNameStart = 'case2';
 d = dir;
 for i = 1:size(d,1)
     if strncmpi(d(i).name,folderNameStart,5)
@@ -17,7 +17,7 @@ cd(folderName);
 
 % Simulation conditions:
 % =========================================================================
-fileName = 'Metadata.in';
+fileName = 'Metadata.out';
 metadata = GetMetadata(fileName,1);
 dt  = metadata.DT;
 Te0 = metadata.TE0;
@@ -31,18 +31,18 @@ for ii = 1;
 % =========================================================================
 % Create file IDs:
 % =========================================================================
-fid{1}  = fopen('zp','r');
-fid{2}  = fopen('kep','r');
-fid{3}  = fopen('xip','r');
-fid{4}  = fopen('tp','r');
-fid{5}  = fopen('pcount1','r');
-fid{6}  = fopen('pcount2','r');
-fid{7}  = fopen('pcount3','r');
-fid{8}  = fopen('pcount4','r');
-fid{9}  = fopen('ecount1','r');
-fid{10} = fopen('ecount2','r');
-fid{11} = fopen('ecount3','r');
-fid{12} = fopen('ecount4','r');
+fid{1}  = fopen('zp.out','r');
+fid{2}  = fopen('kep.out','r');
+fid{3}  = fopen('xip.out','r');
+fid{4}  = fopen('tp.out','r');
+fid{5}  = fopen('pcount1.out','r');
+fid{6}  = fopen('pcount2.out','r');
+fid{7}  = fopen('pcount3.out','r');
+fid{8}  = fopen('pcount4.out','r');
+fid{9}  = fopen('ecount1.out','r');
+fid{10} = fopen('ecount2.out','r');
+fid{11} = fopen('ecount3.out','r');
+fid{12} = fopen('ecount4.out','r');
 
 % Read binary data:
 % =========================================================================
@@ -82,11 +82,11 @@ cd(homeAddress);
 
 %% Plot data:
 % =========================================================================
-if 1
+if 0
     figure; 
    
     EmaxPlot = metadata.KEP_INIT;   
-    n_persist = 15;
+    n_persist = 5*15;
     k = 1;
     for ii = 1:(size(zp{k},2)-n_persist)
         t_rng = ii:(ii+n_persist);
