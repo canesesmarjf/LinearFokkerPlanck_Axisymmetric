@@ -1,5 +1,5 @@
 &indata
-fileDescriptor = 'Case4',
+fileDescriptor = 'Case1',
 
 rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck"
 BFieldFileDir = "/BfieldData",   ! Location of file
@@ -15,7 +15,7 @@ threads_request = 4,                                                            
 iSave = .true.,
 iPush = .true.,                                                             ! Enable RK4 particle pusher
 iColl = .true.,                                                             ! Collisions or no collisions
-iHeat = .true.,                                                             ! Enable RF heating operator
+iHeat = .false.,                                                             ! Enable RF heating operator
 iPotential = .false.,                                                       ! Enable electric potential
 iDrag = .false.,                                                             ! Enable plasma drag
 
@@ -23,8 +23,8 @@ jstart = 1,                                                               !
 jend   = 120000,                                                              !
 jincr  = 100,                                                                !
 
-Te0 = 600.,	                                                                ! eV
-Ti0 = 600.,                                                                   ! eV
+Te0 = 1000.,	                                                                ! eV
+Ti0 = 1000.,                                                                   ! eV
 ne0 = 9.0E+19,	                                                            ! /m**3
 zTarget = 8.0,
 zDump = -8.0,
