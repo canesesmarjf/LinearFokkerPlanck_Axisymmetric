@@ -1,0 +1,9 @@
+# ignore all output data files created
+*.out
+*.dat
+
+# Ignore all output directories, these are usually called case?
+case?/
+
+# Ignore executable files
+*.exe

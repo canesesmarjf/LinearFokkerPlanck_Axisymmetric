@@ -1,0 +1,277 @@
+! =======================================================================================================
+SUBROUTINE MoveParticle(zp0,kep0,xip0)
+! =======================================================================================================
+USE local
+USE spline_fits
+USE ParticlePusher
+USE PhysicalConstants
+
+IMPLICIT NONE
+! Define local variables
+REAL(r8) :: zp0, kep0, xip0                  ! Position, kinetic energy and pitch of the ith particle
+REAL(r8) :: zpnew, Xipnew, uparnew, upernew, munew  ! Position, kinetic energy and pitch of the ith particle
+
+! Storage for the MoverParticle and RHS subroutines
+REAL(r8) :: zp1, zp2, zp3
+REAL(r8) :: K1, K2, K3, K4
+REAL(r8) :: upar0, upar1, upar2, upar3
+REAL(r8) :: L1, L2, L3, L4
+REAL(r8) :: mu0, mu1, mu2, mu3
+REAL(r8) :: M1, M2, M3, M4
+REAL(r8) :: u2
+REAL(r8) :: B, Phi                            ! Variables to hold potential field
+REAL(r8) :: curv2, curvd
+
+! Calculate initial parallel particle speed
+upar0 = xip0*sqrt(2.*e_c*kep0/m_t)
+
+! Calculate initial particle speed squared
+u2 = 2.*e_c*kep0/m_t
+
+! Calculate initial magnetic moment
+B    = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+mu0 = 0.5*m_t*u2*(1 - xip0*xip0)/B
+
+! Begin assembling RK4 solution:
+call RightHandSide(zp0,upar0,mu0,K1,L1,M1)             ! Update values of fK, fL and fM
+zp1   = zp0   + (K1*dt/2.)
+upar1 = upar0 + (L1*dt/2.)
+mu1   = mu0   + (M1*dt/2.)
+
+call RightHandSide(zp1,upar1,mu1,K2,L2,M2)             ! Update values of fK, fL and fM
+zp2   = zp0   + (K2*dt/2.)
+upar2 = upar0 + (L2*dt/2.)
+mu2   = mu0   + (M2*dt/2.)
+
+call RightHandSide(zp2,upar2,mu2,K3,L3,M3)             ! Update values of fK, fL and fM
+zp3   = zp0   + K3*dt
+upar3 = upar0 + L3*dt
+mu3   = mu0   + M3*dt
+
+call RightHandSide(zp3,upar3,mu3,K4,L4,M4)             ! Update values of fK, fL and fM
+zpnew   = zp0   + ( (K1 + (2.*K2) + (2.*K3) + K4)/6. )*dt
+uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*dt
+munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*dt
+
+! Calculate the magnetic field at zpnew
+B = curv2(zpnew,nz,z_Ref,B_Ref,b_spl,sigma)
+
+! Based on new B and new mu, calculate new uper
+upernew = sqrt(2.*munew*B/m_t)
+
+! New u due to new upar and new uper
+u2 = uparnew**2. + upernew**2.
+
+! New pitch angle due to new upar and new u
+Xipnew = uparnew/sqrt(u2)
+
+zp0  = zpnew
+xip0 = Xipnew
+kep0 = 0.5*m_t*u2/e_c
+
+return
+END SUBROUTINE MoveParticle
+
+! =======================================================================================================
+SUBROUTINE RightHandSide(zp0,upar0,mu0,K,L,M)
+! =======================================================================================================
+USE local
+USE spline_fits
+USE ParticlePusher
+USE PhysicalConstants
+USE plasma_params
+USE collision_data
+
+IMPLICIT NONE
+! Define local variables
+REAL(r8) :: zp0, upar0, mu0, K, L, M        ! Input variables
+REAL(r8) :: dB, dPhi          ! Variables to hold magnetic field, gradient of magnetic and potential field
+REAL(r8) :: curvd
+
+! Calculate the magnetic field and electric potential at zp0
+dB   = curvd(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+dPhi = curvd(zp0,nz,z_Ref,Phi_Ref,phi_spl,sigma)
+
+! Assign values to output variables
+K = upar0
+L = -(1/m_t)*(mu0*dB + q*dPhi)
+M = 0
+
+return
+END SUBROUTINE RightHandSide
+
+! =======================================================================================================
+SUBROUTINE ReinjectParticles(zp0,kep0,xip0,ecnt,pcnt)
+! =======================================================================================================
+USE local
+USE ParticlePusher
+USE PhysicalConstants
+USE plasma_params
+USE collision_data
+
+IMPLICIT NONE
+! Define local variables
+REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt     ! Input variables
+REAL(r8) :: uper, upar, u, sigma_u0
+REAL(r8), DIMENSION(6) :: Rm6               ! Variable for storing 6 random numbers
+
+! Record event:
+ecnt = ecnt + kep0
+pcnt = pcnt + 1
+
+! Particle velocity standard deviation:
+sigma_u0     = sqrt(e_c*Ti0/m_t)
+
+! Re-inject particle at source with new zp, kep, xip
+call random_number(Rm6)
+zp0 = zp_init_std*sqrt(-2.*log(Rm6(1)))*cos(2.*pi*Rm6(2)) + zp_init
+uper = sigma_u0*sqrt(-2.*log(Rm6(3)))
+upar = sigma_u0*sqrt(-2.*log(Rm6(4)))*cos(2.*pi*Rm6(5))
+u    = sqrt( uper**2 + upar**2 )
+kep0 = (m_t*u**2.)/(2.*e_c)
+xip0 = upar/u
+
+return
+END SUBROUTINE ReinjectParticles
+
+! =======================================================================================================
+SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0)
+! =======================================================================================================
+USE local
+USE spline_fits
+USE ParticlePusher
+USE PhysicalConstants
+USE plasma_params
+use rf_heating_data
+
+IMPLICIT NONE
+! Define local variables
+REAL(r8) :: zp0, kep0, xip0, f0     ! Input variables
+REAL(r8) :: upar, Bf, Omega, Omega_RF
+REAL(r8) :: curv2
+
+upar = sqrt(2.*e_c*kep0/m_t)*xip0
+Bf = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+Omega = abs(q)*Bf/m_t
+Omega_RF = 2*pi*f_RF
+f0 = omega_RF - kpar*upar - n_harmonic*Omega
+
+return
+END SUBROUTINE CyclotronResonanceNumber
+
+! =======================================================================================================
+SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt)
+! =======================================================================================================
+USE local
+USE spline_fits
+USE ParticlePusher
+USE PhysicalConstants
+USE plasma_params
+use rf_heating_data
+
+IMPLICIT NONE
+! Define local variables:
+REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
+REAL(r8) :: u0, upar0, uper0
+REAL(r8) :: kep_par0, kep_per0
+REAL(r8) :: dB, ddB, dPhi
+REAL(r8) :: Bf, Omega, dOmega, ddOmega
+REAL(r8) :: Omega_dot, Omega_ddot, tau_rf
+REAL(r8) :: curv2, curvd
+REAL(r8) :: rl, flr, besselterm
+REAL(r8) :: mean_dkep_per, dkep_per, Rm1
+REAL(r8) :: dkep_par, dkep, kep1
+REAL(r8) :: kep_per1, kep_par1
+REAL(r8) :: upar1, u1
+
+! Calculate derived quantities
+u0       = sqrt(2.*e_c*kep0/m_t)
+upar0    = u0*xip0
+uper0    = u0*(1. - xip0**2)**0.5
+kep_par0 = kep0*xip0**2.
+kep_per0 = kep0*(1. - xip0**2.)
+
+! Gradients:
+dB   = curvd(zp0,nz,z_Ref,  B_Ref,  b_spl,sigma)
+ddB  = curv2(zp0,nz,z_Ref,ddb_Ref,ddb_spl,sigma)
+dPhi = curvd(zp0,nz,z_Ref,Phi_Ref,phi_spl,sigma)
+
+! Spatial derivatives of the magnetic field:
+Bf        = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+Omega     = n_harmonic*e_c*Bf/m_t
+dOmega    = n_harmonic*e_c*dB/m_t
+ddOmega   = n_harmonic*e_c*ddB/m_t
+
+! Calculate the first and second time derivative of Omega:
+Omega_dot = upar0*dOmega
+Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - q*dPhi*dOmega/m_t
+
+! Calculate the interaction time (tau_RF):
+if ( (Omega_ddot**2.) .GT. 4.8175*ABS(Omega_dot**3.) )  then
+        ! Approximate Ai(x) ~ 0.3833
+        tau_rf = (2.*pi)*(ABS(2./Omega_ddot)**(1/3.))*0.3833
+else
+        tau_rf = sqrt(2.*pi/ABS(Omega_dot))
+end if
+
+! Calculate Larmour radius:
+rl       = uper0/(abs(q)*Bf/m_t)
+flr      = kper*rl
+if (flr .GT. 40) then
+     print *, 'FLR>40', flr
+        flr = 40
+end if
+
+if (n_harmonic .EQ. 1) then
+  besselterm = curv2(flr,501,x_j_ref,j0_ref,j0_spl,sigma)
+else if (n_harmonic .EQ. 2) then
+  besselterm = curv2(flr,501,x_j_ref,j1_ref,j1_spl,sigma)
+end if
+
+! Calculate the cyclotron interaction:
+! Using method based on VS. Chan PoP 9,2 (2002)
+! Consistent with J. Carlsson'd PhD thesis (1998)
+mean_dkep_per = 0.5*(e_c/m_t)*(Ew*besselterm*tau_rf)**2.
+
+! Calculate the change in perp, parallel and total energy:
+call random_number(Rm1)
+Rm1 = 2.*Rm1 - 1.
+dkep_per = mean_dkep_per + Rm1*sqrt(2.*kep_per0*mean_dkep_per)
+
+! Given the perp kick in energy, apply the parallel energy kick
+! This arises from the non-linear effect of the perturbed magnetic field
+! See Stix section 10.3 "Trapped electromagnetic modes"
+dkep_par = (kpar*abs(upar0)/Omega)*dkep_per
+
+! total change in energy kick
+dkep = dkep_par + dkep_per
+
+! Calculate changes in energy
+! Perp degree of freedon:
+kep_per1 = kep_per0 + dkep_per
+! Parallel degree of freedom:
+kep_par1 = kep_par0 + dkep_par
+! Total final energy:
+kep1     = kep_per1 + kep_par1
+
+if (kep1 .LT. 0) then
+  print *, 'kep0', kep0
+  print *, 'dkep', dkep
+  print *, 'kep1', kep1
+end if
+
+! Assign value of the new energy:
+kep0 = kep1
+
+! Calculate the new pitch angle:
+upar1 = sqrt( (2.*e_c/m_t)*kep_par1 )
+u1    = sqrt( (2.*e_c/m_t)*kep1 )
+xip0 = upar1/u1
+
+! Record resonance event:
+pcnt = pcnt + 1
+! Record energy kick:
+ecnt = ecnt + dkep
+
+return
+END SUBROUTINE RFHeatingOperator
