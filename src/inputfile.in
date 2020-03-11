@@ -1,5 +1,5 @@
 &indata
-fileDescriptor = 'Case3',
+fileDescriptor = 'Case4',
 
 rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck",
 BFieldFileDir = "/BfieldData",   ! Location of file
@@ -7,12 +7,12 @@ BFieldFileDir = "/BfieldData",   ! Location of file
 BFieldFile = "/Bfield_case_1.txt",
 nz = 501,						                                            ! Number of points in BFieldFile
 
-Nparts = 1000,                                                                ! Total number of particles
+Nparts = 500,                                                                ! Total number of particles
 Nsteps = 120000,                                                              ! Total number of time steps
 dt     = 100E-9,
 threads_request = 4,                                                            ! Time step in [s]
 
-iSave = .true.,
+iSave = .false.,
 iPush = .true.,                                                             ! Enable RK4 particle pusher
 iColl = .true.,                                                             ! Collisions or no collisions
 iHeat = .false.,                                                             ! Enable RF heating operator
@@ -23,8 +23,8 @@ jstart = 1,                                                               !
 jend   = 120000,                                                              !
 jincr  = 100,                                                                !
 
-Te0 = 1000.,	                                                                ! eV
-Ti0 = 1000.,                                                                   ! eV
+Te0 = 600.,	                                                                ! eV
+Ti0 = 600.,                                                                   ! eV
 ne0 = 9.0E+19,	                                                            ! /m**3
 zTarget = 8.0,
 zDump = -8.0,
@@ -41,7 +41,7 @@ zp_init = 0.,                                                               ! Me
 zp_init_std = 0.01,				                                                      ! STD of particle injection
 
 kep_InitType = 2,                                                           ! = 1 Maxwellian  , = 2 Beam at E = T_init
-kep_init = 35000.,                                                             ! Initial energy of EEDF
+kep_init = 25000.,                                                             ! Initial energy of EEDF
 
 xip_InitType = 2,                                                             ! = 1 Isotropic   , = 2 Beam at xip = xip_init
 xip_init = 0.7,

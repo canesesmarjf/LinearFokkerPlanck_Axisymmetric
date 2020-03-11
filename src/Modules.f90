@@ -107,8 +107,8 @@ REAL(r8) :: Ti0, Te0, ne0, ni0     !constant density/temperature for now
 REAL(r8) :: kep_init, xip_Init       ! Test particle temperature during initialization setp
 REAL(r8), DIMENSION(:), ALLOCATABLE :: Ti, Te, ne, ni
 INTEGER(i4) :: num_threads, id, threads_request
-INTEGER, EXTERNAL :: OMP_GET_THREAD_NUM, OMP_GET_NUM_THREADS
-INTEGER, EXTERNAL :: OMP_SET_NUM_THREADS, OMP_GET_WTIME
+!INTEGER, EXTERNAL :: OMP_GET_THREAD_NUM, OMP_GET_NUM_THREADS
+!INTEGER, EXTERNAL :: OMP_SET_NUM_THREADS, OMP_GET_WTIME
 
 END MODULE plasma_params
 
@@ -231,6 +231,6 @@ CONTAINS
         ! Beam pitch angle
         xip = data0%xip_init
     end if
-
+  return
   END SUBROUTINE loadParticles
 END MODULE InitialParticleDistribution

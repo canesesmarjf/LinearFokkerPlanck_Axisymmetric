@@ -6,7 +6,7 @@ addpath(homeAddress);
 rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderNameStart = 'case2';
+folderNameStart = 'case3';
 d = dir;
 for i = 1:size(d,1)
     if strncmpi(d(i).name,folderNameStart,5)
@@ -86,7 +86,7 @@ if 0
     figure; 
    
     EmaxPlot = metadata.KEP_INIT;   
-    n_persist = 5*15;
+    n_persist = 0*15;
     k = 1;
     for ii = 1:(size(zp{k},2)-n_persist)
         t_rng = ii:(ii+n_persist);

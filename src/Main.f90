@@ -15,7 +15,8 @@ USE ParticlePusher
 USE plasma_params
 USE collision_data
 USE rf_heating_data
-use InitialParticleDistribution
+USE InitialParticleDistribution
+USE OMP_LIB
 
 ! ===========================================================================
 
@@ -232,11 +233,11 @@ pcount1 = 0; pcount2 = 0; pcount3 = 0; pcount4 = 0
 ecount1 = 0; ecount2 = 0; ecount3 = 0; ecount4 = 0
 
 ! Set the number of threads:
-num_threads = OMP_SET_NUM_THREADS(threads_request)
+call OMP_SET_NUM_THREADS(threads_request)
 !$OMP PARALLEL PRIVATE(id)
-id = OMP_GET_THREAD_NUM()
-num_threads = OMP_GET_NUM_THREADS()
-if (id .EQ. 0) write(*,*) "number of threads given: ", num_threads
+    id = OMP_GET_THREAD_NUM()
+    num_threads = OMP_GET_NUM_THREADS()
+    if (id .EQ. 0) write(*,*) "number of threads given: ", num_threads
 !$OMP END PARALLEL
 
 ! ==============================================================================
@@ -253,60 +254,64 @@ TimeStepping: do j = 1,Nsteps
     ! =========================================================================
     ! PUSH PARTICLES ADIABATICALLY
     if (iPush) then
-      !$OMP PARALLEL PRIVATE (i)
-      !$OMP DO
-      do i = 1,Nparts
-          call MoveParticle(zp(i),kep(i),xip(i))
-      end do
-      !$OMP END DO
-      !$OMP END PARALLEL
+      !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC)
+        do i = 1,Nparts
+            call MoveParticle(zp(i),kep(i),xip(i))
+        end do
+      !$OMP END PARALLEL DO
     end if
 
     ! =========================================================================
     ! RE-INJECT PARTICLES
     if (.true.) then
-      !$OMP PARALLEL PRIVATE(i, ecnt1, ecnt2, pcnt1, pcnt2)
-      ecnt1 = 0; ecnt2 = 0; pcnt1 = 0; pcnt2 = 0
-      !$OMP DO
-        do i = 1,Nparts
-            if (zp(i) .GE. zmax) then
-                call ReinjectParticles(zp(i),kep(i),xip(i),ecnt2,pcnt2)
-            else if (zp(i) .LE. zmin) then
-                call ReinjectParticles(zp(i),kep(i),xip(i),ecnt1,pcnt1)
-            end if
-        end do
-      !$OMP END DO
-      !$OMP CRITICAL
-        ecount1(j) = ecount1(j) + ecnt1
-        pcount1(j) = pcount1(j) + pcnt1
-        ecount2(j) = ecount2(j) + ecnt2
-        pcount2(j) = pcount2(j) + pcnt2
-      !$OMP END CRITICAL
+      !$OMP PARALLEL PRIVATE(ecnt1, ecnt2, pcnt1, pcnt2)
+          ecnt1 = 0; ecnt2 = 0; pcnt1 = 0; pcnt2 = 0
+          !$OMP DO
+              do i = 1,Nparts
+                  if (zp(i) .GE. zmax) then
+                      call ReinjectParticles(zp(i),kep(i),xip(i),ecnt2,pcnt2)
+                  else if (zp(i) .LE. zmin) then
+                      call ReinjectParticles(zp(i),kep(i),xip(i),ecnt1,pcnt1)
+                  end if
+              end do
+          !$OMP END DO
+          !$OMP CRITICAL
+              ecount1(j) = ecount1(j) + ecnt1
+              pcount1(j) = pcount1(j) + pcnt1
+              ecount2(j) = ecount2(j) + ecnt2
+              pcount2(j) = pcount2(j) + pcnt2
+          !$OMP END CRITICAL
       !$OMP END PARALLEL
     end if
 
     ! =========================================================================
     ! APPLY COULOMB COLLISION OPERATOR
+    !write(*,*) "time", j
     if (iColl) then
-    		!$OMP PARALLEL PRIVATE(i, ecnt, pcnt)
-        ecnt = 0; pcnt = 0
-    		species_b = 1 ! test particle on field electrons
-    		!$OMP DO
-    		do i = 1,Nparts
-    			call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
-    		end do
-    		!$OMP END DO
+    		!$OMP PARALLEL PRIVATE(i, id, ecnt, pcnt)
+              ecnt = 0; pcnt = 0
+              id = OMP_GET_THREAD_NUM()
 
-        species_b = 2 ! test particle on field ions
-    		!$OMP DO
-    		do i = 1,Nparts
-    			call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
-    		end do
-    		!$OMP END DO
-    		!$OMP CRITICAL
-    		ecount4(j) = ecount4(j) + ecnt
-    		pcount4(j) = pcount4(j) + pcnt
-    		!$OMP END CRITICAL
+              species_b = 1 ! test particle on field electrons
+          		!$OMP DO SCHEDULE(STATIC)
+              		do i = 1,Nparts
+                    !if (id .EQ. 0) write(*,*) "Thread", id, " at i = ", i
+              			call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
+              		end do
+          		!$OMP END DO
+
+              species_b = 2 ! test particle on field ions
+          		!$OMP DO
+              		do i = 1,Nparts
+              		    call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
+              		end do
+          		!$OMP END DO
+
+          		!$OMP CRITICAL
+              		ecount4(j) = ecount4(j) + ecnt
+              		pcount4(j) = pcount4(j) + pcnt
+          		!$OMP END CRITICAL
+
     		!$OMP END PARALLEL
     end if
 
@@ -315,21 +320,21 @@ TimeStepping: do j = 1,Nsteps
     ! 	Modify: kep(i), xip(i)
     ! 	Conserved: z(i)
     if (iHeat) then
-      !$OMP PARALLEL PRIVATE(i, ecnt, pcnt)
-      ecnt = 0; pcnt = 0
-      !$OMP DO
-      do i = 1,Nparts
-              call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i))
-              df = dsign(1.d0,fcurr(i)*fnew(i))
-              if (df .LT. 0 .AND. zp(i) .GT. zRes1 .AND. zp(i) .LT. zRes2)  then
-                call RFHeatingOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
-              end if
-      end do
-      !$OMP END DO
-      !$OMP CRITICAL
-      ecount3(j) = ecount3(j) + ecnt
-      pcount3(j) = pcount3(j) + pcnt
-      !$OMP END CRITICAL
+      !$OMP PARALLEL PRIVATE(i, ecnt, pcnt, df, fnew)
+          ecnt = 0; pcnt = 0; df = 0;
+          !$OMP DO SCHEDULE(STATIC)
+              do i = 1,Nparts
+                      call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i))
+                      df = dsign(1.d0,fcurr(i)*fnew(i))
+                      if (df .LT. 0 .AND. zp(i) .GT. zRes1 .AND. zp(i) .LT. zRes2)  then
+                        call RFHeatingOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
+                      end if
+              end do
+          !$OMP END DO
+          !$OMP CRITICAL
+              ecount3(j) = ecount3(j) + ecnt
+              pcount3(j) = pcount3(j) + pcnt
+          !$OMP END CRITICAL
       !$OMP END PARALLEL
     end if
 
@@ -344,16 +349,16 @@ TimeStepping: do j = 1,Nsteps
         do k = 1,jsize
             if (j .EQ. jrng(k)) then
                 t_hist(k) = tp
-				!$OMP PARALLEL DO PRIVATE(i)
-                do i = 1,Nparts
-                        ! Record "ith" particle position at "kth" time
-                        zp_hist(i,k) = zp(i)
-                        ! Record "ith" particle KE at "kth" time
-                        kep_hist(i,k) = kep(i)
-                        ! Record "ith" particle pitch angle at "kth" time
-                        xip_hist(i,k) = xip(i)
-                end do
-				!$OMP END PARALLEL DO
+				        !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC)
+                    do i = 1,Nparts
+                            ! Record "ith" particle position at "kth" time
+                            zp_hist(i,k) = zp(i)
+                            ! Record "ith" particle KE at "kth" time
+                            kep_hist(i,k) = kep(i)
+                            ! Record "ith" particle pitch angle at "kth" time
+                            xip_hist(i,k) = xip(i)
+                    end do
+				        !$OMP END PARALLEL DO
             endif
         end do
     end if
