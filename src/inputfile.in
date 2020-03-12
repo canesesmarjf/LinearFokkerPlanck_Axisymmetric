@@ -1,7 +1,8 @@
 &indata
-fileDescriptor = 'Case4',
+fileDescriptor = 'Case5',
 
 rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck",
+!rootDir = "$HOME/LinearFokkerPlanck"
 BFieldFileDir = "/BfieldData",   ! Location of file
 !BFieldFile = "/CDa_Gap_0p0inch.txt",
 BFieldFile = "/Bfield_case_1.txt",
@@ -12,7 +13,7 @@ Nsteps = 120000,                                                              ! 
 dt     = 100E-9,
 threads_request = 4,                                                            ! Time step in [s]
 
-iSave = .false.,
+iSave = .true.,
 iPush = .true.,                                                             ! Enable RK4 particle pusher
 iColl = .true.,                                                             ! Collisions or no collisions
 iHeat = .false.,                                                             ! Enable RF heating operator
@@ -38,7 +39,7 @@ CollOperType = 2,                                                           ! 1 
 
 zp_InitType = 2,                                                              ! = 1 uniform load, = 2 gaussian load
 zp_init = 0.,                                                               ! Mean particle injection
-zp_init_std = 0.01,				                                                      ! STD of particle injection
+zp_init_std = 0.001,				                                                      ! STD of particle injection
 
 kep_InitType = 2,                                                           ! = 1 Maxwellian  , = 2 Beam at E = T_init
 kep_init = 25000.,                                                             ! Initial energy of EEDF

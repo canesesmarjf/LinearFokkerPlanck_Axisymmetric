@@ -1,12 +1,12 @@
 clear all
-% close all
+close all
 
 homeAddress = cd;
 addpath(homeAddress);
 rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderNameStart = 'case3';
+folderNameStart = 'case5';
 d = dir;
 for i = 1:size(d,1)
     if strncmpi(d(i).name,folderNameStart,5)
@@ -146,7 +146,9 @@ end
 figure('color','w')
 subplot(2,2,[1:2])
 hold on
-plot(tp{1}*1e3,kep{1},'k-','LineWidth',0.5)
+for ii = 1:metadata.NPARTS
+    plot(tp{1}*1e3,kep{1}(ii,:),'k-','LineWidth',0.5)
+end
 plot(tn*1e3   ,E_RK4 ,'r-','LineWidth',2)
 xlim([0,max(tp{1})]*1e3)
 ylabel('E$_\alpha$ [keV]','Interpreter','latex','FontSize',13)
