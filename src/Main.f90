@@ -16,6 +16,7 @@ USE plasma_params
 USE collision_data
 USE rf_heating_data
 USE InitialParticleDistribution
+USE dataTYP
 USE OMP_LIB
 
 ! ===========================================================================
@@ -23,6 +24,8 @@ USE OMP_LIB
 ! Define local variables
 ! ===========================================================================
 IMPLICIT NONE
+TYPE(inTYP)  :: in
+
 REAL(r8) :: tstart, tend, tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
 INTEGER(i4) :: i,j,k                                                          ! Indices for do loops
 REAL(r8) :: curv2, curvd                                                      ! Declare functions from fitpack
@@ -41,11 +44,16 @@ CHARACTER*100 :: besselj_data                                                 ! 
 LOGICAL :: iColl, iHeat, iSave, iPush, iPotential
 INTEGER(i4) :: zp_InitType, kep_InitType, xip_InitType                                      !
 CHARACTER*150 :: BFieldFile, BFieldFileDir, B_data, rootDir
-CHARACTER*250 :: FileExt, FileName                                            ! Are used to name the output files
+CHARACTER*250 :: fileExt, fileName                                            ! Are used to name the output files
 INTEGER(i4) :: jstart, jend, jincr                                            ! To define time steps to save
 REAL(r8) :: zTarget, zDump
 CHARACTER*150 :: fileDescriptor
 CHARACTER*150 :: command, mpwd
+
+!INTEGER(i4) ::  threads_request
+
+! Create input and output namelists from the user-defined structures:
+namelist/in_nml/in
 
 ! Create namelist:
 ! ==================================================================================================
@@ -75,6 +83,11 @@ namelist /metadata/ fileDescriptor, &
 ! Record start time:
 call cpu_time(tstart)
 
+! Read input data:
+fileName = "data.in"
+open(unit=4,file=fileName,status='old',form='formatted')
+read(4,in_nml)
+close(unit=4)
 
 ! ===========================================================================
 ! Read input files
@@ -183,8 +196,8 @@ if (.false.) then
     end do
     ! Save data to file to test spline
     if (.true.) then
-    FileName = "B_spline.dat"
-        open(unit=8,file=FileName,form="formatted",status="unknown")
+    fileName = "B_spline.dat"
+        open(unit=8,file=fileName,form="formatted",status="unknown")
         do j = 1,500
             write(8,*) zz(j), b1(j), ddb1(j)
         end do
@@ -217,8 +230,8 @@ call loadParticles(data_1)
 
 ! Test the EEDF initialization:
 if (.false.) then
-    FileName = "EEDF_t0"
-    open(unit=8,file=FileName,form="formatted",status="unknown")
+    fileName = "EEDF_t0"
+    open(unit=8,file=fileName,form="formatted",status="unknown")
     do i=1,Nparts
         write(8,*) zp(i), kep(i),xip(i)
     end do
@@ -383,77 +396,84 @@ if (iSave) then
 
     ! Saving zp_hist to file
     ! ---------------------------------------------------------------------
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'zp.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'zp.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) zp_hist
     close(unit=8)
 
 
     ! Saving kep_hist to file
     ! ---------------------------------------------------------------------
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'kep.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'kep.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) kep_hist
     close(unit=8)
 
     ! Saving xip_hist to file
     ! ---------------------------------------------------------------------
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'xip.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'xip.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) xip_hist
     close(unit=8)
 
     ! Saving t_hist to file
     ! ---------------------------------------------------------------------
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'tp.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'tp.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) t_hist
     close(unit=8)
 
     ! Saving pcount to file
     ! ---------------------------------------------------------------------
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount1.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount1.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount1
     close(unit=8)
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount2.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount2.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount2
     close(unit=8)
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount3.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount3.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount3
     close(unit=8)
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount4.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount4.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount4
     close(unit=8)
 
     ! Saving ecount to file
     ! ---------------------------------------------------------------------
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount1.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount1.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount1
     close(unit=8)
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount2.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount2.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount2
     close(unit=8)
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount3.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount3.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount3
     close(unit=8)
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount4.out')
-    open(unit=8,file=FileName,form="unformatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount4.out')
+    open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount4
     close(unit=8)
 
     ! Create Metadata file
     ! ---------------------------------------------------------------------
-    FileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'Metadata.out')
-    open(unit=8,file=FileName,form="formatted",status="unknown")
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'Metadata.out')
+    open(unit=8,file=fileName,form="formatted",status="unknown")
     write(8,NML = metadata)
     close(unit=8)
+
+    ! Write output data:
+    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'data.out')
+    open(unit=8,file=fileName,form="formatted",status="unknown")
+    write(8,NML = in_nml)
+    close(unit=8)
+
 end if
 
 End PROGRAM

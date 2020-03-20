@@ -11,7 +11,56 @@ r4=SELECTED_REAL_KIND(6,37),r8=SELECTED_REAL_KIND(13,307)
 END MODULE local
 
 
+!  **************************************************************
+! MODULE input_data_structure
+! module containing definition of an object to contain all input data
+!  **************************************************************
+MODULE dataTYP
+USE local
 
+IMPLICIT NONE
+TYPE inTYP
+  CHARACTER*150 :: fileDescriptor, rootDir
+  CHARACTER*150 :: BFieldFile, BFieldFileDir
+  REAL(r8) :: Ti0, Te0, ne0, ni0, dt
+  REAL(r8) :: Aion, Zeff, Zion
+  INTEGER(i4) :: Nparts, Nsteps, nz, species_a
+  INTEGER(i4) :: jstart, jend, jincr
+  INTEGER(i4) :: threads_request
+  LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
+  INTEGER(i4) :: zp_InitType,kep_InitType, xip_InitType
+  REAL(r8) :: zp_init, kep_init, xip_init, zp_init_std
+  REAL(r8) :: zmin, zmax
+  INTEGER(i4) :: CollOperType
+  REAL(r8) :: elevel
+  REAL(r8) :: s1, s2, s3, phi1, phi2, phi3
+  REAL(r8) :: f_RF, kpar, kper, Ew, zRes1, zRes2
+  INTEGER(i4) :: n_harmonic
+END TYPE inTYP
+
+TYPE outTYP
+  CHARACTER*150 :: fileDescriptor
+  CHARACTER*150 :: BFieldFile, BFieldFileDir
+  REAL(r8) :: Ti0, Te0, ne0, ni0, dt
+  REAL(r8) :: Aion, Zeff, Zion
+  INTEGER(i4) :: Nparts, Nsteps, nz, species_a
+  INTEGER(i4) :: jstart, jend, jincr
+  INTEGER(i4) :: threads_request
+  LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
+  INTEGER(i4) :: zp_InitType,kep_InitType, xip_InitType
+  REAL(r8) :: zp_init, kep_init, xip_init, zp_init_std
+  REAL(r8) :: zmin, zmax
+  INTEGER(i4) :: CollOperType
+  REAL(r8) :: elevel
+  REAL(r8) :: s1, s2, s3, phi1, phi2, phi3
+  REAL(r8) :: f_RF, kpar, kper, Ew, zRes1, zRes2
+  INTEGER(i4) :: n_harmonic
+  REAL(r8) ::  tComputeTime, tSimTime
+END TYPE outTYP
+
+
+
+END MODULE dataTYP
 
 !  **************************************************************
 ! MODULE spline_fits
@@ -123,7 +172,7 @@ USE local
 
 IMPLICIT NONE
 REAL(r8) :: Za, Zb, Ma, Mb, Aion, Zeff, Zion
-INTEGER :: species_a, species_b, CollOperType
+INTEGER(i4) :: species_a, species_b, CollOperType
 REAL(r8) :: elevel
 
 ! Switch to enable plasma drag or dynamical friction force

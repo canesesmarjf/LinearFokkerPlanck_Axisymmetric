@@ -1,12 +1,12 @@
 clear all
-close all
+% close all
 
 homeAddress = cd;
 addpath(homeAddress);
 rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderNameStart = 'case5';
+folderNameStart = 'case6';
 d = dir;
 for i = 1:size(d,1)
     if strncmpi(d(i).name,folderNameStart,5)
