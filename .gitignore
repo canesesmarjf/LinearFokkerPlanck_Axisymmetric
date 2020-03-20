@@ -1,7 +1,7 @@
 # ignore all output data files created
-*.out
-*.dat
-*.asv
+**.out
+**.dat
+**.asv
 
 # Ignore all output directories, these are usually called case?
 case?/
