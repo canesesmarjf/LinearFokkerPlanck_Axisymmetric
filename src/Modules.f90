@@ -26,7 +26,7 @@ TYPE inTYP
   REAL(r8) :: Aion, Zeff, Zion
   INTEGER(i4) :: Nparts, Nsteps, nz, species_a
   INTEGER(i4) :: jstart, jend, jincr
-  INTEGER(i4) :: threads_request
+  INTEGER(i4) :: threads_request, threads_given
   LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
   INTEGER(i4) :: zp_InitType,kep_InitType, xip_InitType
   REAL(r8) :: zp_init, kep_init, xip_init, zp_init_std
@@ -88,10 +88,6 @@ REAL(r8) :: m_t
 ! Main simulation variables
 REAL(r8), DIMENSION(:), ALLOCATABLE :: xip, zp, kep                 ! Particle position (zp), kinetic energy (KEp), pitch angle (Xip)
 REAl(r8) :: tp                                                      ! Hold simulation time
-REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount1, pcount2, pcount3    ! Count the number of particles incident on (1) dump, (2) target, (3) EBW resonance
-REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount1, ecount2, ecount3    ! Record the total energy of particle incident on (1) dump, (2) target, (3) EBW resonance
-REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount4                      ! Record the total energy dissipated by collisional slowing down within a time step dt
-REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount4                      ! Record the total number of fast particles involved in the slowing down dissipated power within a time step dt
 
 ! Variables to hold selected time steps
 REAL(r8), DIMENSION(:,:), ALLOCATABLE :: zp_hist, kep_hist, xip_hist

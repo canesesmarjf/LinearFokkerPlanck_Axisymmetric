@@ -31,7 +31,10 @@ REAL(r8) :: curv2, curvd                                                      ! 
 INTEGER(i4) :: seed_size                                                      ! Random number generator variable
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: seed                                ! Store the random num gen seed
 
-REAL(r8) :: zmin, zmax                                                        ! Define the size of the zp domain
+REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount1, pcount2, pcount3    ! Count the number of particles incident on (1) dump, (2) target, (3) EBW resonance
+REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount1, ecount2, ecount3    ! Record the total energy of particle incident on (1) dump, (2) target, (3) EBW resonance
+REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount4                      ! Record the total energy dissipated by collisional slowing down within a time step dt
+REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount4                      ! Record the total number of fast particles involved in the slowing down dissipated power within a time step dt
 
 REAL(r8) :: ecnt, ecnt1, ecnt2
 REAL(r8) :: pcnt, pcnt1, pcnt2
@@ -95,51 +98,51 @@ open(unit=4,file='inputfile.in',status='old',form='formatted')
 read(4,indata)
 close(unit=4)
 
-if (species_a .eq. 1) then
+if (in%species_a .eq. 1) then
     q = -e_c
     m_t =m_e
     print *, 'Test particles: Electrons'
 else
-    q = +Zion*e_c
-    m_t = Aion*m_p
+    q = +in%Zion*e_c
+    m_t = in%Aion*m_p
     print *, 'Test particles: Ions'
 end if
 
-print *, 'Number of particles', Nparts
-print *, 'Number of steps    ', Nsteps
-print *, 'dt [ns]            ', dt*1E+9
-print *, 'iPush              ', iPush
-print *, 'iDrag              ', iDrag
-print *, 'iColl              ', iColl
-print *, 'iHeat              ', iHeat
-print *, 'iSave              ', iSave
-print *, 'elevel             ', elevel
-print *, 'zTarget [m]        ', zTarget
-print *, 'zDump [m]          ', zDump
-print *, 'zp_init [m]       ', zp_init
-print *, 'B field file       ', BFieldFile
-print *, 'Ew                 ', Ew
-print *, 'Te0                ', Te0
-print *, 'ne0                 ', ne0
+print *, 'Number of particles', in%Nparts
+print *, 'Number of steps    ', in%Nsteps
+print *, 'dt [ns]            ', in%dt*1E+9
+print *, 'iPush              ', in%iPush
+print *, 'iDrag              ', in%iDrag
+print *, 'iColl              ', in%iColl
+print *, 'iHeat              ', in%iHeat
+print *, 'iSave              ', in%iSave
+print *, 'elevel             ', in%elevel
+print *, 'zTarget [m]        ', in%zmax
+print *, 'zDump [m]          ', in%zmin
+print *, 'zp_init [m]       ', in%zp_init
+print *, 'B field file       ', in%BFieldFile
+print *, 'Ew                 ', in%Ew
+print *, 'Te0                ', in%Te0
+print *, 'ne0                 ', in%ne0
 
-if (CollOperType .EQ. 1) print *, 'Boozer-Only collision operator'
-if (CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
+if (in%CollOperType .EQ. 1) print *, 'Boozer-Only collision operator'
+if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
 
 ! ===========================================================================
 ! Allocate memory to "allocatable" variables
-ALLOCATE(zp(Nparts), kep(Nparts), xip(Nparts))
-ALLOCATE(pcount1(Nsteps),pcount2(Nsteps),pcount3(Nsteps),pcount4(Nsteps))
-ALLOCATE(ecount1(Nsteps),ecount2(Nsteps),ecount3(Nsteps),ecount4(Nsteps))
+ALLOCATE(zp(in%Nparts), kep(in%Nparts), xip(in%Nparts))
+ALLOCATE(pcount1(in%Nsteps),pcount2(in%Nsteps),pcount3(in%Nsteps),pcount4(in%Nsteps))
+ALLOCATE(ecount1(in%Nsteps),ecount2(in%Nsteps),ecount3(in%Nsteps),ecount4(in%Nsteps))
 ! Variables for spline fits
-ALLOCATE(z_Ref(nz), B_Ref(nz), Phi_Ref(nz), ddB_Ref(nz))
-ALLOCATE(b_spl(nz), b_temp(nz), phi_spl(nz), phi_temp(nz), ddb_spl(nz), ddb_temp(nz))
-ALLOCATE(zz(nz), b1(nz), ddb1(nz))
+ALLOCATE(z_Ref(in%nz), B_Ref(in%nz), Phi_Ref(in%nz), ddB_Ref(in%nz))
+ALLOCATE(b_spl(in%nz), b_temp(in%nz), phi_spl(in%nz), phi_temp(in%nz), ddb_spl(in%nz), ddb_temp(in%nz))
+ALLOCATE(zz(in%nz), b1(in%nz), ddb1(in%nz))
 ! Variables for RF operator
-ALLOCATE(fcurr(Nparts),fnew(Nparts))
+ALLOCATE(fcurr(in%Nparts),fnew(in%Nparts))
 ! Define variables for the saving process
-jsize = (jend-jstart+1)/jincr
+jsize = (in%jend-in%jstart+1)/in%jincr
 ALLOCATE(jrng(jsize))
-ALLOCATE(zp_hist(Nparts,jsize),kep_hist(Nparts,jsize),xip_hist(Nparts,jsize),t_hist(jsize))
+ALLOCATE(zp_hist(in%Nparts,jsize),kep_hist(in%Nparts,jsize),xip_hist(in%Nparts,jsize),t_hist(jsize))
 
 ! Create array with the indices of the time steps to save
 jrng = (/ (j, j=jstart, jend, jincr) /)
@@ -158,16 +161,16 @@ call curv1(501,x_j_ref,j1_ref,slp1,slpn,islpsw,j1_spl,j1_temp,sigma,ierr1)
 
 ! ===========================================================================
 ! Read magnetic field data
-B_data = trim(adjustl(BFieldFile))
-B_data = trim(adjustl(BFieldFileDir))//B_data
-B_data = trim(adjustl(rootDir))//B_data
+B_data = trim(adjustl(in%BFieldFile))
+B_data = trim(adjustl(in%BFieldFileDir))//B_data
+B_data = trim(adjustl(in%rootDir))//B_data
 open(unit=8,file=B_data,status="old")
 do i=1,501
     read(8,*) z_Ref(i),B_Ref(i)
 end do
 close(unit=8)
 slp1 = 0.; slpn = 0.; sigma = 1.; islpsw = 3
-call curv1(nz,z_Ref,B_Ref  ,slp1,slpn,islpsw,b_spl  ,b_temp  ,sigma,ierr1)
+call curv1(in%nz,z_Ref,B_Ref  ,slp1,slpn,islpsw,b_spl  ,b_temp  ,sigma,ierr1)
 
 ! nz,z_Ref,B_Ref,slp1,slpn,islpsw and sigma are unaltered.
 ! Outputs are b_spl, b_temp, ierr1
@@ -176,23 +179,23 @@ call curv1(nz,z_Ref,B_Ref  ,slp1,slpn,islpsw,b_spl  ,b_temp  ,sigma,ierr1)
 
 ! Second spatial derivative of the magnetic field
 ddB_Ref = b_spl
-call curv1(nz,z_Ref,ddB_Ref,slp1,slpn,islpsw,ddb_spl,ddb_temp,sigma,ierr2)
+call curv1(in%nz,z_Ref,ddB_Ref,slp1,slpn,islpsw,ddb_spl,ddb_temp,sigma,ierr2)
 ! need to confirm correctness of second derivative
 
 ! ===========================================================================
 ! Setup predefined electric potential
-call PotentialProfile(iPotential)
+call PotentialProfile(in%iPotential)
 
 ! Electric potential
 slp1 = 0.; slpn = 0.; sigma = 1. ;islpsw = 3
-call curv1(nz,z_Ref,Phi_Ref,slp1,slpn,islpsw,phi_spl,phi_temp,sigma,ierr1)
+call curv1(in%nz,z_Ref,Phi_Ref,slp1,slpn,islpsw,phi_spl,phi_temp,sigma,ierr1)
 
 if (.false.) then
 ! Test the spline
     do i=1,500
         zz(i) = z_Ref(i) + 1.e-3*(-z_Ref(i) + z_Ref(i+1))/2.
-        b1(i)   = curv2(zz(i),nz,z_Ref,B_Ref  ,b_spl  ,sigma)
-        ddb1(i) = curv2(zz(i),nz,z_Ref,ddB_Ref,ddb_spl,sigma)
+        b1(i)   = curv2(zz(i),in%nz,z_Ref,B_Ref  ,b_spl  ,sigma)
+        ddb1(i) = curv2(zz(i),in%nz,z_Ref,ddB_Ref,ddb_spl,sigma)
     end do
     ! Save data to file to test spline
     if (.true.) then
@@ -215,20 +218,7 @@ call random_seed(put=seed)
 
 ! ==============================================================================
 ! Initialize particle position zp, kinetic energy kep and pitch angle xip
-zmin = zDump
-zmax = zTarget
-
 call loadParticles(in)
-
-! Test the EEDF initialization:
-if (.false.) then
-    fileName = "EEDF_t0"
-    open(unit=8,file=fileName,form="formatted",status="unknown")
-    do i=1,Nparts
-        write(8,*) zp(i), kep(i),xip(i)
-    end do
-    close(unit=8)
-end if
 
 ! Initialize the time array
 tp = 0
@@ -238,29 +228,29 @@ pcount1 = 0; pcount2 = 0; pcount3 = 0; pcount4 = 0
 ecount1 = 0; ecount2 = 0; ecount3 = 0; ecount4 = 0
 
 ! Set the number of threads:
-call OMP_SET_NUM_THREADS(threads_request)
+call OMP_SET_NUM_THREADS(in%threads_request)
 !$OMP PARALLEL PRIVATE(id)
     id = OMP_GET_THREAD_NUM()
-    num_threads = OMP_GET_NUM_THREADS()
-    if (id .EQ. 0) write(*,*) "number of threads given: ", num_threads
+    in%threads_given = OMP_GET_NUM_THREADS()
+    if (id .EQ. 0) write(*,*) "number of threads given: ", in%threads_given
 !$OMP END PARALLEL
 
 ! ==============================================================================
 ! BEGIN TIME STEPPING
-TimeStepping: do j = 1,Nsteps
+TimeStepping: do j = 1,in%Nsteps
     ! Calculate Cyclotron resonance number
     ! =========================================================================
-    if (iHeat) then
-        do i = 1,Nparts
+    if (in%iHeat) then
+        do i = 1,in%Nparts
             call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i))
         end do
     end if
 
     ! =========================================================================
     ! PUSH PARTICLES ADIABATICALLY
-    if (iPush) then
+    if (in%iPush) then
       !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC)
-        do i = 1,Nparts
+        do i = 1,in%Nparts
             call MoveParticle(zp(i),kep(i),xip(i))
         end do
       !$OMP END PARALLEL DO
@@ -272,10 +262,10 @@ TimeStepping: do j = 1,Nsteps
       !$OMP PARALLEL PRIVATE(ecnt1, ecnt2, pcnt1, pcnt2)
           ecnt1 = 0; ecnt2 = 0; pcnt1 = 0; pcnt2 = 0
           !$OMP DO
-              do i = 1,Nparts
-                  if (zp(i) .GE. zmax) then
+              do i = 1,in%Nparts
+                  if (zp(i) .GE. in%zmax) then
                       call ReinjectParticles(zp(i),kep(i),xip(i),ecnt2,pcnt2)
-                  else if (zp(i) .LE. zmin) then
+                  else if (zp(i) .LE. in%zmin) then
                       call ReinjectParticles(zp(i),kep(i),xip(i),ecnt1,pcnt1)
                   end if
               end do
@@ -292,14 +282,14 @@ TimeStepping: do j = 1,Nsteps
     ! =========================================================================
     ! APPLY COULOMB COLLISION OPERATOR
     !write(*,*) "time", j
-    if (iColl) then
+    if (in%iColl) then
     		!$OMP PARALLEL PRIVATE(i, id, ecnt, pcnt)
               ecnt = 0; pcnt = 0
               id = OMP_GET_THREAD_NUM()
 
               species_b = 1 ! test particle on field electrons
           		!$OMP DO SCHEDULE(STATIC)
-              		do i = 1,Nparts
+              		do i = 1,in%Nparts
                     !if (id .EQ. 0) write(*,*) "Thread", id, " at i = ", i
               			call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
               		end do
@@ -307,7 +297,7 @@ TimeStepping: do j = 1,Nsteps
 
               species_b = 2 ! test particle on field ions
           		!$OMP DO
-              		do i = 1,Nparts
+              		do i = 1,in%Nparts
               		    call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
               		end do
           		!$OMP END DO
@@ -324,14 +314,14 @@ TimeStepping: do j = 1,Nsteps
     ! APPLY RF HEATING OPERATOR
     ! 	Modify: kep(i), xip(i)
     ! 	Conserved: z(i)
-    if (iHeat) then
+    if (in%iHeat) then
       !$OMP PARALLEL PRIVATE(i, ecnt, pcnt, df, fnew)
           ecnt = 0; pcnt = 0; df = 0;
           !$OMP DO SCHEDULE(STATIC)
-              do i = 1,Nparts
+              do i = 1,in%Nparts
                       call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i))
                       df = dsign(1.d0,fcurr(i)*fnew(i))
-                      if (df .LT. 0 .AND. zp(i) .GT. zRes1 .AND. zp(i) .LT. zRes2)  then
+                      if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
                         call RFHeatingOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
                       end if
               end do
@@ -345,17 +335,17 @@ TimeStepping: do j = 1,Nsteps
 
     ! =========================================================================
     ! Update time array
-    tp = tp + dt
+    tp = tp + in%dt
 
     ! =====================================================================
     ! SELECT DATA TO BE SAVED TO OUTPUT FILE
     ! Check if data is to be saved
-    if (iSave) then
+    if (in%iSave) then
         do k = 1,jsize
             if (j .EQ. jrng(k)) then
                 t_hist(k) = tp
 				        !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC)
-                    do i = 1,Nparts
+                    do i = 1,in%Nparts
                             ! Record "ith" particle position at "kth" time
                             zp_hist(i,k) = zp(i)
                             ! Record "ith" particle KE at "kth" time
@@ -373,11 +363,11 @@ end do TimeStepping
 ! =========================================================================
 tSimTime = tp
 call cpu_time(tend)
-tComputeTime = (tend-tstart)/num_threads
+tComputeTime = (tend-tstart)/in%threads_given
 print *, 'Reached End of Program, Computational time = ', tComputeTime
 ! Save data:
 ! =========================================================================
-if (iSave) then
+if (in%iSave) then
 
     ! Create new directory to save output data:
     ! ---------------------------------------------------------------------

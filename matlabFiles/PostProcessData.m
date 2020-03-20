@@ -90,7 +90,7 @@ if 0
     k = 1;
     for ii = 1:(size(zp{k},2)-n_persist)
         t_rng = ii:(ii+n_persist);
-        plot(zp{k}(:,t_rng),kep{k}(:,t_rng)*1e-3,'k.','MarkerSize',2)
+        plot(zp{k}(:,t_rng),kep{k}(:,t_rng)*1e-3,'k.','MarkerSize',4)
         hold on
         plot(zb,0.8*b*EmaxPlot*(1e-3)/bmax)
         hold off
