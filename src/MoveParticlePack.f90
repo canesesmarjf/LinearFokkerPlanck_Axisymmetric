@@ -275,3 +275,70 @@ ecnt = ecnt + dkep
 
 return
 END SUBROUTINE RFHeatingOperator
+
+! =======================================================================================================
+SUBROUTINE loadParticles(in0)
+! =======================================================================================================
+  USE local
+  USE ParticlePusher
+  use PhysicalConstants
+  USE dataTYP
+  IMPLICIT NONE
+  ! Declare internal variables:
+  REAL(r8) :: zmin, zmax, sigma_u_init
+  TYPE(inTYP) :: in0
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: RmArray1, RmArray2, RmArray3
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: uperArray, uparArray, uArray
+
+  ! Allocate memory:
+  ALLOCATE(RmArray1(Nparts), RmArray2(Nparts), RmArray3(Nparts))
+  ALLOCATE(uparArray(Nparts),uperArray(Nparts),uArray(Nparts))
+
+  write(*,*) "zmin: ", in0%zmin
+  write(*,*) "zmax: ", in0%zmax
+  write(*,*) "zp_init", in0%zp_init
+  write(*,*) "zp_init_std", in0%zp_init_std
+  write(*,*) "kep_init", in0%kep_init
+  write(*,*) "xip_init", in0%xip_init
+
+  ! Particle position:
+  zmin = in0%zmin + .01*(in0%zmax-in0%zmin)
+  zmax = in0%zmax - .01*(in0%zmax-in0%zmin)
+  if (in0%zp_InitType .EQ. 1) then
+      ! Uniform load
+      call random_number(RmArray1)
+      zp = zmin + (zmax - zmin)*RmArray1
+  elseif (in0%zp_InitType .EQ. 2) then
+      ! Gaussian load
+      call random_number(RmArray1)
+      call random_number(RmArray2)
+      zp = in0%zp_init_std*sqrt(-2.*log(RmArray1))*cos(2.*pi*RmArray2)  +  in0%zp_init
+  end if
+
+  ! Particle kinetic energy:
+  call random_number(RmArray1)
+  call random_number(RmArray2)
+  call random_number(RmArray3)
+  sigma_u_init = sqrt(e_c*in0%kep_init/m_t)
+  uperArray = sigma_u_init*sqrt(-2.*log(RmArray1))
+  uparArray = sigma_u_init*sqrt(-2.*log(RmArray2))*cos(2.*pi*RmArray3)
+  uArray    = sqrt( uperArray**2 + uparArray**2 )
+
+  if (in0%kep_InitType .EQ. 1) then
+      ! Maxwellian EEDF:
+      kep = (m_t*uArray**2.)/(2.*e_c)
+  elseif (in0%kep_InitType .EQ. 2) then
+      ! Beam EEDF:
+      kep = in0%kep_init
+  end if
+
+  ! Particle pitch angle:
+  if (in0%xip_InitType .EQ. 1) then
+      ! Isotropic pitch angle
+      xip = uparArray/uArray
+  elseif (in0%xip_InitType .EQ. 2) then
+      ! Beam pitch angle
+      xip = in0%xip_init
+  end if
+return
+END SUBROUTINE loadParticles

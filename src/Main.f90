@@ -15,7 +15,6 @@ USE ParticlePusher
 USE plasma_params
 USE collision_data
 USE rf_heating_data
-USE InitialParticleDistribution
 USE dataTYP
 USE OMP_LIB
 
@@ -31,10 +30,11 @@ INTEGER(i4) :: i,j,k                                                          ! 
 REAL(r8) :: curv2, curvd                                                      ! Declare functions from fitpack
 INTEGER(i4) :: seed_size                                                      ! Random number generator variable
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: seed                                ! Store the random num gen seed
+
 REAL(r8) :: zmin, zmax                                                        ! Define the size of the zp domain
+
 REAL(r8) :: ecnt, ecnt1, ecnt2
 REAL(r8) :: pcnt, pcnt1, pcnt2
-TYPE(particleLoadData) :: data_1
 INTEGER(i4) :: jsize                                                          ! Total umber of time steps to save
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: jrng                                ! Indices of time steps to save
 REAL(r8) :: df
@@ -217,16 +217,8 @@ call random_seed(put=seed)
 ! Initialize particle position zp, kinetic energy kep and pitch angle xip
 zmin = zDump
 zmax = zTarget
-data_1%zp_InitType  = zp_InitType
-data_1%kep_InitType = kep_InitType
-data_1%xip_InitType = xip_InitType
-data_1%zp_init      = zp_init
-data_1%zp_init_std  = zp_init_std
-data_1%zmin         = zmin
-data_1%zmax         = zmax
-data_1%kep_init     = kep_init
-data_1%xip_init     = xip_init
-call loadParticles(data_1)
+
+call loadParticles(in)
 
 ! Test the EEDF initialization:
 if (.false.) then
