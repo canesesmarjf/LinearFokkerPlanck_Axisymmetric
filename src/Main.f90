@@ -24,6 +24,9 @@ USE OMP_LIB
 ! ===========================================================================
 IMPLICIT NONE
 TYPE(inTYP)  :: in
+TYPE(splTYP) :: spline_Bz
+TYPE(splTYP) :: spline_ddBz
+TYPE(splTYP) :: spline_Phi
 
 REAL(r8) :: tstart, tend, tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
 INTEGER(i4) :: i,j,k                                                          ! Indices for do loops
@@ -41,7 +44,6 @@ REAL(r8) :: pcnt, pcnt1, pcnt2
 INTEGER(i4) :: jsize                                                          ! Total umber of time steps to save
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: jrng                                ! Indices of time steps to save
 REAL(r8) :: df
-CHARACTER*100 :: besselj_data                                                 ! Name of file containing the bessel function data
 
 ! Create local variables to hold some of the data from InputFile
 LOGICAL :: iColl, iHeat, iSave, iPush, iPotential
@@ -129,6 +131,13 @@ if (in%CollOperType .EQ. 1) print *, 'Boozer-Only collision operator'
 if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
 
 ! ===========================================================================
+call InitSpline(spline_Bz  ,in%nz,0._8,0._8,1,0._8)
+call InitSpline(spline_ddBz,in%nz,0._8,0._8,1,0._8)
+call InitSpline(spline_Phi ,in%nz,0._8,0._8,1,0._8)
+
+WRITE(*,*) "size of spline_Bz.x", SIZE(spline_Bz%x)
+WRITE(*,*) "spline_Bz.sigma", spline_Bz%sigma
+
 ! Allocate memory to "allocatable" variables
 ALLOCATE(zp(in%Nparts), kep(in%Nparts), xip(in%Nparts))
 ALLOCATE(pcount1(in%Nsteps),pcount2(in%Nsteps),pcount3(in%Nsteps),pcount4(in%Nsteps))
@@ -149,28 +158,52 @@ jrng = (/ (j, j=jstart, jend, jincr) /)
 
 ! ===========================================================================
 ! Read Bessel function data
-besselj_data = trim(adjustl("besselj01_0_to_40.txt"))
-open(unit=8,file=besselj_data,status="old")
-do i=1,501
+fileName = "besselj01_0_to_40.txt"
+fileName = trim(adjustl(fileName))
+open(unit=8,file=fileName,status="old")
+do i=1,in%nz
     read(8,*) x_j_ref(i),j0_ref(i), j1_ref(i)
 end do
 close(unit=8)
 slp1 = 0.; slpn = 0.; sigma = 1.;islpsw = 3
-call curv1(501,x_j_ref,j0_ref,slp1,slpn,islpsw,j0_spl,j0_temp,sigma,ierr1)
-call curv1(501,x_j_ref,j1_ref,slp1,slpn,islpsw,j1_spl,j1_temp,sigma,ierr1)
+call curv1(in%nz,x_j_ref,j0_ref,slp1,slpn,islpsw,j0_spl,j0_temp,sigma,ierr1)
+call curv1(in%nz,x_j_ref,j1_ref,slp1,slpn,islpsw,j1_spl,j1_temp,sigma,ierr1)
+
+! Inputs:
+! fileName
+!
+
+! local:
+! x_j_ref
+! j0_ref
+! j1_ref
+! slp1
+! slpn
+! slpn
+! islpsw
+
+! Outputs:
+
 
 ! ===========================================================================
 ! Read magnetic field data
-B_data = trim(adjustl(in%BFieldFile))
-B_data = trim(adjustl(in%BFieldFileDir))//B_data
-B_data = trim(adjustl(in%rootDir))//B_data
-open(unit=8,file=B_data,status="old")
+fileName = trim(adjustl(in%BFieldFile))
+fileName = trim(adjustl(in%BFieldFileDir))//fileName
+fileName = trim(adjustl(in%rootDir))//fileName
+
+
+open(unit=8,file=fileName,status="old")
 do i=1,501
     read(8,*) z_Ref(i),B_Ref(i)
 end do
 close(unit=8)
 slp1 = 0.; slpn = 0.; sigma = 1.; islpsw = 3
 call curv1(in%nz,z_Ref,B_Ref  ,slp1,slpn,islpsw,b_spl  ,b_temp  ,sigma,ierr1)
+
+
+CALL ReadSpline(spline_Bz,fileName)
+CALL ComputeSpline(spline_Bz)
+WRITE(*,*) "ddBz", spline_Bz%yp
 
 ! nz,z_Ref,B_Ref,slp1,slpn,islpsw and sigma are unaltered.
 ! Outputs are b_spl, b_temp, ierr1
@@ -182,6 +215,13 @@ ddB_Ref = b_spl
 call curv1(in%nz,z_Ref,ddB_Ref,slp1,slpn,islpsw,ddb_spl,ddb_temp,sigma,ierr2)
 ! need to confirm correctness of second derivative
 
+
+
+spline_ddBz%x = spline_Bz%x
+spline_ddBz%y = spline_Bz%yp
+CALL ComputeSpline(spline_ddBz)
+
+
 ! ===========================================================================
 ! Setup predefined electric potential
 call PotentialProfile(in%iPotential)
@@ -190,12 +230,12 @@ call PotentialProfile(in%iPotential)
 slp1 = 0.; slpn = 0.; sigma = 1. ;islpsw = 3
 call curv1(in%nz,z_Ref,Phi_Ref,slp1,slpn,islpsw,phi_spl,phi_temp,sigma,ierr1)
 
-if (.false.) then
+if (.true.) then
 ! Test the spline
-    do i=1,500
+    do i=1,250
         zz(i) = z_Ref(i) + 1.e-3*(-z_Ref(i) + z_Ref(i+1))/2.
-        b1(i)   = curv2(zz(i),in%nz,z_Ref,B_Ref  ,b_spl  ,sigma)
-        ddb1(i) = curv2(zz(i),in%nz,z_Ref,ddB_Ref,ddb_spl,sigma)
+        b1(i)  = Interp1(zz(i),spline_Bz)
+        ddb1(i) = Interp1(zz(i),spline_ddBz)
     end do
     ! Save data to file to test spline
     if (.true.) then

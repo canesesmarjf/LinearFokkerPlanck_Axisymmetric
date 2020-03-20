@@ -48,6 +48,14 @@ MODULE spline_fits
 USE local
 
 IMPLICIT NONE
+TYPE splTYP
+  INTEGER(i4) :: n
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y, yp, temp
+  REAL(r8) :: slp1, slpn
+  REAL(r8) :: sigma
+  INTEGER(i4) :: islpsw, ierr
+END TYPE splTYP
+
 REAL(r8), DIMENSION(:), ALLOCATABLE :: z_Ref, B_Ref, Phi_Ref  ! Variables to hold reference B and Phi data
 REAL(r8), DIMENSION(:), ALLOCATABLE :: ddB_Ref                ! Variables to hold 2nd spatial derivative of the reference B
 REAL(r8) :: s1, s2, s3, phi1, phi2, phi3                      ! Needed for define shape of Phi
@@ -61,6 +69,57 @@ REAL(r8), DIMENSION(:), ALLOCATABLE :: zz, b1, ddb1           ! Variables to hol
 REAL(r8), DIMENSION(501) :: j0_spl, j0_temp                   ! Bessel J1 reference spline data
 REAL(r8), DIMENSION(501) :: j1_spl, j1_temp                   ! Bessel J2 reference spline data
 REAL(R8), DIMENSION(501) :: x_j_ref, j0_ref, j1_ref            ! Save bessel function order 1 and 2
+
+CONTAINS
+  SUBROUTINE InitSpline(spline0,n,slp1,slpn,islpsw,sigma)
+    IMPLICIT NONE
+    TYPE(splTYP) :: spline0
+    INTEGER(i4) :: n
+    REAL(r8) :: slp1, slpn
+    INTEGER(i4) :: islpsw
+    REAL(r8) :: sigma
+    ALLOCATE(spline0%x(n))
+    ALLOCATE(spline0%y(n))
+    ALLOCATE(spline0%yp(n))
+    ALLOCATE(spline0%temp(n))
+    spline0%n = n
+    spline0%slp1 = slp1
+    spline0%slpn = slpn
+    spline0%islpsw = islpsw
+    spline0%sigma = sigma
+  END SUBROUTINE InitSpline
+
+  SUBROUTINE ReadSpline(spline0,fileName)
+    IMPLICIT NONE
+    TYPE(splTYP) :: spline0
+    CHARACTER*250 :: fileName
+    INTEGER(i4) :: i
+
+    open(unit=8,file=fileName,status="old")
+    do i=1,(spline0%n)
+        read(8,*) spline0%x(i), spline0%y(i)
+    end do
+    close(unit=8)
+
+  END SUBROUTINE ReadSpline
+
+  SUBROUTINE ComputeSpline(spline0)
+    IMPLICIT NONE
+    TYPE(splTYP) :: spline0
+
+    call curv1(spline0%n,spline0%x,spline0%y,spline0%slp1,spline0%slpn, &
+    spline0%islpsw,spline0%yp,spline0%temp,spline0%sigma,spline0%ierr)
+
+  END SUBROUTINE ComputeSpline
+
+  FUNCTION Interp1(xq, spline0)
+    IMPLICIT NONE
+    TYPE(splTYP) :: spline0
+    REAL(r8) :: xq, Interp1, curv2
+
+    Interp1 = curv2(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+
+  END FUNCTION Interp1
 
 END MODULE spline_fits
 
