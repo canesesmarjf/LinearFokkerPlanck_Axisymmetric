@@ -184,7 +184,7 @@ plot(tc{1}*1e-3,cumsum(pcount3_0{1}),'k','LineWidth',2)
 box on
 subplot(1,2,2)
 hold on
-plot(tc{1}*1e-3,(ecount3_0{1}),'k','LineWidth',2)
+plot(tc{1}*1e-3,cumsum(ecount3_0{1}),'k','LineWidth',2)
 box on
 
 % What is the temperature with flow and it is it very different to the no

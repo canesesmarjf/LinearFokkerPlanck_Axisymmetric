@@ -135,26 +135,28 @@ return
 END SUBROUTINE ReinjectParticles
 
 ! =======================================================================================================
-SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0)
+SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0,in0,spline0)
 ! =======================================================================================================
+
 USE local
 USE spline_fits
 USE ParticlePusher
 USE PhysicalConstants
-USE plasma_params
-use rf_heating_data
+USE dataTYP
 
 IMPLICIT NONE
 ! Define local variables
 REAL(r8) :: zp0, kep0, xip0, f0     ! Input variables
 REAL(r8) :: upar, Bf, Omega, Omega_RF
 REAL(r8) :: curv2
+TYPE(inTYP) :: in0
+TYPE(splTYP) :: spline0
 
 upar = sqrt(2.*e_c*kep0/m_t)*xip0
-Bf = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+Bf = Interp1(zp0,spline0)
 Omega = abs(q)*Bf/m_t
-Omega_RF = 2*pi*f_RF
-f0 = omega_RF - kpar*upar - n_harmonic*Omega
+Omega_RF = 2*pi*in0%f_RF
+f0 = Omega_RF - in0%kpar*upar - in0%n_harmonic*Omega
 
 return
 END SUBROUTINE CyclotronResonanceNumber

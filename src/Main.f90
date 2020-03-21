@@ -262,7 +262,7 @@ TimeStepping: do j = 1,in%Nsteps
     ! =========================================================================
     if (in%iHeat) then
         do i = 1,in%Nparts
-            call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i))
+            call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i),in,spline_Bz)
         end do
     end if
 
@@ -339,7 +339,7 @@ TimeStepping: do j = 1,in%Nsteps
           ecnt = 0; pcnt = 0; df = 0;
           !$OMP DO SCHEDULE(STATIC)
               do i = 1,in%Nparts
-                      call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i))
+                      call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_Bz)
                       df = dsign(1.d0,fcurr(i)*fnew(i))
                       if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
                         call RFHeatingOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
@@ -391,14 +391,14 @@ if (in%iSave) then
 
     ! Create new directory to save output data:
     ! ---------------------------------------------------------------------
-	command = 'mkdir '// trim(fileDescriptor)
+	command = 'mkdir '// trim(in%fileDescriptor)
 	write(*,*) command
     call system(command)
     call getcwd(mpwd)
 
     ! Saving zp_hist to file
     ! ---------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'zp.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'zp.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) zp_hist
     close(unit=8)
@@ -406,72 +406,72 @@ if (in%iSave) then
 
     ! Saving kep_hist to file
     ! ---------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'kep.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'kep.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) kep_hist
     close(unit=8)
 
     ! Saving xip_hist to file
     ! ---------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'xip.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'xip.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) xip_hist
     close(unit=8)
 
     ! Saving t_hist to file
     ! ---------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'tp.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'tp.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) t_hist
     close(unit=8)
 
     ! Saving pcount to file
     ! ---------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount1.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'pcount1.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount1
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount2.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'pcount2.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount2
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount3.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'pcount3.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount3
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'pcount4.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'pcount4.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount4
     close(unit=8)
 
     ! Saving ecount to file
     ! ---------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount1.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount1.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount1
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount2.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount2.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount2
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount3.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount3.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount3
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'ecount4.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount4.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount4
     close(unit=8)
 
     ! Create Metadata file
     ! ---------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'Metadata.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'Metadata.out')
     open(unit=8,file=fileName,form="formatted",status="unknown")
     write(8,NML = metadata)
     close(unit=8)
 
     ! Write output data:
-    fileName = trim(trim(mpwd)//'/'//trim(fileDescriptor)//'/'//'data.out')
+    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'data.out')
     open(unit=8,file=fileName,form="formatted",status="unknown")
     write(8,NML = in_nml)
     close(unit=8)
