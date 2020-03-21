@@ -58,7 +58,7 @@ END TYPE splTYP
 
 TYPE spltestTYP
   INTEGER(i4) :: n
-  REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y1, y2, y3
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y1, y2, y3, y4, y5
 END TYPE spltestTYP
 
 REAL(r8), DIMENSION(:), ALLOCATABLE :: z_Ref, B_Ref, Phi_Ref  ! Variables to hold reference B and Phi data
@@ -102,6 +102,8 @@ CONTAINS
     ALLOCATE(spline0%y1(n))
     ALLOCATE(spline0%y2(n))
     ALLOCATE(spline0%y3(n))
+    ALLOCATE(spline0%y4(n))
+    ALLOCATE(spline0%y5(n))
   END SUBROUTINE InitSplineTest
 
   SUBROUTINE ReadSpline(spline0,fileName)

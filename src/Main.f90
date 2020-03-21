@@ -27,6 +27,8 @@ TYPE(inTYP)  :: in
 TYPE(splTYP) :: spline_Bz
 TYPE(splTYP) :: spline_ddBz
 TYPE(splTYP) :: spline_Phi
+TYPE(splTYP) :: spline_j0
+TYPE(splTYP) :: spline_j1
 TYPE(spltestTYP) :: spline_Test
 
 REAL(r8) :: tstart, tend, tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
@@ -102,11 +104,11 @@ read(4,indata)
 close(unit=4)
 
 if (in%species_a .eq. 1) then
-    q = -e_c
-    m_t =m_e
+    q   = -e_c
+    m_t = m_e
     print *, 'Test particles: Electrons'
 else
-    q = +in%Zion*e_c
+    q   = +in%Zion*e_c
     m_t = in%Aion*m_p
     print *, 'Test particles: Ions'
 end if
@@ -135,7 +137,9 @@ if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
 ! ===========================================================================
 call InitSpline(spline_Bz  ,in%nz,0._8,0._8,1,0._8)
 call InitSpline(spline_ddBz,in%nz,0._8,0._8,1,0._8)
-call InitSpline(spline_Phi ,in%nz,0._8,0._8,1,3._8)
+call InitSpline(spline_Phi ,in%nz,0._8,0._8,1,0._8)
+call InitSpline(spline_j0  ,in%nz,0._8,0._8,1,3._8)
+call InitSpline(spline_j1  ,in%nz,0._8,0._8,1,3._8)
 call InitSplineTest(spline_Test,in%nz)
 
 ! Allocate memory to "allocatable" variables
@@ -156,20 +160,19 @@ ALLOCATE(zp_hist(in%Nparts,jsize),kep_hist(in%Nparts,jsize),xip_hist(in%Nparts,j
 jrng = (/ (j, j=jstart, jend, jincr) /)
 
 ! ===========================================================================
-! Read Bessel function data
-fileName = "besselj01_0_to_40.txt"
+! Bessel function data:
+fileName = "besselj0_0_to_40.txt"
 fileName = trim(adjustl(fileName))
-open(unit=8,file=fileName,status="old")
-do i=1,in%nz
-    read(8,*) x_j_ref(i),j0_ref(i), j1_ref(i)
-end do
-close(unit=8)
-slp1 = 0.; slpn = 0.; sigma = 1.;islpsw = 3
-call curv1(in%nz,x_j_ref,j0_ref,slp1,slpn,islpsw,j0_spl,j0_temp,sigma,ierr1)
-call curv1(in%nz,x_j_ref,j1_ref,slp1,slpn,islpsw,j1_spl,j1_temp,sigma,ierr1)
+CALL ReadSpline(spline_j0,fileName)
+CALL ComputeSpline(spline_j0)
+
+fileName = "besselj1_0_to_40.txt"
+fileName = trim(adjustl(fileName))
+CALL ReadSpline(spline_j1,fileName)
+CALL ComputeSpline(spline_j1)
 
 ! ===========================================================================
-! Magnetic field data
+! Magnetic field data:
 fileName = trim(adjustl(in%BFieldFile))
 fileName = trim(adjustl(in%BFieldFileDir))//fileName
 fileName = trim(adjustl(in%rootDir))//fileName
@@ -177,13 +180,13 @@ CALL ReadSpline(spline_Bz,fileName)
 CALL ComputeSpline(spline_Bz)
 
 ! ===========================================================================
-! Second derivative of the magnetic field
+! Second derivative of the magnetic field:
 spline_ddBz%x = spline_Bz%x
 spline_ddBz%y = spline_Bz%yp
 CALL ComputeSpline(spline_ddBz)
 
 ! ===========================================================================
-! Predefined electric potential
+! Predefined electric potential:
 spline_Phi%x = spline_Bz%x
 spline_Phi%y = 0
 if (in%iPotential) then
@@ -195,31 +198,35 @@ CALL ComputeSpline(spline_Phi)
 ! Test the splines:
 if (.true.) then
     do i=1,in%nz
-        spline_Test%x(i) = in%zmin + i*0.03
+        !spline_Test%x(i)  = in%zmin + i*0.03
+        spline_Test%x(i)  = 0.0 + i*0.02
         spline_Test%y1(i) = Interp1(spline_Test%x(i),spline_Bz)
         spline_Test%y2(i) = Interp1(spline_Test%x(i),spline_ddBz)
         spline_Test%y3(i) = Interp1(spline_Test%x(i),spline_Phi)
+        spline_Test%y4(i) = Interp1(spline_Test%x(i),spline_j0)
+        spline_Test%y5(i) = Interp1(spline_Test%x(i),spline_j1)
     end do
-    ! Save data to file to test spline
-    if (.true.) then
     fileName = "B_spline.dat"
-        open(unit=8,file=fileName,form="formatted",status="unknown")
-        do j = 1,in%nz
-            write(8,*) spline_Test%x(j), spline_Test%y1(j), spline_Test%y2(j), spline_Test%y3(j)
-        end do
-        close(unit=8)
-    end if
+    open(unit=8,file=fileName,form="formatted",status="unknown")
+    do j = 1,in%nz
+        write(8,*) spline_Test%x(j), spline_Test%y1(j), spline_Test%y2(j),&
+         spline_Test%y3(j), spline_Test%y4(j), spline_Test%y5(j)
+    end do
+    close(unit=8)
 end if
 
 z_Ref = spline_Bz%x
 B_Ref = spline_Bz%y
 b_spl = spline_Bz%yp
-
 ddB_Ref = spline_Bz%yp
 ddb_spl = spline_ddBz%yp
-
 Phi_Ref = spline_Phi%y
 phi_spl = spline_Phi%yp
+x_j_ref = spline_j0%x
+j0_ref  = spline_j0%y
+j0_spl  = spline_j0%yp
+j1_ref  = spline_j1%y
+j1_spl  = spline_j1%yp
 
 ! ===========================================================================
 ! Initialize the random number generator
