@@ -27,6 +27,7 @@ TYPE(inTYP)  :: in
 TYPE(splTYP) :: spline_Bz
 TYPE(splTYP) :: spline_ddBz
 TYPE(splTYP) :: spline_Phi
+TYPE(spltestTYP) :: spline_Test
 
 REAL(r8) :: tstart, tend, tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
 INTEGER(i4) :: i,j,k                                                          ! Indices for do loops
@@ -110,6 +111,7 @@ else
     print *, 'Test particles: Ions'
 end if
 
+print *, 'fileDescriptor     ', in%fileDescriptor
 print *, 'Number of particles', in%Nparts
 print *, 'Number of steps    ', in%Nsteps
 print *, 'dt [ns]            ', in%dt*1E+9
@@ -121,11 +123,11 @@ print *, 'iSave              ', in%iSave
 print *, 'elevel             ', in%elevel
 print *, 'zTarget [m]        ', in%zmax
 print *, 'zDump [m]          ', in%zmin
-print *, 'zp_init [m]       ', in%zp_init
+print *, 'zp_init [m]        ', in%zp_init
 print *, 'B field file       ', in%BFieldFile
 print *, 'Ew                 ', in%Ew
 print *, 'Te0                ', in%Te0
-print *, 'ne0                 ', in%ne0
+print *, 'ne0                ', in%ne0
 
 if (in%CollOperType .EQ. 1) print *, 'Boozer-Only collision operator'
 if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
@@ -133,10 +135,8 @@ if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
 ! ===========================================================================
 call InitSpline(spline_Bz  ,in%nz,0._8,0._8,1,0._8)
 call InitSpline(spline_ddBz,in%nz,0._8,0._8,1,0._8)
-call InitSpline(spline_Phi ,in%nz,0._8,0._8,1,0._8)
-
-WRITE(*,*) "size of spline_Bz.x", SIZE(spline_Bz%x)
-WRITE(*,*) "spline_Bz.sigma", spline_Bz%sigma
+call InitSpline(spline_Phi ,in%nz,0._8,0._8,1,3._8)
+call InitSplineTest(spline_Test,in%nz)
 
 ! Allocate memory to "allocatable" variables
 ALLOCATE(zp(in%Nparts), kep(in%Nparts), xip(in%Nparts))
@@ -145,7 +145,6 @@ ALLOCATE(ecount1(in%Nsteps),ecount2(in%Nsteps),ecount3(in%Nsteps),ecount4(in%Nst
 ! Variables for spline fits
 ALLOCATE(z_Ref(in%nz), B_Ref(in%nz), Phi_Ref(in%nz), ddB_Ref(in%nz))
 ALLOCATE(b_spl(in%nz), b_temp(in%nz), phi_spl(in%nz), phi_temp(in%nz), ddb_spl(in%nz), ddb_temp(in%nz))
-ALLOCATE(zz(in%nz), b1(in%nz), ddb1(in%nz))
 ! Variables for RF operator
 ALLOCATE(fcurr(in%Nparts),fnew(in%Nparts))
 ! Define variables for the saving process
@@ -169,84 +168,58 @@ slp1 = 0.; slpn = 0.; sigma = 1.;islpsw = 3
 call curv1(in%nz,x_j_ref,j0_ref,slp1,slpn,islpsw,j0_spl,j0_temp,sigma,ierr1)
 call curv1(in%nz,x_j_ref,j1_ref,slp1,slpn,islpsw,j1_spl,j1_temp,sigma,ierr1)
 
-! Inputs:
-! fileName
-!
-
-! local:
-! x_j_ref
-! j0_ref
-! j1_ref
-! slp1
-! slpn
-! slpn
-! islpsw
-
-! Outputs:
-
-
 ! ===========================================================================
-! Read magnetic field data
+! Magnetic field data
 fileName = trim(adjustl(in%BFieldFile))
 fileName = trim(adjustl(in%BFieldFileDir))//fileName
 fileName = trim(adjustl(in%rootDir))//fileName
-
-
-open(unit=8,file=fileName,status="old")
-do i=1,501
-    read(8,*) z_Ref(i),B_Ref(i)
-end do
-close(unit=8)
-slp1 = 0.; slpn = 0.; sigma = 1.; islpsw = 3
-call curv1(in%nz,z_Ref,B_Ref  ,slp1,slpn,islpsw,b_spl  ,b_temp  ,sigma,ierr1)
-
-
 CALL ReadSpline(spline_Bz,fileName)
 CALL ComputeSpline(spline_Bz)
-WRITE(*,*) "ddBz", spline_Bz%yp
 
-! nz,z_Ref,B_Ref,slp1,slpn,islpsw and sigma are unaltered.
-! Outputs are b_spl, b_temp, ierr1
-! b_spl represents the 2nd spatial derivative of B_ref
-! b_spl is to be used to calculate the second derivative of Omega for the interaction time
-
-! Second spatial derivative of the magnetic field
-ddB_Ref = b_spl
-call curv1(in%nz,z_Ref,ddB_Ref,slp1,slpn,islpsw,ddb_spl,ddb_temp,sigma,ierr2)
-! need to confirm correctness of second derivative
-
-
-
+! ===========================================================================
+! Second derivative of the magnetic field
 spline_ddBz%x = spline_Bz%x
 spline_ddBz%y = spline_Bz%yp
 CALL ComputeSpline(spline_ddBz)
 
+! ===========================================================================
+! Predefined electric potential
+spline_Phi%x = spline_Bz%x
+spline_Phi%y = 0
+if (in%iPotential) then
+  call PotentialProfile(spline_Phi,in)
+end if
+CALL ComputeSpline(spline_Phi)
 
 ! ===========================================================================
-! Setup predefined electric potential
-call PotentialProfile(in%iPotential)
-
-! Electric potential
-slp1 = 0.; slpn = 0.; sigma = 1. ;islpsw = 3
-call curv1(in%nz,z_Ref,Phi_Ref,slp1,slpn,islpsw,phi_spl,phi_temp,sigma,ierr1)
-
+! Test the splines:
 if (.true.) then
-! Test the spline
-    do i=1,250
-        zz(i) = z_Ref(i) + 1.e-3*(-z_Ref(i) + z_Ref(i+1))/2.
-        b1(i)  = Interp1(zz(i),spline_Bz)
-        ddb1(i) = Interp1(zz(i),spline_ddBz)
+    do i=1,in%nz
+        spline_Test%x(i) = in%zmin + i*0.03
+        spline_Test%y1(i) = Interp1(spline_Test%x(i),spline_Bz)
+        spline_Test%y2(i) = Interp1(spline_Test%x(i),spline_ddBz)
+        spline_Test%y3(i) = Interp1(spline_Test%x(i),spline_Phi)
     end do
     ! Save data to file to test spline
     if (.true.) then
     fileName = "B_spline.dat"
         open(unit=8,file=fileName,form="formatted",status="unknown")
-        do j = 1,500
-            write(8,*) zz(j), b1(j), ddb1(j)
+        do j = 1,in%nz
+            write(8,*) spline_Test%x(j), spline_Test%y1(j), spline_Test%y2(j), spline_Test%y3(j)
         end do
         close(unit=8)
     end if
 end if
+
+z_Ref = spline_Bz%x
+B_Ref = spline_Bz%y
+b_spl = spline_Bz%yp
+
+ddB_Ref = spline_Bz%yp
+ddb_spl = spline_ddBz%yp
+
+Phi_Ref = spline_Phi%y
+phi_spl = spline_Phi%yp
 
 ! ===========================================================================
 ! Initialize the random number generator

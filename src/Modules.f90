@@ -56,6 +56,11 @@ TYPE splTYP
   INTEGER(i4) :: islpsw, ierr
 END TYPE splTYP
 
+TYPE spltestTYP
+  INTEGER(i4) :: n
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y1, y2, y3
+END TYPE spltestTYP
+
 REAL(r8), DIMENSION(:), ALLOCATABLE :: z_Ref, B_Ref, Phi_Ref  ! Variables to hold reference B and Phi data
 REAL(r8), DIMENSION(:), ALLOCATABLE :: ddB_Ref                ! Variables to hold 2nd spatial derivative of the reference B
 REAL(r8) :: s1, s2, s3, phi1, phi2, phi3                      ! Needed for define shape of Phi
@@ -88,6 +93,16 @@ CONTAINS
     spline0%islpsw = islpsw
     spline0%sigma = sigma
   END SUBROUTINE InitSpline
+
+  SUBROUTINE InitSplineTest(spline0,n)
+    IMPLICIT NONE
+    TYPE(spltestTYP) :: spline0
+    INTEGER(i4) :: n
+    ALLOCATE(spline0%x(n))
+    ALLOCATE(spline0%y1(n))
+    ALLOCATE(spline0%y2(n))
+    ALLOCATE(spline0%y3(n))
+  END SUBROUTINE InitSplineTest
 
   SUBROUTINE ReadSpline(spline0,fileName)
     IMPLICIT NONE

@@ -1,39 +1,36 @@
-subroutine PotentialProfile(iPotential)
-!
-!     This subroutine is called to assign
-!     a model (pre-determined) potential profile. In the future this
-!     may be calulated more self-consistently
-!
-!*******************************************************************
-!
+subroutine PotentialProfile(spline0,in0)
 USE local
 USE plasma_params
-USE spline_fits     
-implicit none
+USE spline_fits
+USE dataTYP
 
+IMPLICIT NONE
+TYPE(splTYP) :: spline0
+TYPE(inTYP) :: in0
+REAL(r8) :: x1, x2, x3
+REAL(r8) :: p1, p2, p3
 INTEGER :: i
-LOGICAL :: iPotential
 
-if (iPotential) then
-    do i=1,nz
-        if(z_Ref(i) .ge. 0. .and. z_Ref(i) .lt. s1) then
-            Phi_Ref(i) = phi1
-        else if(z_Ref(i) .ge. s1 .and. z_Ref(i) .lt. s2) then
-            Phi_Ref(i) = phi1 - 2.*(phi2 - phi1)*((z_Ref(i) - s1)**3)/((s2 - s1)**3) &
-            + 3.*(phi2 - phi1)*((z_Ref(i) - s1)**2)/((s2 - s1)**2)
-        else if(z_Ref(i) .ge. s2 .and. z_Ref(i) .lt. s3) then
-            Phi_Ref(i) = phi3 - 2.*(phi2 - phi3)*((z_Ref(i) - s3)**3)/((s2 - s3)**3) &
-            + 3.*(phi2 - phi1)*((z_Ref(i) - s3)**2)/((s2 - s3)**2)
-        else if(z_Ref(i) .ge. s3) then
-            Phi_Ref(i) = phi3
-        endif
-        !	write(*,*) z_Ref(i), Phi_Ref(i)
-    end do
-else
-    do i = 1,nz
-        Phi_Ref(i) = 0
-    end do
-end if
+x1 = in0%s1
+x2 = in0%s2
+x3 = in0%s3
+p1 = in0%phi1
+p2 = in0%phi2
+p3 = in0%phi3
+
+do i=1,in0%nz
+    if(spline0%x(i) .ge. 0. .and. spline0%x(i) .lt. x1) then
+        spline0%y(i) = p1
+    else if(spline0%x(i) .ge. x1 .and. spline0%x(i) .lt. x2) then
+        spline0%y(i) = p1 - 2.*(p2 - p1)*((spline0%x(i) - x1)**3)/((x2 - x1)**3) &
+        + 3.*(p2 - p1)*((spline0%x(i) - x1)**2)/((x2 - x1)**2)
+    else if(spline0%x(i) .ge. x2 .and. spline0%x(i) .lt. x3) then
+        spline0%y(i) = p3 - 2.*(p2 - p3)*((spline0%x(i) - x3)**3)/((x2 - x3)**3) &
+        + 3.*(p2 - p1)*((spline0%x(i) - x3)**2)/((x2 - x3)**2)
+    else if(spline0%x(i) .ge. x3) then
+        spline0%y(i) = p3
+    endif
+end do
 
 return
 end

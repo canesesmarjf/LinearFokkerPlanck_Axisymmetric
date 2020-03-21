@@ -1,5 +1,5 @@
 &indata
-fileDescriptor = 'Case8',
+fileDescriptor = 'Case9',
 
 rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck",
 !rootDir = "$HOME/LinearFokkerPlanck"
