@@ -24,6 +24,8 @@ USE OMP_LIB
 ! ===========================================================================
 IMPLICIT NONE
 TYPE(inTYP)  :: in
+TYPE(outTYP) :: out
+TYPE(derTYP) :: der
 TYPE(splTYP) :: spline_Bz
 TYPE(splTYP) :: spline_ddBz
 TYPE(splTYP) :: spline_Phi
@@ -33,14 +35,13 @@ TYPE(spltestTYP) :: spline_Test
 
 REAL(r8) :: tstart, tend, tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
 INTEGER(i4) :: i,j,k                                                          ! Indices for do loops
-REAL(r8) :: curv2, curvd                                                      ! Declare functions from fitpack
 INTEGER(i4) :: seed_size                                                      ! Random number generator variable
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: seed                                ! Store the random num gen seed
 
-REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount1, pcount2, pcount3    ! Count the number of particles incident on (1) dump, (2) target, (3) EBW resonance
-REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount1, ecount2, ecount3    ! Record the total energy of particle incident on (1) dump, (2) target, (3) EBW resonance
-REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount4                      ! Record the total energy dissipated by collisional slowing down within a time step dt
-REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount4                      ! Record the total number of fast particles involved in the slowing down dissipated power within a time step dt
+REAL(r8) :: curv2, curvd                                                      ! Declare functions from fitpack
+
+REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount1, pcount2, pcount3, pcount4   ! Count the number of particles incident on (1) dump, (2) target, (3) EBW resonance
+REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount1, ecount2, ecount3, ecount4   ! Record the total energy of particle incident on (1) dump, (2) target, (3) EBW resonance
 
 REAL(r8) :: ecnt, ecnt1, ecnt2
 REAL(r8) :: pcnt, pcnt1, pcnt2
@@ -91,7 +92,7 @@ namelist /metadata/ fileDescriptor, &
 ! Record start time:
 call cpu_time(tstart)
 
-! Read input data:
+! Read input data into in structure:
 fileName = "data.in"
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,in_nml)
@@ -201,10 +202,11 @@ if (.true.) then
         !spline_Test%x(i)  = in%zmin + i*0.03
         spline_Test%x(i)  = 0.0 + i*0.02
         spline_Test%y1(i) = Interp1(spline_Test%x(i),spline_Bz)
-        spline_Test%y2(i) = Interp1(spline_Test%x(i),spline_ddBz)
-        spline_Test%y3(i) = Interp1(spline_Test%x(i),spline_Phi)
-        spline_Test%y4(i) = Interp1(spline_Test%x(i),spline_j0)
-        spline_Test%y5(i) = Interp1(spline_Test%x(i),spline_j1)
+        spline_Test%y2(i) = diff1(spline_Test%x(i),spline_Bz)
+        spline_Test%y3(i) = Interp1(spline_Test%x(i),spline_ddBz)
+        spline_Test%y4(i) = Interp1(spline_Test%x(i),spline_Phi)
+        spline_Test%y5(i) = Interp1(spline_Test%x(i),spline_j0)
+        spline_Test%y6(i) = Interp1(spline_Test%x(i),spline_j1)
     end do
     fileName = "B_spline.dat"
     open(unit=8,file=fileName,form="formatted",status="unknown")

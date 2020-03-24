@@ -1,5 +1,5 @@
 &in_nml
-in%fileDescriptor = 'Case5',
+in%fileDescriptor = 'Case6',
 
 in%rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck",
 !in%rootDir = "$HOME/LinearFokkerPlanck"
@@ -26,7 +26,7 @@ in%jincr  = 100,                                                                
 
 in%Te0 = 600.,	                                                                ! eV
 in%Ti0 = 600.,                                                                   ! eV
-in%ne0 = 9.0E+19,	                                                            ! /m**3
+in%ne0 = 1.0E+19,	                                                            ! /m**3
 in%zmax = 8.0,
 in%zmin = -8.0,
 

@@ -1,12 +1,12 @@
 clear all
-% close all
+close all
 
 homeAddress = cd;
 addpath(homeAddress);
 rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderNameStart = 'case9';
+folderNameStart = 'case6';
 d = dir;
 for i = 1:size(d,1)
     if strncmpi(d(i).name,folderNameStart,5)
@@ -95,7 +95,7 @@ if 0
         plot(zb,0.8*b*EmaxPlot*(1e-3)/bmax)
         hold off
         title(['t: ',num2str(tp{k}(ii)*1e6),' {\mu}s'])
-        ylim([1e-1,1.3*EmaxPlot*1e-3])
+        ylim([1e-1,1.8*EmaxPlot*1e-3])
         ylabel('E$_\alpha$ [keV]','Interpreter','latex','FontSize',13)
         zlabel('z [m]','Interpreter','latex','FontSize',13)
         set(gca,'Yscale','lin')

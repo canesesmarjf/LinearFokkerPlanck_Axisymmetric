@@ -12,8 +12,9 @@ END MODULE local
 
 
 !  **************************************************************
-! MODULE input_data_structure
-! module containing definition of an object to contain all input data
+! MODULE dataTYP
+! module containing definition of an object to contain all data used in
+! computation
 !  **************************************************************
 MODULE dataTYP
 USE local
@@ -38,6 +39,50 @@ TYPE inTYP
   INTEGER(i4) :: n_harmonic
 END TYPE inTYP
 
+TYPE outTYP
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: kep, xip, zp
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount1, pcount2, pcount3, pcount4
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount1, ecount2, ecount3, ecount4
+END TYPE outTYP
+
+TYPE derTYP
+  REAL(r8) :: q
+  REAL(r8) :: m_t
+  REAL(r8),DIMENSION(:), ALLOCATABLE :: fcurr, fnew
+END TYPE derTYP
+
+CONTAINS
+  SUBROUTINE InitOut(in0,out0)
+    IMPLICIT NONE
+    TYPE(inTYP)  :: in0
+    TYPE(outTYP) :: out0
+    INTEGER(i4)  :: n
+
+    ! Allocate memory:
+    ALLOCATE(out0%kep(n), out0%xip(n), out0%zp(n))
+    ALLOCATE(out0%pcount1(n), out0%pcount2(n), out0%pcount3(n), out0%pcount4(n))
+    ALLOCATE(out0%ecount1(n), out0%ecount2(n), out0%ecount3(n), out0%ecount4(n))
+
+    ! Initialize variables
+    out0%kep = 0.; out0%xip = 0.; out0%zp = 0.
+    out0%pcount1 = 0.; out0%pcount2 = 0.; out0%pcount3 = 0.; out0%pcount4 = 0.
+    out0%ecount1 = 0.; out0%ecount2 = 0.; out0%ecount3 = 0.; out0%ecount4 = 0.
+  END SUBROUTINE InitOut
+
+  SUBROUTINE InitDerived(in0,der0)
+    IMPLICIT NONE
+    TYPE(inTYP)  :: in0
+    TYPE(derTYP) :: der0
+    INTEGER(i4)  :: n
+
+    ! Allocate memory:
+    ALLOCATE(der0%fcurr(n), der0%fnew(n))
+
+    ! Initialize variables
+    der0%fcurr = 0.; der0%fnew = 0.
+    der0%q = 0.; der0%m_t = 0.
+  END SUBROUTINE InitDerived
+
 END MODULE dataTYP
 
 !  **************************************************************
@@ -49,16 +94,14 @@ USE local
 
 IMPLICIT NONE
 TYPE splTYP
-  INTEGER(i4) :: n
+  INTEGER(i4) :: n, islpsw, ierr
   REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y, yp, temp
-  REAL(r8) :: slp1, slpn
-  REAL(r8) :: sigma
-  INTEGER(i4) :: islpsw, ierr
+  REAL(r8) :: slp1, slpn, sigma
 END TYPE splTYP
 
 TYPE spltestTYP
   INTEGER(i4) :: n
-  REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y1, y2, y3, y4, y5
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y1, y2, y3, y4, y5, y6
 END TYPE spltestTYP
 
 REAL(r8), DIMENSION(:), ALLOCATABLE :: z_Ref, B_Ref, Phi_Ref  ! Variables to hold reference B and Phi data
@@ -79,10 +122,8 @@ CONTAINS
   SUBROUTINE InitSpline(spline0,n,slp1,slpn,islpsw,sigma)
     IMPLICIT NONE
     TYPE(splTYP) :: spline0
-    INTEGER(i4) :: n
-    REAL(r8) :: slp1, slpn
-    INTEGER(i4) :: islpsw
-    REAL(r8) :: sigma
+    INTEGER(i4) :: n, islpsw
+    REAL(r8) :: slp1, slpn, sigma
     ALLOCATE(spline0%x(n))
     ALLOCATE(spline0%y(n))
     ALLOCATE(spline0%yp(n))
@@ -104,6 +145,7 @@ CONTAINS
     ALLOCATE(spline0%y3(n))
     ALLOCATE(spline0%y4(n))
     ALLOCATE(spline0%y5(n))
+    ALLOCATE(spline0%y6(n))
   END SUBROUTINE InitSplineTest
 
   SUBROUTINE ReadSpline(spline0,fileName)
@@ -137,6 +179,15 @@ CONTAINS
     Interp1 = curv2(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
 
   END FUNCTION Interp1
+
+  FUNCTION diff1(xq, spline0)
+    IMPLICIT NONE
+    TYPE(splTYP) :: spline0
+    REAL(r8) :: xq, diff1, curvd
+
+    diff1 = curvd(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+
+  END FUNCTION diff1
 
 END MODULE spline_fits
 
