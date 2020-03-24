@@ -162,7 +162,7 @@ return
 END SUBROUTINE CyclotronResonanceNumber
 
 ! =======================================================================================================
-SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt)
+SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt,spline0,spline1,spline2)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -173,6 +173,7 @@ use rf_heating_data
 
 IMPLICIT NONE
 ! Define local variables:
+TYPE(splTYP) :: spline0, spline1, spline2
 REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
 REAL(r8) :: u0, upar0, uper0
 REAL(r8) :: kep_par0, kep_per0
@@ -194,12 +195,16 @@ kep_par0 = kep0*xip0**2.
 kep_per0 = kep0*(1. - xip0**2.)
 
 ! Gradients:
-dB   = curvd(zp0,nz,z_Ref,  B_Ref,  b_spl,sigma)
-ddB  = curv2(zp0,nz,z_Ref,ddb_Ref,ddb_spl,sigma)
-dPhi = curvd(zp0,nz,z_Ref,Phi_Ref,phi_spl,sigma)
+!dB   = curvd(zp0,nz,z_Ref,  B_Ref,  b_spl,sigma)
+dB = diff1(zp0,spline0)
+!ddB  = curv2(zp0,nz,z_Ref,ddb_Ref,ddb_spl,sigma)
+ddB = Interp1(zp0,spline1)
+!dPhi = curvd(zp0,nz,z_Ref,Phi_Ref,phi_spl,sigma)
+dPhi = diff1(zp0,spline2)
 
 ! Spatial derivatives of the magnetic field:
-Bf        = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+!Bf        = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+Bf        = Interp1(zp0,spline0)
 Omega     = n_harmonic*e_c*Bf/m_t
 dOmega    = n_harmonic*e_c*dB/m_t
 ddOmega   = n_harmonic*e_c*ddB/m_t
@@ -216,19 +221,10 @@ else
         tau_rf = sqrt(2.*pi/ABS(Omega_dot))
 end if
 
-! Calculate Larmour radius:
+! Calculate Bessel term:
 rl       = uper0/(abs(q)*Bf/m_t)
 flr      = kper*rl
-if (flr .GT. 40) then
-     print *, 'FLR>40', flr
-        flr = 40
-end if
-
-if (n_harmonic .EQ. 1) then
-  besselterm = curv2(flr,501,x_j_ref,j0_ref,j0_spl,sigma)
-else if (n_harmonic .EQ. 2) then
-  besselterm = curv2(flr,501,x_j_ref,j1_ref,j1_spl,sigma)
-end if
+besselterm = BESSEL_JN(n_harmonic-1,flr)
 
 ! Calculate the cyclotron interaction:
 ! Using method based on VS. Chan PoP 9,2 (2002)
@@ -289,12 +285,8 @@ SUBROUTINE loadParticles(in0)
   ! Declare internal variables:
   REAL(r8) :: zmin, zmax, sigma_u_init
   TYPE(inTYP) :: in0
-  REAL(r8), DIMENSION(:), ALLOCATABLE :: RmArray1, RmArray2, RmArray3
-  REAL(r8), DIMENSION(:), ALLOCATABLE :: uperArray, uparArray, uArray
-
-  ! Allocate memory:
-  ALLOCATE(RmArray1(Nparts), RmArray2(Nparts), RmArray3(Nparts))
-  ALLOCATE(uparArray(Nparts),uperArray(Nparts),uArray(Nparts))
+  REAL(r8), DIMENSION(in0%Nparts) :: RmArray1, RmArray2, RmArray3
+  REAL(r8), DIMENSION(in0%Nparts) :: uperArray, uparArray, uArray
 
   write(*,*) "zmin: ", in0%zmin
   write(*,*) "zmax: ", in0%zmax

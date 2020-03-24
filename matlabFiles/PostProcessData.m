@@ -1,12 +1,12 @@
 clear all
-close all
+% close all
 
 homeAddress = cd;
 addpath(homeAddress);
 rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderNameStart = 'case6';
+folderNameStart = 'case5';
 d = dir;
 for i = 1:size(d,1)
     if strncmpi(d(i).name,folderNameStart,5)
@@ -18,13 +18,19 @@ cd(folderName);
 % Simulation conditions:
 % =========================================================================
 fileName = 'Metadata.out';
+fileName = 'data.out';
 metadata = GetMetadata(fileName,1);
 dt  = metadata.DT;
 Te0 = metadata.TE0;
 Ti0 = metadata.TI0;
 Ne0 = metadata.NE0;
-zmin = metadata.ZDUMP;
-zmax = metadata.ZTARGET;
+try
+    zmin = metadata.ZDUMP;
+    zmax = metadata.ZTARGET;
+catch
+    zmin = metadata.ZMIN;
+    zmax = metadata.ZMAX;
+end
 
 for ii = 1;
 % Extract Binary data:

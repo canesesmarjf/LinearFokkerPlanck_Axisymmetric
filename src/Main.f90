@@ -38,8 +38,6 @@ INTEGER(i4) :: i,j,k                                                          ! 
 INTEGER(i4) :: seed_size                                                      ! Random number generator variable
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: seed                                ! Store the random num gen seed
 
-REAL(r8) :: curv2, curvd                                                      ! Declare functions from fitpack
-
 REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount1, pcount2, pcount3, pcount4   ! Count the number of particles incident on (1) dump, (2) target, (3) EBW resonance
 REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount1, ecount2, ecount3, ecount4   ! Record the total energy of particle incident on (1) dump, (2) target, (3) EBW resonance
 
@@ -114,6 +112,14 @@ else
     print *, 'Test particles: Ions'
 end if
 
+if (in%species_a .eq. 1) then
+    der%q   = -e_c
+    der%m_t = m_e
+else
+    der%q   = +in%Zion*e_c
+    der%m_t = in%Aion*m_p
+end if
+
 print *, 'fileDescriptor     ', in%fileDescriptor
 print *, 'Number of particles', in%Nparts
 print *, 'Number of steps    ', in%Nsteps
@@ -135,6 +141,8 @@ print *, 'ne0                ', in%ne0
 if (in%CollOperType .EQ. 1) print *, 'Boozer-Only collision operator'
 if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
 
+WRITE(*,*) "J_0(3)", BESSEL_JN(0,3.)
+
 ! ===========================================================================
 call InitSpline(spline_Bz  ,in%nz,0._8,0._8,1,0._8)
 call InitSpline(spline_ddBz,in%nz,0._8,0._8,1,0._8)
@@ -142,6 +150,8 @@ call InitSpline(spline_Phi ,in%nz,0._8,0._8,1,0._8)
 call InitSpline(spline_j0  ,in%nz,0._8,0._8,1,3._8)
 call InitSpline(spline_j1  ,in%nz,0._8,0._8,1,3._8)
 call InitSplineTest(spline_Test,in%nz)
+call InitOut(out,in)
+call InitDer(der,in)
 
 ! Allocate memory to "allocatable" variables
 ALLOCATE(zp(in%Nparts), kep(in%Nparts), xip(in%Nparts))
@@ -205,14 +215,16 @@ if (.true.) then
         spline_Test%y2(i) = diff1(spline_Test%x(i),spline_Bz)
         spline_Test%y3(i) = Interp1(spline_Test%x(i),spline_ddBz)
         spline_Test%y4(i) = Interp1(spline_Test%x(i),spline_Phi)
-        spline_Test%y5(i) = Interp1(spline_Test%x(i),spline_j0)
-        spline_Test%y6(i) = Interp1(spline_Test%x(i),spline_j1)
+        !spline_Test%y5(i) = Interp1(spline_Test%x(i),spline_j0)
+        !spline_Test%y6(i) = Interp1(spline_Test%x(i),spline_j1)
+        spline_Test%y5(i) = BESSEL_JN(0,spline_Test%x(i))
+        spline_Test%y6(i) = BESSEL_JN(1,spline_Test%x(i))
     end do
     fileName = "B_spline.dat"
     open(unit=8,file=fileName,form="formatted",status="unknown")
     do j = 1,in%nz
         write(8,*) spline_Test%x(j), spline_Test%y1(j), spline_Test%y2(j),&
-         spline_Test%y3(j), spline_Test%y4(j), spline_Test%y5(j)
+         spline_Test%y3(j), spline_Test%y4(j), spline_Test%y5(j), spline_Test%y6(j)
     end do
     close(unit=8)
 end if
@@ -344,7 +356,7 @@ TimeStepping: do j = 1,in%Nsteps
                       call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_Bz)
                       df = dsign(1.d0,fcurr(i)*fnew(i))
                       if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
-                        call RFHeatingOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
+                        call RFHeatingOperator(zp(i),kep(i),xip(i),ecnt,pcnt,spline_Bz,spline_ddBz,spline_Phi)
                       end if
               end do
           !$OMP END DO

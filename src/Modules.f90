@@ -49,10 +49,11 @@ TYPE derTYP
   REAL(r8) :: q
   REAL(r8) :: m_t
   REAL(r8),DIMENSION(:), ALLOCATABLE :: fcurr, fnew
+  ! Need to add frame variable
 END TYPE derTYP
 
 CONTAINS
-  SUBROUTINE InitOut(in0,out0)
+  SUBROUTINE InitOut(out0,in0)
     IMPLICIT NONE
     TYPE(inTYP)  :: in0
     TYPE(outTYP) :: out0
@@ -69,7 +70,7 @@ CONTAINS
     out0%ecount1 = 0.; out0%ecount2 = 0.; out0%ecount3 = 0.; out0%ecount4 = 0.
   END SUBROUTINE InitOut
 
-  SUBROUTINE InitDerived(in0,der0)
+  SUBROUTINE InitDer(der0,in0)
     IMPLICIT NONE
     TYPE(inTYP)  :: in0
     TYPE(derTYP) :: der0
@@ -80,8 +81,7 @@ CONTAINS
 
     ! Initialize variables
     der0%fcurr = 0.; der0%fnew = 0.
-    der0%q = 0.; der0%m_t = 0.
-  END SUBROUTINE InitDerived
+  END SUBROUTINE InitDer
 
 END MODULE dataTYP
 

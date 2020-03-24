@@ -10,6 +10,13 @@ delimiter = {'='};
 formatSpec = '%q%[^\n\r]';
 dataArray = textscan(fileID,formatSpec,'Delimiter',delimiter);
 
+if ~isempty(find(dataArray{1}{2} == '%'))
+    for ii = 2:(numel(dataArray{1})-1)
+        [~,kk] = find(dataArray{1}{ii} == '%');
+        dataArray{1}{ii} = dataArray{1}{ii}((kk + 1):end);
+    end
+end
+
 % Create "metadata" structure:
 % =========================================================================
 for ii = 2:(numel(dataArray{1})-1)
