@@ -180,7 +180,6 @@ REAL(r8) :: kep_par0, kep_per0
 REAL(r8) :: dB, ddB, dPhi
 REAL(r8) :: Bf, Omega, dOmega, ddOmega
 REAL(r8) :: Omega_dot, Omega_ddot, tau_rf
-REAL(r8) :: curv2, curvd
 REAL(r8) :: rl, flr, besselterm
 REAL(r8) :: mean_dkep_per, dkep_per, Rm1
 REAL(r8) :: dkep_par, dkep, kep1
@@ -195,11 +194,8 @@ kep_par0 = kep0*xip0**2.
 kep_per0 = kep0*(1. - xip0**2.)
 
 ! Gradients:
-!dB   = curvd(zp0,nz,z_Ref,  B_Ref,  b_spl,sigma)
 dB = diff1(zp0,spline0)
-!ddB  = curv2(zp0,nz,z_Ref,ddb_Ref,ddb_spl,sigma)
 ddB = Interp1(zp0,spline1)
-!dPhi = curvd(zp0,nz,z_Ref,Phi_Ref,phi_spl,sigma)
 dPhi = diff1(zp0,spline2)
 
 ! Spatial derivatives of the magnetic field:
