@@ -118,46 +118,55 @@ return
 END SUBROUTINE RightHandSide
 
 ! =======================================================================================================
-SUBROUTINE ReinjectParticles(zp0,kep0,xip0,ecnt,pcnt)
+SUBROUTINE ReinjectParticles(zp0,kep0,xip0,in0,der0,ecnt,pcnt)
 ! =======================================================================================================
 USE local
-USE ParticlePusher
+!USE ParticlePusher
 USE PhysicalConstants
-USE plasma_params
-USE collision_data
+!USE plasma_params
+!USE collision_data
+USE dataTYP
 
 IMPLICIT NONE
-! Define local variables
+! Define local variables:
+TYPE(inTYP)  :: in0
+TYPE(derTYP) :: der0
 REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt     ! Input variables
 REAL(r8) :: uper, upar, u, sigma_u0
 REAL(r8), DIMENSION(6) :: Rm6               ! Variable for storing 6 random numbers
+REAL(r8) :: m_test, T0
 
 ! Record event:
 ecnt = ecnt + kep0
 pcnt = pcnt + 1
 
+! Test particle mass:
+m_test = der0%m_t
+
+! Background particle temperature:
+T0 = in0%Te0
+
 ! Particle velocity standard deviation:
-sigma_u0     = sqrt(e_c*Ti0/m_t)
+sigma_u0     = sqrt(e_c*T0/m_test)
 
 ! Re-inject particle at source with new zp, kep, xip
 call random_number(Rm6)
-zp0 = zp_init_std*sqrt(-2.*log(Rm6(1)))*cos(2.*pi*Rm6(2)) + zp_init
+zp0 = in0%zp_init_std*sqrt(-2.*log(Rm6(1)))*cos(2.*pi*Rm6(2)) + in0%zp_init
 uper = sigma_u0*sqrt(-2.*log(Rm6(3)))
 upar = sigma_u0*sqrt(-2.*log(Rm6(4)))*cos(2.*pi*Rm6(5))
 u    = sqrt( uper**2 + upar**2 )
-kep0 = (m_t*u**2.)/(2.*e_c)
+kep0 = (m_test*u**2.)/(2.*e_c)
 xip0 = upar/u
 
 return
 END SUBROUTINE ReinjectParticles
 
 ! =======================================================================================================
-SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0,in0,spline0)
+SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0,in0,der0,spline0)
 ! =======================================================================================================
 
 USE local
 USE spline_fits
-USE ParticlePusher
 USE PhysicalConstants
 USE dataTYP
 
@@ -165,31 +174,44 @@ IMPLICIT NONE
 ! Define local variables
 REAL(r8) :: zp0, kep0, xip0, f0     ! Input variables
 REAL(r8) :: upar, Bf, Omega, Omega_RF
-REAL(r8) :: curv2
-TYPE(inTYP) :: in0
+REAL(r8) :: m_test, q_test
+TYPE(inTYP)  :: in0
 TYPE(splTYP) :: spline0
+TYPE(derTYP) :: der0
 
-upar = sqrt(2.*e_c*kep0/m_t)*xip0
+! Test particle mass:
+m_test = der0%m_t
+! Test particle charge:
+q_test = der0%q
+! Parallel velocity of test particle:
+upar = sqrt(2.*e_c*kep0/m_test)*xip0
+! Magnetic field at location zp0 of test particle:
 Bf = Interp1(zp0,spline0)
-Omega = abs(q)*Bf/m_t
+! Cyclotron frequenc of test particle:
+Omega = abs(q_test)*Bf/m_test
+! RF frequency in rad/s:
 Omega_RF = 2*pi*in0%f_RF
+! Cyclotron resonance number:
 f0 = Omega_RF - in0%kpar*upar - in0%n_harmonic*Omega
 
 return
 END SUBROUTINE CyclotronResonanceNumber
 
 ! =======================================================================================================
-SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt,spline0,spline1,spline2)
+SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt,in0,der0,spline0,spline1,spline2)
 ! =======================================================================================================
 USE local
 USE spline_fits
-USE ParticlePusher
+!USE ParticlePusher
 USE PhysicalConstants
-USE plasma_params
-use rf_heating_data
+!USE plasma_params
+!use rf_heating_data
+USE dataTYP
 
 IMPLICIT NONE
 ! Define local variables:
+TYPE(inTYP)  :: in0
+TYPE(derTYP) :: der0
 TYPE(splTYP) :: spline0, spline1, spline2
 REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
 REAL(r8) :: u0, upar0, uper0
@@ -202,9 +224,16 @@ REAL(r8) :: mean_dkep_per, dkep_per, Rm1
 REAL(r8) :: dkep_par, dkep, kep1
 REAL(r8) :: kep_per1, kep_par1
 REAL(r8) :: upar1, u1
+REAL(r8) :: m_test, q_test
+
+! Test particle mass:
+m_test = der0%m_t
+
+! Test particle charge:
+q_test = der0%q
 
 ! Calculate derived quantities
-u0       = sqrt(2.*e_c*kep0/m_t)
+u0       = sqrt(2.*e_c*kep0/m_test)
 upar0    = u0*xip0
 uper0    = u0*(1. - xip0**2)**0.5
 kep_par0 = kep0*xip0**2.
@@ -216,43 +245,47 @@ ddB = Interp1(zp0,spline1)
 dPhi = diff1(zp0,spline2)
 
 ! Spatial derivatives of the magnetic field:
-!Bf        = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
 Bf        = Interp1(zp0,spline0)
-Omega     = n_harmonic*e_c*Bf/m_t
-dOmega    = n_harmonic*e_c*dB/m_t
-ddOmega   = n_harmonic*e_c*ddB/m_t
+Omega     = in0%n_harmonic*e_c*Bf/m_test
+dOmega    = in0%n_harmonic*e_c*dB/m_test
+ddOmega   = in0%n_harmonic*e_c*ddB/m_test
 
 ! Calculate the first and second time derivative of Omega:
 Omega_dot = upar0*dOmega
-Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - q*dPhi*dOmega/m_t
+Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - q_test*dPhi*dOmega/m_test
 
 ! Calculate the interaction time (tau_RF):
 if ( (Omega_ddot**2.) .GT. 4.8175*ABS(Omega_dot**3.) )  then
         ! Approximate Ai(x) ~ 0.3833
         tau_rf = (2.*pi)*(ABS(2./Omega_ddot)**(1/3.))*0.3833
+        !WRITE(*,*) 'Airy function, tau_rf', tau_rf
+        !WRITE(*,*) 'zp at res', zp0
 else
         tau_rf = sqrt(2.*pi/ABS(Omega_dot))
 end if
 
 ! Calculate Bessel term:
-rl       = uper0/(abs(q)*Bf/m_t)
-flr      = kper*rl
-besselterm = BESSEL_JN(n_harmonic-1,flr)
+rl       = uper0/(abs(q_test)*Bf/m_test)
+flr      = in0%kper*rl
+besselterm = BESSEL_JN(in0%n_harmonic-1,flr)
 
 ! Calculate the cyclotron interaction:
 ! Using method based on VS. Chan PoP 9,2 (2002)
 ! Consistent with J. Carlsson'd PhD thesis (1998)
-mean_dkep_per = 0.5*(e_c/m_t)*(Ew*besselterm*tau_rf)**2.
+mean_dkep_per = 0.5*(e_c/m_test)*(in0%Ew*besselterm*tau_rf)**2.
 
 ! Calculate the change in perp, parallel and total energy:
 call random_number(Rm1)
 Rm1 = 2.*Rm1 - 1.
 dkep_per = mean_dkep_per + Rm1*sqrt(2.*kep_per0*mean_dkep_per)
 
+!WRITE(*,*) "dkep_per", dkep_per
+
 ! Given the perp kick in energy, apply the parallel energy kick
 ! This arises from the non-linear effect of the perturbed magnetic field
 ! See Stix section 10.3 "Trapped electromagnetic modes"
-dkep_par = (kpar*abs(upar0)/Omega)*dkep_per
+!dkep_par = (in0%kpar*abs(upar0)/Omega)*dkep_per
+dkep_par = (in0%kpar*(upar0)/Omega)*dkep_per
 
 ! total change in energy kick
 dkep = dkep_par + dkep_per
@@ -262,6 +295,11 @@ dkep = dkep_par + dkep_per
 kep_per1 = kep_per0 + dkep_per
 ! Parallel degree of freedom:
 kep_par1 = kep_par0 + dkep_par
+
+!if (kep_par1 .LT. 0) then
+  !WRITE(*,*) "kep_par1", kep_par1
+!end if
+
 ! Total final energy:
 kep1     = kep_per1 + kep_par1
 
@@ -275,9 +313,12 @@ end if
 kep0 = kep1
 
 ! Calculate the new pitch angle:
-upar1 = sqrt( (2.*e_c/m_t)*kep_par1 )
-u1    = sqrt( (2.*e_c/m_t)*kep1 )
+upar1 = sqrt( (2.*e_c/m_test)*abs(kep_par1) )*dsign(1.d0,xip0)*dsign(1.d0,kep_par1)
+u1    = sqrt( (2.*e_c/m_test)*kep1 )
+!WRITE(*,*) "zp0", zp0
+!WRITE(*,*) "xip0", xip0
 xip0 = upar1/u1
+!WRITE(*,*) "xip1", xip0
 
 ! Record resonance event:
 pcnt = pcnt + 1

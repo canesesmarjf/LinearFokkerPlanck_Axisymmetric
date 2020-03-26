@@ -6,7 +6,7 @@ addpath(homeAddress);
 rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderNameStart = 'case4';
+folderNameStart = 'case9';
 d = dir;
 for i = 1:size(d,1)
     if strncmpi(d(i).name,folderNameStart,5)
@@ -88,20 +88,21 @@ cd(homeAddress);
 
 %% Plot data:
 % =========================================================================
-if 0
+if 1
     figure; 
    
-    EmaxPlot = metadata.KEP_INIT;   
-    n_persist = 0*15;
+    EmaxPlot = 45000;   
+    EminPlot = 0;
+    n_persist = 35;
     k = 1;
-    for ii = 1:4:(size(zp{k},2)-n_persist)
+    for ii = 1:6:(size(zp{k},2)-n_persist)
         t_rng = ii:(ii+n_persist);
         plot(zp{k}(:,t_rng),kep{k}(:,t_rng)*1e-3,'k.','MarkerSize',4)
         hold on
         plot(zb,0.8*b*EmaxPlot*(1e-3)/bmax)
         hold off
         title(['t: ',num2str(tp{k}(ii)*1e6),' {\mu}s'])
-        ylim([1e-1,1.8*EmaxPlot*1e-3])
+        ylim([EminPlot,EmaxPlot*1e-3])
         ylabel('E$_\alpha$ [keV]','Interpreter','latex','FontSize',13)
         zlabel('z [m]','Interpreter','latex','FontSize',13)
         set(gca,'Yscale','lin')

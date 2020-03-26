@@ -166,7 +166,7 @@ ALLOCATE(jrng(jsize))
 ALLOCATE(zp_hist(in%Nparts,jsize),kep_hist(in%Nparts,jsize),xip_hist(in%Nparts,jsize),t_hist(jsize))
 
 ! Create array with the indices of the time steps to save
-jrng = (/ (j, j=jstart, jend, jincr) /)
+jrng = (/ (j, j=in%jstart, in%jend, in%jincr) /)
 
 ! ===========================================================================
 ! Bessel function data:
@@ -271,7 +271,7 @@ TimeStepping: do j = 1,in%Nsteps
 
     if (in%iHeat) then
         do i = 1,in%Nparts
-            call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i),in,spline_Bz)
+            call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i),in,der,spline_Bz)
         end do
     end if
 
@@ -295,9 +295,9 @@ TimeStepping: do j = 1,in%Nsteps
           !$OMP DO
               do i = 1,in%Nparts
                   if (zp(i) .GE. in%zmax) then
-                      call ReinjectParticles(zp(i),kep(i),xip(i),ecnt2,pcnt2)
+                      call ReinjectParticles(zp(i),kep(i),xip(i),in,der,ecnt2,pcnt2)
                   else if (zp(i) .LE. in%zmin) then
-                      call ReinjectParticles(zp(i),kep(i),xip(i),ecnt1,pcnt1)
+                      call ReinjectParticles(zp(i),kep(i),xip(i),in,der,ecnt1,pcnt1)
                   end if
               end do
           !$OMP END DO
@@ -350,10 +350,10 @@ TimeStepping: do j = 1,in%Nsteps
           ecnt = 0; pcnt = 0; df = 0;
           !$OMP DO SCHEDULE(STATIC)
               do i = 1,in%Nparts
-                      call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_Bz)
+                      call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,der,spline_Bz)
                       df = dsign(1.d0,fcurr(i)*fnew(i))
                       if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
-                        call RFHeatingOperator(zp(i),kep(i),xip(i),ecnt,pcnt,spline_Bz,spline_ddBz,spline_Phi)
+                        call RFHeatingOperator(zp(i),kep(i),xip(i),ecnt,pcnt,in,der,spline_Bz,spline_ddBz,spline_Phi)
                       end if
               end do
           !$OMP END DO
