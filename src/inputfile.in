@@ -9,8 +9,8 @@ BFieldFile = "/Bfield_case_1.txt",
 nz = 501,						                                            ! Number of points in BFieldFile
 
 Nparts = 500,                                                                ! Total number of particles
-Nsteps = 120000,                                                              ! Total number of time steps
-dt     = 100E-9,
+Nsteps = 1500000,                                                              ! Total number of time steps
+dt     = 30E-9,
 threads_request = 4,                                                            ! Time step in [s]
 
 iSave = .true.,
@@ -21,8 +21,8 @@ iPotential = .false.,                                                       ! En
 iDrag = .false.,                                                             ! Enable plasma drag
 
 jstart = 1,                                                               !
-jend   = 120000,                                                              !
-jincr  = 100,                                                                !
+jend   = 1500000,                                                              !
+jincr  = 300,                                                                !
 
 Te0 = 600.,	                                                                ! eV
 Ti0 = 600.,                                                                   ! eV

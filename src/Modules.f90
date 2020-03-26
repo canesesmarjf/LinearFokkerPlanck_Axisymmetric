@@ -48,6 +48,7 @@ END TYPE outTYP
 TYPE derTYP
   REAL(r8) :: q
   REAL(r8) :: m_t
+  REAL(r8) :: species_b
   REAL(r8),DIMENSION(:), ALLOCATABLE :: fcurr, fnew
   ! Need to add frame variable
 END TYPE derTYP
@@ -57,12 +58,16 @@ CONTAINS
     IMPLICIT NONE
     TYPE(inTYP)  :: in0
     TYPE(outTYP) :: out0
-    INTEGER(i4)  :: n
+    INTEGER(i4)  :: n1, n2
 
     ! Allocate memory:
-    ALLOCATE(out0%kep(n), out0%xip(n), out0%zp(n))
-    ALLOCATE(out0%pcount1(n), out0%pcount2(n), out0%pcount3(n), out0%pcount4(n))
-    ALLOCATE(out0%ecount1(n), out0%ecount2(n), out0%ecount3(n), out0%ecount4(n))
+    n1 = in0%Nparts
+    n2 = in0%Nsteps
+    WRITE(*,*) "Nparts", in0%Nparts
+    WRITE(*,*) "Nsteps", in0%Nsteps
+    ALLOCATE(out0%kep(n1), out0%xip(n1), out0%zp(n1))
+    ALLOCATE(out0%pcount1(n2), out0%pcount2(n2), out0%pcount3(n2), out0%pcount4(n2))
+    ALLOCATE(out0%ecount1(n2), out0%ecount2(n2), out0%ecount3(n2), out0%ecount4(n2))
 
     ! Initialize variables
     out0%kep = 0.; out0%xip = 0.; out0%zp = 0.
@@ -74,10 +79,11 @@ CONTAINS
     IMPLICIT NONE
     TYPE(inTYP)  :: in0
     TYPE(derTYP) :: der0
-    INTEGER(i4)  :: n
+    INTEGER(i4)  :: n1
 
     ! Allocate memory:
-    ALLOCATE(der0%fcurr(n), der0%fnew(n))
+    n1 = in0%Nparts
+    ALLOCATE(der0%fcurr(n1), der0%fnew(n1))
 
     ! Initialize variables
     der0%fcurr = 0.; der0%fnew = 0.

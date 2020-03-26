@@ -1,5 +1,5 @@
 &in_nml
-in%fileDescriptor = 'Case6',
+in%fileDescriptor = 'Case2',
 
 in%rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck",
 !in%rootDir = "$HOME/LinearFokkerPlanck"
@@ -9,8 +9,8 @@ in%BFieldFile = "/Bfield_case_1.txt",
 in%nz = 501,						                                                        ! Number of points in BFieldFile
 
 in%Nparts = 500,                                                                ! Total number of particles
-in%Nsteps = 120000,                                                              ! Total number of time steps
-in%dt     = 100E-9,
+in%Nsteps = 1500000,                                                              ! Total number of time steps
+in%dt     = 30E-9,
 in%threads_request = 4,                                                            ! Time step in [s]
 
 in%iSave = .true.,
@@ -21,12 +21,12 @@ in%iPotential = .false.,                                                       !
 in%iDrag = .false.,                                                             ! Enable plasma drag
 
 in%jstart = 1,                                                               !
-in%jend   = 120000,                                                              !
-in%jincr  = 100,                                                                !
+in%jend   = 1500000,                                                              !
+in%jincr  = 300,                                                                !
 
 in%Te0 = 600.,	                                                                ! eV
 in%Ti0 = 600.,                                                                   ! eV
-in%ne0 = 1.0E+19,	                                                            ! /m**3
+in%ne0 = 9.0E+19,	                                                            ! /m**3
 in%zmax = 8.0,
 in%zmin = -8.0,
 

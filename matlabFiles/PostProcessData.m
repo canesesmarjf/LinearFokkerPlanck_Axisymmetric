@@ -6,7 +6,7 @@ addpath(homeAddress);
 rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderNameStart = 'case6';
+folderNameStart = 'case1';
 d = dir;
 for i = 1:size(d,1)
     if strncmpi(d(i).name,folderNameStart,5)
@@ -94,7 +94,7 @@ if 0
     EmaxPlot = metadata.KEP_INIT;   
     n_persist = 0*15;
     k = 1;
-    for ii = 1:(size(zp{k},2)-n_persist)
+    for ii = 1:4:(size(zp{k},2)-n_persist)
         t_rng = ii:(ii+n_persist);
         plot(zp{k}(:,t_rng),kep{k}(:,t_rng)*1e-3,'k.','MarkerSize',4)
         hold on
@@ -186,12 +186,14 @@ box on
 figure('color','w');
 subplot(1,2,1)
 hold on
-plot(tc{1}*1e-3,cumsum(pcount3_0{1}),'k','LineWidth',2)
+plot(tc{1}*1e-3,cumsum(pcount3_0{1}),'k.','LineWidth',2)
 box on
+title('cumsum of pcount3')
 subplot(1,2,2)
 hold on
-plot(tc{1}*1e-3,cumsum(ecount3_0{1}),'k','LineWidth',2)
+plot(tc{1}*1e-3,cumsum(ecount3_0{1}),'k.','LineWidth',2)
 box on
+title('cumsum of ecount3')
 
 % What is the temperature with flow and it is it very different to the no
 % flow case?

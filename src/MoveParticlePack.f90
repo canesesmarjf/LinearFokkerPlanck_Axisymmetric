@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE MoveParticle(zp0,kep0,xip0)
+SUBROUTINE MoveParticle(zp0,kep0,xip0,spline0,spline1)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -8,6 +8,7 @@ USE PhysicalConstants
 
 IMPLICIT NONE
 ! Define local variables
+TYPE(splTYP) :: spline0, spline1
 REAL(r8) :: zp0, kep0, xip0                  ! Position, kinetic energy and pitch of the ith particle
 REAL(r8) :: zpnew, Xipnew, uparnew, upernew, munew  ! Position, kinetic energy and pitch of the ith particle
 
@@ -20,7 +21,7 @@ REAL(r8) :: mu0, mu1, mu2, mu3
 REAL(r8) :: M1, M2, M3, M4
 REAL(r8) :: u2
 REAL(r8) :: B, Phi                            ! Variables to hold potential field
-REAL(r8) :: curv2, curvd
+!REAL(r8) :: curv2, curvd
 
 ! Calculate initial parallel particle speed
 upar0 = xip0*sqrt(2.*e_c*kep0/m_t)
@@ -29,32 +30,33 @@ upar0 = xip0*sqrt(2.*e_c*kep0/m_t)
 u2 = 2.*e_c*kep0/m_t
 
 ! Calculate initial magnetic moment
-B    = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+!B    = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+B = Interp1(zp0,spline0)
 mu0 = 0.5*m_t*u2*(1 - xip0*xip0)/B
 
 ! Begin assembling RK4 solution:
-call RightHandSide(zp0,upar0,mu0,K1,L1,M1)             ! Update values of fK, fL and fM
+call RightHandSide(zp0,upar0,mu0,K1,L1,M1,spline0,spline1)             ! Update values of fK, fL and fM
 zp1   = zp0   + (K1*dt/2.)
 upar1 = upar0 + (L1*dt/2.)
 mu1   = mu0   + (M1*dt/2.)
 
-call RightHandSide(zp1,upar1,mu1,K2,L2,M2)             ! Update values of fK, fL and fM
+call RightHandSide(zp1,upar1,mu1,K2,L2,M2,spline0,spline1)             ! Update values of fK, fL and fM
 zp2   = zp0   + (K2*dt/2.)
 upar2 = upar0 + (L2*dt/2.)
 mu2   = mu0   + (M2*dt/2.)
 
-call RightHandSide(zp2,upar2,mu2,K3,L3,M3)             ! Update values of fK, fL and fM
+call RightHandSide(zp2,upar2,mu2,K3,L3,M3,spline0,spline1)             ! Update values of fK, fL and fM
 zp3   = zp0   + K3*dt
 upar3 = upar0 + L3*dt
 mu3   = mu0   + M3*dt
 
-call RightHandSide(zp3,upar3,mu3,K4,L4,M4)             ! Update values of fK, fL and fM
+call RightHandSide(zp3,upar3,mu3,K4,L4,M4,spline0,spline1)             ! Update values of fK, fL and fM
 zpnew   = zp0   + ( (K1 + (2.*K2) + (2.*K3) + K4)/6. )*dt
 uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*dt
 munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*dt
 
 ! Calculate the magnetic field at zpnew
-B = curv2(zpnew,nz,z_Ref,B_Ref,b_spl,sigma)
+B = Interp1(zpnew,spline0)
 
 ! Based on new B and new mu, calculate new uper
 upernew = sqrt(2.*munew*B/m_t)
@@ -73,7 +75,7 @@ return
 END SUBROUTINE MoveParticle
 
 ! =======================================================================================================
-SUBROUTINE RightHandSide(zp0,upar0,mu0,K,L,M)
+SUBROUTINE RightHandSide(zp0,upar0,mu0,K,L,M,spline0,spline1)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -84,13 +86,16 @@ USE collision_data
 
 IMPLICIT NONE
 ! Define local variables
+TYPE(splTYP) :: spline0, spline1
 REAL(r8) :: zp0, upar0, mu0, K, L, M        ! Input variables
 REAL(r8) :: dB, dPhi          ! Variables to hold magnetic field, gradient of magnetic and potential field
-REAL(r8) :: curvd
+!REAL(r8) :: curvd
 
 ! Calculate the magnetic field and electric potential at zp0
-dB   = curvd(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
-dPhi = curvd(zp0,nz,z_Ref,Phi_Ref,phi_spl,sigma)
+!dB   = curvd(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+dB = diff1(zp0,spline0)
+!dPhi = curvd(zp0,nz,z_Ref,Phi_Ref,phi_spl,sigma)
+dPhi = diff1(zp0,spline1)
 
 ! Assign values to output variables
 K = upar0
@@ -271,7 +276,7 @@ return
 END SUBROUTINE RFHeatingOperator
 
 ! =======================================================================================================
-SUBROUTINE loadParticles(in0)
+SUBROUTINE loadParticles(in0,out0,der0)
 ! =======================================================================================================
   USE local
   USE ParticlePusher
@@ -279,17 +284,14 @@ SUBROUTINE loadParticles(in0)
   USE dataTYP
   IMPLICIT NONE
   ! Declare internal variables:
-  REAL(r8) :: zmin, zmax, sigma_u_init
-  TYPE(inTYP) :: in0
+  TYPE(inTYP)  :: in0
+  TYPE(outTYP) :: out0
+  TYPE(derTYP) :: der0
+  REAL(r8)     :: zmin, zmax, sigma_u_init, m_test
   REAL(r8), DIMENSION(in0%Nparts) :: RmArray1, RmArray2, RmArray3
   REAL(r8), DIMENSION(in0%Nparts) :: uperArray, uparArray, uArray
 
-  write(*,*) "zmin: ", in0%zmin
-  write(*,*) "zmax: ", in0%zmax
-  write(*,*) "zp_init", in0%zp_init
-  write(*,*) "zp_init_std", in0%zp_init_std
-  write(*,*) "kep_init", in0%kep_init
-  write(*,*) "xip_init", in0%xip_init
+  WRITE(*,*) 'm_t', der0%m_t
 
   ! Particle position:
   zmin = in0%zmin + .01*(in0%zmax-in0%zmin)
@@ -309,14 +311,15 @@ SUBROUTINE loadParticles(in0)
   call random_number(RmArray1)
   call random_number(RmArray2)
   call random_number(RmArray3)
-  sigma_u_init = sqrt(e_c*in0%kep_init/m_t)
+  m_test = der0%m_t
+  sigma_u_init = sqrt(e_c*in0%kep_init/m_test)
   uperArray = sigma_u_init*sqrt(-2.*log(RmArray1))
   uparArray = sigma_u_init*sqrt(-2.*log(RmArray2))*cos(2.*pi*RmArray3)
   uArray    = sqrt( uperArray**2 + uparArray**2 )
 
   if (in0%kep_InitType .EQ. 1) then
       ! Maxwellian EEDF:
-      kep = (m_t*uArray**2.)/(2.*e_c)
+      kep = (m_test*uArray**2.)/(2.*e_c)
   elseif (in0%kep_InitType .EQ. 2) then
       ! Beam EEDF:
       kep = in0%kep_init

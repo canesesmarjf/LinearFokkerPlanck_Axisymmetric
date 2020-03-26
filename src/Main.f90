@@ -57,8 +57,6 @@ REAL(r8) :: zTarget, zDump
 CHARACTER*150 :: fileDescriptor
 CHARACTER*150 :: command, mpwd
 
-!INTEGER(i4) ::  threads_request
-
 ! Create input and output namelists from the user-defined structures:
 namelist/in_nml/in
 
@@ -215,8 +213,6 @@ if (.true.) then
         spline_Test%y2(i) = diff1(spline_Test%x(i),spline_Bz)
         spline_Test%y3(i) = Interp1(spline_Test%x(i),spline_ddBz)
         spline_Test%y4(i) = Interp1(spline_Test%x(i),spline_Phi)
-        !spline_Test%y5(i) = Interp1(spline_Test%x(i),spline_j0)
-        !spline_Test%y6(i) = Interp1(spline_Test%x(i),spline_j1)
         spline_Test%y5(i) = BESSEL_JN(0,spline_Test%x(i))
         spline_Test%y6(i) = BESSEL_JN(1,spline_Test%x(i))
     end do
@@ -229,19 +225,6 @@ if (.true.) then
     close(unit=8)
 end if
 
-z_Ref = spline_Bz%x
-B_Ref = spline_Bz%y
-b_spl = spline_Bz%yp
-ddB_Ref = spline_Bz%yp
-ddb_spl = spline_ddBz%yp
-Phi_Ref = spline_Phi%y
-phi_spl = spline_Phi%yp
-x_j_ref = spline_j0%x
-j0_ref  = spline_j0%y
-j0_spl  = spline_j0%yp
-j1_ref  = spline_j1%y
-j1_spl  = spline_j1%yp
-
 ! ===========================================================================
 ! Initialize the random number generator
 call random_seed(size=seed_size)
@@ -252,7 +235,18 @@ call random_seed(put=seed)
 
 ! ==============================================================================
 ! Initialize particle position zp, kinetic energy kep and pitch angle xip
-call loadParticles(in)
+kep = 0.; xip = 0.; zp = 0.;
+call loadParticles(in,out,der)
+!kep = out%kep
+!xip = out%xip
+!zp  = out%zp
+
+fileName = "LoadParticles.dat"
+open(unit=8,file=fileName,form="formatted",status="unknown")
+do i = 1,in%nz
+    write(8,*) zp(i), kep(i), xip(i)
+end do
+close(unit=8)
 
 ! Initialize the time array
 tp = 0
@@ -274,6 +268,7 @@ call OMP_SET_NUM_THREADS(in%threads_request)
 TimeStepping: do j = 1,in%Nsteps
     ! Calculate Cyclotron resonance number
     ! =========================================================================
+
     if (in%iHeat) then
         do i = 1,in%Nparts
             call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i),in,spline_Bz)
@@ -282,13 +277,15 @@ TimeStepping: do j = 1,in%Nsteps
 
     ! =========================================================================
     ! PUSH PARTICLES ADIABATICALLY
+        !WRITE(*,*) 'kep(3), before', kep(3)
     if (in%iPush) then
       !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC)
         do i = 1,in%Nparts
-            call MoveParticle(zp(i),kep(i),xip(i))
+            call MoveParticle(zp(i),kep(i),xip(i),spline_Bz,spline_Phi)
         end do
       !$OMP END PARALLEL DO
     end if
+    !WRITE(*,*) 'kep(3), after', kep(3)
 
     ! =========================================================================
     ! RE-INJECT PARTICLES
