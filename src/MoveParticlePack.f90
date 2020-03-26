@@ -1,16 +1,19 @@
 ! =======================================================================================================
-SUBROUTINE MoveParticle(zp0,kep0,xip0,spline0,spline1)
+SUBROUTINE MoveParticle(zp0,kep0,xip0,in0,der0,spline0,spline1)
 ! =======================================================================================================
 USE local
 USE spline_fits
-USE ParticlePusher
 USE PhysicalConstants
+USE dataTYP
 
 IMPLICIT NONE
 ! Define local variables
 TYPE(splTYP) :: spline0, spline1
+TYPE(derTYP) :: der0
+TYPE(inTYP)  :: in0
 REAL(r8) :: zp0, kep0, xip0                  ! Position, kinetic energy and pitch of the ith particle
 REAL(r8) :: zpnew, Xipnew, uparnew, upernew, munew  ! Position, kinetic energy and pitch of the ith particle
+REAL(r8) :: m_test, delta_t
 
 ! Storage for the MoverParticle and RHS subroutines
 REAL(r8) :: zp1, zp2, zp3
@@ -21,85 +24,94 @@ REAL(r8) :: mu0, mu1, mu2, mu3
 REAL(r8) :: M1, M2, M3, M4
 REAL(r8) :: u2
 REAL(r8) :: B, Phi                            ! Variables to hold potential field
-!REAL(r8) :: curv2, curvd
 
-! Calculate initial parallel particle speed
-upar0 = xip0*sqrt(2.*e_c*kep0/m_t)
+! Time step:
+delta_t = in0%dt
 
-! Calculate initial particle speed squared
-u2 = 2.*e_c*kep0/m_t
+! Test particle mass:
+m_test = der0%m_t
 
-! Calculate initial magnetic moment
-!B    = curv2(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+! Calculate initial parallel particle speed:
+upar0 = xip0*sqrt(2.*e_c*kep0/m_test)
+
+! Calculate initial particle speed squared:
+u2 = 2.*e_c*kep0/m_test
+
+! Calculate initial magnetic moment:
 B = Interp1(zp0,spline0)
-mu0 = 0.5*m_t*u2*(1 - xip0*xip0)/B
+mu0 = 0.5*m_test*u2*(1 - xip0*xip0)/B
 
 ! Begin assembling RK4 solution:
-call RightHandSide(zp0,upar0,mu0,K1,L1,M1,spline0,spline1)             ! Update values of fK, fL and fM
-zp1   = zp0   + (K1*dt/2.)
-upar1 = upar0 + (L1*dt/2.)
-mu1   = mu0   + (M1*dt/2.)
+call RightHandSide(zp0,upar0,mu0,K1,L1,M1,der0,spline0,spline1)             ! Update values of fK, fL and fM
+zp1   = zp0   + (K1*delta_t/2.)
+upar1 = upar0 + (L1*delta_t/2.)
+mu1   = mu0   + (M1*delta_t/2.)
 
-call RightHandSide(zp1,upar1,mu1,K2,L2,M2,spline0,spline1)             ! Update values of fK, fL and fM
-zp2   = zp0   + (K2*dt/2.)
-upar2 = upar0 + (L2*dt/2.)
-mu2   = mu0   + (M2*dt/2.)
+call RightHandSide(zp1,upar1,mu1,K2,L2,M2,der0,spline0,spline1)             ! Update values of fK, fL and fM
+zp2   = zp0   + (K2*delta_t/2.)
+upar2 = upar0 + (L2*delta_t/2.)
+mu2   = mu0   + (M2*delta_t/2.)
 
-call RightHandSide(zp2,upar2,mu2,K3,L3,M3,spline0,spline1)             ! Update values of fK, fL and fM
-zp3   = zp0   + K3*dt
-upar3 = upar0 + L3*dt
-mu3   = mu0   + M3*dt
+call RightHandSide(zp2,upar2,mu2,K3,L3,M3,der0,spline0,spline1)             ! Update values of fK, fL and fM
+zp3   = zp0   + K3*delta_t
+upar3 = upar0 + L3*delta_t
+mu3   = mu0   + M3*delta_t
 
-call RightHandSide(zp3,upar3,mu3,K4,L4,M4,spline0,spline1)             ! Update values of fK, fL and fM
-zpnew   = zp0   + ( (K1 + (2.*K2) + (2.*K3) + K4)/6. )*dt
-uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*dt
-munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*dt
+call RightHandSide(zp3,upar3,mu3,K4,L4,M4,der0,spline0,spline1)             ! Update values of fK, fL and fM
+zpnew   = zp0   + ( (K1 + (2.*K2) + (2.*K3) + K4)/6. )*delta_t
+uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*delta_t
+munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*delta_t
 
-! Calculate the magnetic field at zpnew
+! Calculate the magnetic field at zpnew:
 B = Interp1(zpnew,spline0)
 
-! Based on new B and new mu, calculate new uper
-upernew = sqrt(2.*munew*B/m_t)
+! Based on new B and new mu, calculate new uper:
+upernew = sqrt(2.*munew*B/m_test)
 
-! New u due to new upar and new uper
+! New u due to new upar and new uper:
 u2 = uparnew**2. + upernew**2.
 
-! New pitch angle due to new upar and new u
+! New pitch angle due to new upar and new u:
 Xipnew = uparnew/sqrt(u2)
 
 zp0  = zpnew
 xip0 = Xipnew
-kep0 = 0.5*m_t*u2/e_c
+kep0 = 0.5*m_test*u2/e_c
 
 return
 END SUBROUTINE MoveParticle
 
 ! =======================================================================================================
-SUBROUTINE RightHandSide(zp0,upar0,mu0,K,L,M,spline0,spline1)
+SUBROUTINE RightHandSide(zp0,upar0,mu0,K,L,M,der0,spline0,spline1)
 ! =======================================================================================================
 USE local
 USE spline_fits
-USE ParticlePusher
 USE PhysicalConstants
-USE plasma_params
-USE collision_data
+USE dataTYP
 
 IMPLICIT NONE
-! Define local variables
+! Define local variables:
 TYPE(splTYP) :: spline0, spline1
-REAL(r8) :: zp0, upar0, mu0, K, L, M        ! Input variables
-REAL(r8) :: dB, dPhi          ! Variables to hold magnetic field, gradient of magnetic and potential field
-!REAL(r8) :: curvd
+TYPE(derTYP) :: der0
+REAL(r8) :: zp0, upar0, mu0, K, L, M
+REAL(r8) :: dB, dPhi
+REAL(r8) :: m_test, q_test
 
-! Calculate the magnetic field and electric potential at zp0
-!dB   = curvd(zp0,nz,z_Ref,B_Ref,b_spl,sigma)
+! Test particle mass:
+m_test = der0%m_t
+
+! Test particle charge:
+q_test = der0%q
+
+! Calculate the magnetic field gradient at zp0:
 dB = diff1(zp0,spline0)
-!dPhi = curvd(zp0,nz,z_Ref,Phi_Ref,phi_spl,sigma)
+
+! Calculate electric potential gradient at zp0:
 dPhi = diff1(zp0,spline1)
 
-! Assign values to output variables
+! Assign values to output variables:
 K = upar0
-L = -(1/m_t)*(mu0*dB + q*dPhi)
+L = -(1/m_test)*(mu0*dB + q_test*dPhi)
 M = 0
 
 return

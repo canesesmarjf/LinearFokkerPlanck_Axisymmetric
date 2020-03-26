@@ -281,7 +281,7 @@ TimeStepping: do j = 1,in%Nsteps
     if (in%iPush) then
       !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC)
         do i = 1,in%Nparts
-            call MoveParticle(zp(i),kep(i),xip(i),spline_Bz,spline_Phi)
+            call MoveParticle(zp(i),kep(i),xip(i),in,der,spline_Bz,spline_Phi)
         end do
       !$OMP END PARALLEL DO
     end if
