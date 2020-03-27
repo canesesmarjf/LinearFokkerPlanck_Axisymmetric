@@ -11,20 +11,14 @@ PROGRAM LinearFokkerPlanckSolver_1D2V
 USE local
 USE spline_fits
 USE PhysicalConstants
-USE ParticlePusher
-USE plasma_params
-USE collision_data
-USE rf_heating_data
 USE dataTYP
 USE OMP_LIB
 
 ! ===========================================================================
-
 ! Define local variables
 ! ===========================================================================
 IMPLICIT NONE
 TYPE(inTYP)  :: in
-TYPE(outTYP) :: out
 TYPE(derTYP) :: der
 TYPE(splTYP) :: spline_Bz
 TYPE(splTYP) :: spline_ddBz
@@ -32,58 +26,31 @@ TYPE(splTYP) :: spline_Phi
 TYPE(splTYP) :: spline_j0
 TYPE(splTYP) :: spline_j1
 TYPE(spltestTYP) :: spline_Test
-
-REAL(r8) :: tstart, tend, tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
 INTEGER(i4) :: i,j,k                                                          ! Indices for do loops
 INTEGER(i4) :: seed_size                                                      ! Random number generator variable
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: seed                                ! Store the random num gen seed
-
-REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount1, pcount2, pcount3, pcount4   ! Count the number of particles incident on (1) dump, (2) target, (3) EBW resonance
-REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount1, ecount2, ecount3, ecount4   ! Record the total energy of particle incident on (1) dump, (2) target, (3) EBW resonance
-
+INTEGER(i4) :: jsize
+INTEGER(i4), DIMENSION(:), ALLOCATABLE :: jrng                                ! Indices of time steps to save
+INTEGER(i4) :: id
+REAL(r8) :: tstart, tend, tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
+REAL(r8) :: df
+REAl(r8) :: tp                                                      ! Hold simulation time
+REAL(r8), DIMENSION(:)  , ALLOCATABLE :: xip, zp, kep                 ! Particle position (zp), kinetic energy (KEp), pitch angle (Xip)
+REAL(r8), DIMENSION(:,:), ALLOCATABLE :: zp_hist, kep_hist, xip_hist
+REAl(r8), DIMENSION(:)  , ALLOCATABLE :: t_hist
+REAL(r8), DIMENSION(:)  , ALLOCATABLE :: pcount1, pcount2, pcount3, pcount4   ! Count the number of particles incident on (1) dump, (2) target, (3) EBW resonance
+REAL(r8), DIMENSION(:)  , ALLOCATABLE :: ecount1, ecount2, ecount3, ecount4   ! Record the total energy of particle incident on (1) dump, (2) target, (3) EBW resonance
+REAL(r8), DIMENSION(:)  , ALLOCATABLE :: fcurr, fnew
 REAL(r8) :: ecnt, ecnt1, ecnt2
 REAL(r8) :: pcnt, pcnt1, pcnt2
-INTEGER(i4) :: jsize                                                          ! Total umber of time steps to save
-INTEGER(i4), DIMENSION(:), ALLOCATABLE :: jrng                                ! Indices of time steps to save
-REAL(r8) :: df
-
-! Create local variables to hold some of the data from InputFile
-LOGICAL :: iColl, iHeat, iSave, iPush, iPotential
-INTEGER(i4) :: zp_InitType, kep_InitType, xip_InitType                                      !
-CHARACTER*150 :: BFieldFile, BFieldFileDir, B_data, rootDir
-CHARACTER*250 :: fileExt, fileName                                            ! Are used to name the output files
-INTEGER(i4) :: jstart, jend, jincr                                            ! To define time steps to save
-REAL(r8) :: zTarget, zDump
-CHARACTER*150 :: fileDescriptor
 CHARACTER*150 :: command, mpwd
+CHARACTER*250 :: fileName                                            ! Are used to name the output files
+
+!INTEGER, EXTERNAL :: OMP_GET_THREAD_NUM, OMP_GET_NUM_THREADS
+!INTEGER, EXTERNAL :: OMP_SET_NUM_THREADS, OMP_GET_WTIME
 
 ! Create input and output namelists from the user-defined structures:
 namelist/in_nml/in
-
-! Create namelist:
-! ==================================================================================================
-! Namelist for input data:
-! ------------------------
-namelist /indata/ BFieldFile, BFieldFileDir, nz, Nparts, Nsteps, iColl, &
-                dt, ne0, Te0, ti0, Zeff, Zion, species_a, zp_InitType, &
-                zp_init, zp_init_std, iHeat, Aion, s1, s2, s3, phi1, phi2, phi3, jstart, jend, jincr, &
-                f_RF, zRes1, zRes2, kper, kpar, Ew, n_harmonic, kep_init, iDrag, iSave, iPush, elevel, CollOperType, &
-                zTarget, zDump, fileDescriptor, iPotential, kep_InitType, xip_InitType, xip_init, rootDir, threads_request
-
-! Namelist for output metadata file:
-! ----------------------------------
-namelist /metadata/ fileDescriptor, &
-                    ne0, Te0, Ti0, Aion, Zeff, Zion, species_a, zDump, zTarget, &
-                    Nparts, Nsteps, dt, tComputeTime, tSimTime, threads_request, &
-                    jstart, jend, jincr, &
-                    f_RF, n_harmonic, Ew, kper, kpar, zRes1, zRes2, &
-                    CollOperType, elevel, &
-                    iSave, iPush, iColl, iHeat, iPotential, iDrag, &
-                    zp_InitType, zp_init, zp_init_std, &
-                    kep_InitType, kep_init, &
-                    xip_InitType, xip_init, &
-                    BFieldFileDir, BFieldFile, nz, &
-                    s1, s2, s3, phi1, phi2, phi3
 
 ! Record start time:
 call cpu_time(tstart)
@@ -93,22 +60,6 @@ fileName = "data.in"
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,in_nml)
 close(unit=4)
-
-! ===========================================================================
-! Read input files
-open(unit=4,file='inputfile.in',status='old',form='formatted')
-read(4,indata)
-close(unit=4)
-
-if (in%species_a .eq. 1) then
-    q   = -e_c
-    m_t = m_e
-    print *, 'Test particles: Electrons'
-else
-    q   = +in%Zion*e_c
-    m_t = in%Aion*m_p
-    print *, 'Test particles: Ions'
-end if
 
 if (in%species_a .eq. 1) then
     der%q   = -e_c
@@ -139,8 +90,6 @@ print *, 'ne0                ', in%ne0
 if (in%CollOperType .EQ. 1) print *, 'Boozer-Only collision operator'
 if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
 
-WRITE(*,*) "J_0(3)", BESSEL_JN(0,3.)
-
 ! ===========================================================================
 call InitSpline(spline_Bz  ,in%nz,0._8,0._8,1,0._8)
 call InitSpline(spline_ddBz,in%nz,0._8,0._8,1,0._8)
@@ -148,24 +97,20 @@ call InitSpline(spline_Phi ,in%nz,0._8,0._8,1,0._8)
 call InitSpline(spline_j0  ,in%nz,0._8,0._8,1,3._8)
 call InitSpline(spline_j1  ,in%nz,0._8,0._8,1,3._8)
 call InitSplineTest(spline_Test,in%nz)
-call InitOut(out,in)
 call InitDer(der,in)
 
 ! Allocate memory to "allocatable" variables
 ALLOCATE(zp(in%Nparts), kep(in%Nparts), xip(in%Nparts))
 ALLOCATE(pcount1(in%Nsteps),pcount2(in%Nsteps),pcount3(in%Nsteps),pcount4(in%Nsteps))
 ALLOCATE(ecount1(in%Nsteps),ecount2(in%Nsteps),ecount3(in%Nsteps),ecount4(in%Nsteps))
-! Variables for spline fits
-ALLOCATE(z_Ref(in%nz), B_Ref(in%nz), Phi_Ref(in%nz), ddB_Ref(in%nz))
-ALLOCATE(b_spl(in%nz), b_temp(in%nz), phi_spl(in%nz), phi_temp(in%nz), ddb_spl(in%nz), ddb_temp(in%nz))
-! Variables for RF operator
 ALLOCATE(fcurr(in%Nparts),fnew(in%Nparts))
-! Define variables for the saving process
+
+! Define variables for the saving process:
 jsize = (in%jend-in%jstart+1)/in%jincr
 ALLOCATE(jrng(jsize))
 ALLOCATE(zp_hist(in%Nparts,jsize),kep_hist(in%Nparts,jsize),xip_hist(in%Nparts,jsize),t_hist(jsize))
 
-! Create array with the indices of the time steps to save
+! Create array with the indices of the time steps to save:
 jrng = (/ (j, j=in%jstart, in%jend, in%jincr) /)
 
 ! ===========================================================================
@@ -224,10 +169,7 @@ call random_seed(put=seed)
 ! ==============================================================================
 ! Initialize particle position zp, kinetic energy kep and pitch angle xip
 kep = 0.; xip = 0.; zp = 0.;
-call loadParticles(in,out,der)
-!kep = out%kep
-!xip = out%xip
-!zp  = out%zp
+call loadParticles(zp,kep,xip,in,der)
 
 fileName = "LoadParticles.dat"
 open(unit=8,file=fileName,form="formatted",status="unknown")
@@ -306,18 +248,18 @@ TimeStepping: do j = 1,in%Nsteps
               ecnt = 0; pcnt = 0
               id = OMP_GET_THREAD_NUM()
 
-              species_b = 1 ! test particle on field electrons
+              der%species_b = 1 ! test particle on field electrons
           		!$OMP DO SCHEDULE(STATIC)
               		do i = 1,in%Nparts
                     !if (id .EQ. 0) write(*,*) "Thread", id, " at i = ", i
-              			call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
+              			call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt,in,der)
               		end do
           		!$OMP END DO
 
-              species_b = 2 ! test particle on field ions
+              der%species_b = 2 ! test particle on field ions
           		!$OMP DO
               		do i = 1,in%Nparts
-              		    call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt)
+              		    call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt,in,der)
               		end do
           		!$OMP END DO
 
@@ -460,13 +402,6 @@ if (in%iSave) then
     fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount4.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount4
-    close(unit=8)
-
-    ! Create Metadata file
-    ! ---------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'Metadata.out')
-    open(unit=8,file=fileName,form="formatted",status="unknown")
-    write(8,NML = metadata)
     close(unit=8)
 
     ! Write output data:

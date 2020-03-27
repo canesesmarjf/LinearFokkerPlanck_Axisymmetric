@@ -329,20 +329,20 @@ return
 END SUBROUTINE RFHeatingOperator
 
 ! =======================================================================================================
-SUBROUTINE loadParticles(in0,out0,der0)
+SUBROUTINE loadParticles(zp,kep,xip,in0,der0)
 ! =======================================================================================================
   USE local
-  USE ParticlePusher
+  !USE ParticlePusher
   use PhysicalConstants
   USE dataTYP
   IMPLICIT NONE
   ! Declare internal variables:
   TYPE(inTYP)  :: in0
-  TYPE(outTYP) :: out0
   TYPE(derTYP) :: der0
-  REAL(r8)     :: zmin, zmax, sigma_u_init, m_test
+  REAL(r8), DIMENSION(in0%Nparts) :: zp, kep, xip
   REAL(r8), DIMENSION(in0%Nparts) :: RmArray1, RmArray2, RmArray3
   REAL(r8), DIMENSION(in0%Nparts) :: uperArray, uparArray, uArray
+  REAL(r8) :: zmin, zmax, sigma_u_init, m_test
 
   WRITE(*,*) 'm_t', der0%m_t
 

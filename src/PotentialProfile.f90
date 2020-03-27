@@ -1,6 +1,6 @@
 subroutine PotentialProfile(spline0,in0)
 USE local
-USE plasma_params
+!USE plasma_params
 USE spline_fits
 USE dataTYP
 

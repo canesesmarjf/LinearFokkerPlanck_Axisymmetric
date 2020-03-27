@@ -1,18 +1,12 @@
 clear all
-close all
+% close all
 
 homeAddress = cd;
 addpath(homeAddress);
 rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderNameStart = 'case10';
-d = dir;
-for i = 1:size(d,1)
-    if strncmpi(d(i).name,folderNameStart,5)
-        folderName = d(i).name;
-    end
-end
+folderName = 'Case13';
 cd(folderName);
 
 % Simulation conditions:
@@ -88,7 +82,7 @@ cd(homeAddress);
 
 %% Plot data:
 % =========================================================================
-if 1
+if 0
     figure; 
    
     EmaxPlot = 45000;   

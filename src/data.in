@@ -1,5 +1,5 @@
 &in_nml
-in%fileDescriptor = 'Case8',
+in%fileDescriptor = 'Case13',
 
 in%rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck",
 !in%rootDir = "$HOME/LinearFokkerPlanck"
