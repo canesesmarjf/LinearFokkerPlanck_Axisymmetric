@@ -32,7 +32,7 @@ INTEGER(i4), DIMENSION(:), ALLOCATABLE :: seed                                ! 
 INTEGER(i4) :: jsize
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: jrng                                ! Indices of time steps to save
 INTEGER(i4) :: id
-REAL(r8) :: tstart, tend, tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
+REAL(r8) :: tstart, tend                              ! Variables to hold cpu time at start and end of computation
 REAL(r8) :: df
 REAl(r8) :: tp                                                      ! Hold simulation time
 REAL(r8), DIMENSION(:)  , ALLOCATABLE :: xip, zp, kep                 ! Particle position (zp), kinetic energy (KEp), pitch angle (Xip)
@@ -322,10 +322,10 @@ end do TimeStepping
 
 ! Record end time:
 ! =========================================================================
-tSimTime = tp
+in%tSimTime = tp
 call cpu_time(tend)
-tComputeTime = (tend-tstart)/in%threads_given
-print *, 'Reached End of Program, Computational time = ', tComputeTime
+in%tComputeTime = (tend-tstart)/in%threads_given
+print *, 'Reached End of Program, Computational time = ', in%tComputeTime
 ! Save data:
 ! =========================================================================
 if (in%iSave) then

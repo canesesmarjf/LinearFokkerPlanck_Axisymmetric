@@ -37,6 +37,7 @@ TYPE inTYP
   REAL(r8) :: s1, s2, s3, phi1, phi2, phi3
   REAL(r8) :: f_RF, kpar, kper, Ew, zRes1, zRes2
   INTEGER(i4) :: n_harmonic
+  REAL(r8) :: tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
 END TYPE inTYP
 
 TYPE outTYP

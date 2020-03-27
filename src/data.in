@@ -1,5 +1,5 @@
 &in_nml
-in%fileDescriptor = 'Case13',
+in%fileDescriptor = 'Case14',
 
 in%rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck",
 !in%rootDir = "$HOME/LinearFokkerPlanck"
@@ -16,7 +16,7 @@ in%threads_request = 4,                                                         
 in%iSave = .true.,
 in%iPush = .true.,                                                             ! Enable RK4 particle pusher
 in%iColl = .true.,                                                             ! Collisions or no collisions
-in%iHeat = .false.,                                                             ! Enable RF heating operator
+in%iHeat = .true.,                                                             ! Enable RF heating operator
 in%iPotential = .false.,                                                       ! Enable electric potential
 in%iDrag = .false.,                                                             ! Enable plasma drag
 
