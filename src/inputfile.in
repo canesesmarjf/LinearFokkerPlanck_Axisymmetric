@@ -10,7 +10,7 @@ nz = 501,						                                            ! Number of points in
 
 Nparts = 500,                                                                ! Total number of particles
 Nsteps = 200000,                                                              ! Total number of time steps
-dt     = 10E-9,
+dt     = 30E-9,
 threads_request = 4,                                                            ! Time step in [s]
 
 iSave = .true.,

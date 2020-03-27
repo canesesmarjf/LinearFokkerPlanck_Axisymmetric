@@ -169,18 +169,6 @@ ALLOCATE(zp_hist(in%Nparts,jsize),kep_hist(in%Nparts,jsize),xip_hist(in%Nparts,j
 jrng = (/ (j, j=in%jstart, in%jend, in%jincr) /)
 
 ! ===========================================================================
-! Bessel function data:
-fileName = "besselj0_0_to_40.txt"
-fileName = trim(adjustl(fileName))
-CALL ReadSpline(spline_j0,fileName)
-CALL ComputeSpline(spline_j0)
-
-fileName = "besselj1_0_to_40.txt"
-fileName = trim(adjustl(fileName))
-CALL ReadSpline(spline_j1,fileName)
-CALL ComputeSpline(spline_j1)
-
-! ===========================================================================
 ! Magnetic field data:
 fileName = trim(adjustl(in%BFieldFile))
 fileName = trim(adjustl(in%BFieldFileDir))//fileName
