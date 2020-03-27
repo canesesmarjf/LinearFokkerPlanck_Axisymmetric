@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE MoveParticle(zp0,kep0,xip0,in0,der0,spline0,spline1)
+SUBROUTINE MoveParticle(zp0,kep0,xip0,in0,spline0,spline1)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -9,11 +9,10 @@ USE dataTYP
 IMPLICIT NONE
 ! Define local variables
 TYPE(splTYP) :: spline0, spline1
-TYPE(derTYP) :: der0
 TYPE(inTYP)  :: in0
 REAL(r8) :: zp0, kep0, xip0                  ! Position, kinetic energy and pitch of the ith particle
 REAL(r8) :: zpnew, Xipnew, uparnew, upernew, munew  ! Position, kinetic energy and pitch of the ith particle
-REAL(r8) :: m_t, delta_t
+REAL(r8) :: m_t, dt
 
 ! Storage for the MoverParticle and RHS subroutines
 REAL(r8) :: zp1, zp2, zp3
@@ -26,10 +25,10 @@ REAL(r8) :: u2
 REAL(r8) :: B, Phi                            ! Variables to hold potential field
 
 ! Time step:
-delta_t = in0%dt
+dt = in0%dt
 
 ! Test particle mass:
-m_t = der0%m_t
+m_t = in0%m_t
 
 ! Calculate initial parallel particle speed:
 upar0 = xip0*sqrt(2.*e_c*kep0/m_t)
@@ -42,25 +41,25 @@ B = Interp1(zp0,spline0)
 mu0 = 0.5*m_t*u2*(1 - xip0*xip0)/B
 
 ! Begin assembling RK4 solution:
-call RightHandSide(zp0,upar0,mu0,K1,L1,M1,der0,spline0,spline1)             ! Update values of fK, fL and fM
-zp1   = zp0   + (K1*delta_t/2.)
-upar1 = upar0 + (L1*delta_t/2.)
-mu1   = mu0   + (M1*delta_t/2.)
+call RightHandSide(zp0,upar0,mu0,K1,L1,M1,in0,spline0,spline1)             ! Update values of fK, fL and fM
+zp1   = zp0   + (K1*dt/2.)
+upar1 = upar0 + (L1*dt/2.)
+mu1   = mu0   + (M1*dt/2.)
 
-call RightHandSide(zp1,upar1,mu1,K2,L2,M2,der0,spline0,spline1)             ! Update values of fK, fL and fM
-zp2   = zp0   + (K2*delta_t/2.)
-upar2 = upar0 + (L2*delta_t/2.)
-mu2   = mu0   + (M2*delta_t/2.)
+call RightHandSide(zp1,upar1,mu1,K2,L2,M2,in0,spline0,spline1)             ! Update values of fK, fL and fM
+zp2   = zp0   + (K2*dt/2.)
+upar2 = upar0 + (L2*dt/2.)
+mu2   = mu0   + (M2*dt/2.)
 
-call RightHandSide(zp2,upar2,mu2,K3,L3,M3,der0,spline0,spline1)             ! Update values of fK, fL and fM
-zp3   = zp0   + K3*delta_t
-upar3 = upar0 + L3*delta_t
-mu3   = mu0   + M3*delta_t
+call RightHandSide(zp2,upar2,mu2,K3,L3,M3,in0,spline0,spline1)             ! Update values of fK, fL and fM
+zp3   = zp0   + K3*dt
+upar3 = upar0 + L3*dt
+mu3   = mu0   + M3*dt
 
-call RightHandSide(zp3,upar3,mu3,K4,L4,M4,der0,spline0,spline1)             ! Update values of fK, fL and fM
-zpnew   = zp0   + ( (K1 + (2.*K2) + (2.*K3) + K4)/6. )*delta_t
-uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*delta_t
-munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*delta_t
+call RightHandSide(zp3,upar3,mu3,K4,L4,M4,in0,spline0,spline1)             ! Update values of fK, fL and fM
+zpnew   = zp0   + ( (K1 + (2.*K2) + (2.*K3) + K4)/6. )*dt
+uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*dt
+munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*dt
 
 ! Calculate the magnetic field at zpnew:
 B = Interp1(zpnew,spline0)
@@ -82,7 +81,7 @@ return
 END SUBROUTINE MoveParticle
 
 ! =======================================================================================================
-SUBROUTINE RightHandSide(zp0,upar0,mu0,K,L,M,der0,spline0,spline1)
+SUBROUTINE RightHandSide(zp0,upar0,mu0,K,L,M,in0,spline0,spline1)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -92,16 +91,16 @@ USE dataTYP
 IMPLICIT NONE
 ! Define local variables:
 TYPE(splTYP) :: spline0, spline1
-TYPE(derTYP) :: der0
+TYPE(inTYP) :: in0
 REAL(r8) :: zp0, upar0, mu0, K, L, M
 REAL(r8) :: dB, dPhi
 REAL(r8) :: m_t, q_t
 
 ! Test particle mass:
-m_t = der0%m_t
+m_t = in0%m_t
 
 ! Test particle charge:
-q_t = der0%q
+q_t = in0%q_t
 
 ! Calculate the magnetic field gradient at zp0:
 dB = diff1(zp0,spline0)
@@ -118,7 +117,7 @@ return
 END SUBROUTINE RightHandSide
 
 ! =======================================================================================================
-SUBROUTINE ReinjectParticles(zp0,kep0,xip0,in0,der0,ecnt,pcnt)
+SUBROUTINE ReinjectParticles(zp0,kep0,xip0,in0,ecnt,pcnt)
 ! =======================================================================================================
 USE local
 !USE ParticlePusher
@@ -130,7 +129,6 @@ USE dataTYP
 IMPLICIT NONE
 ! Define local variables:
 TYPE(inTYP)  :: in0
-TYPE(derTYP) :: der0
 REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt     ! Input variables
 REAL(r8) :: uper, upar, u, sigma_u0
 REAL(r8), DIMENSION(6) :: Rm6               ! Variable for storing 6 random numbers
@@ -141,7 +139,7 @@ ecnt = ecnt + kep0
 pcnt = pcnt + 1
 
 ! Test particle mass:
-m_t = der0%m_t
+m_t = in0%m_t
 
 ! Background particle temperature:
 T0 = in0%Te0
@@ -162,7 +160,7 @@ return
 END SUBROUTINE ReinjectParticles
 
 ! =======================================================================================================
-SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0,in0,der0,spline0)
+SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0,in0,spline0)
 ! =======================================================================================================
 
 USE local
@@ -177,12 +175,11 @@ REAL(r8) :: upar, Bf, Omega, Omega_RF
 REAL(r8) :: m_t, q_t
 TYPE(inTYP)  :: in0
 TYPE(splTYP) :: spline0
-TYPE(derTYP) :: der0
 
 ! Test particle mass:
-m_t = der0%m_t
+m_t = in0%m_t
 ! Test particle charge:
-q_t = der0%q
+q_t = in0%q_t
 ! Parallel velocity of test particle:
 upar = sqrt(2.*e_c*kep0/m_t)*xip0
 ! Magnetic field at location zp0 of test particle:
@@ -198,20 +195,16 @@ return
 END SUBROUTINE CyclotronResonanceNumber
 
 ! =======================================================================================================
-SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt,in0,der0,spline0,spline1,spline2)
+SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt,in0,spline0,spline1,spline2)
 ! =======================================================================================================
 USE local
 USE spline_fits
-!USE ParticlePusher
 USE PhysicalConstants
-!USE plasma_params
-!use rf_heating_data
 USE dataTYP
 
 IMPLICIT NONE
 ! Define local variables:
 TYPE(inTYP)  :: in0
-TYPE(derTYP) :: der0
 TYPE(splTYP) :: spline0, spline1, spline2
 REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
 REAL(r8) :: u0, upar0, uper0
@@ -227,10 +220,10 @@ REAL(r8) :: upar1, u1
 REAL(r8) :: m_t, q_t
 
 ! Test particle mass:
-m_t = der0%m_t
+m_t = in0%m_t
 
 ! Test particle charge:
-q_t = der0%q
+q_t = in0%q_t
 
 ! Calculate derived quantities
 u0       = sqrt(2.*e_c*kep0/m_t)
@@ -329,22 +322,19 @@ return
 END SUBROUTINE RFHeatingOperator
 
 ! =======================================================================================================
-SUBROUTINE loadParticles(zp,kep,xip,in0,der0)
+SUBROUTINE loadParticles(zp,kep,xip,in0)
 ! =======================================================================================================
   USE local
-  !USE ParticlePusher
   use PhysicalConstants
   USE dataTYP
+
   IMPLICIT NONE
   ! Declare internal variables:
   TYPE(inTYP)  :: in0
-  TYPE(derTYP) :: der0
   REAL(r8), DIMENSION(in0%Nparts) :: zp, kep, xip
   REAL(r8), DIMENSION(in0%Nparts) :: RmArray1, RmArray2, RmArray3
   REAL(r8), DIMENSION(in0%Nparts) :: uperArray, uparArray, uArray
   REAL(r8) :: zmin, zmax, sigma_u_init, m_t
-
-  WRITE(*,*) 'm_t', der0%m_t
 
   ! Particle position:
   zmin = in0%zmin + .01*(in0%zmax-in0%zmin)
@@ -364,7 +354,7 @@ SUBROUTINE loadParticles(zp,kep,xip,in0,der0)
   call random_number(RmArray1)
   call random_number(RmArray2)
   call random_number(RmArray3)
-  m_t = der0%m_t
+  m_t = in0%m_t
   sigma_u_init = sqrt(e_c*in0%kep_init/m_t)
   uperArray = sigma_u_init*sqrt(-2.*log(RmArray1))
   uparArray = sigma_u_init*sqrt(-2.*log(RmArray2))*cos(2.*pi*RmArray3)

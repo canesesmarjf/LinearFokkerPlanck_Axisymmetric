@@ -25,7 +25,7 @@ TYPE inTYP
   CHARACTER*150 :: BFieldFile, BFieldFileDir
   REAL(r8) :: Ti0, Te0, ne0, dt
   REAL(r8) :: Aion, Zeff, Zion
-  INTEGER(i4) :: Nparts, Nsteps, nz, species_a
+  INTEGER(i4) :: Nparts, Nsteps, nz, species_a, species_b
   INTEGER(i4) :: jstart, jend, jincr
   INTEGER(i4) :: threads_request, threads_given
   LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
@@ -38,6 +38,7 @@ TYPE inTYP
   REAL(r8) :: f_RF, kpar, kper, Ew, zRes1, zRes2
   INTEGER(i4) :: n_harmonic
   REAL(r8) :: tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
+  REAL(r8) :: m_t, q_t
 END TYPE inTYP
 
 TYPE outTYP

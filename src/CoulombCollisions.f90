@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE collisionOperator(zp0,kep0,xip0,ecnt,pcnt,in0,der0)
+SUBROUTINE collisionOperator(zp0,kep0,xip0,ecnt,pcnt,in0)
 ! =======================================================================================================
 
 USE local
@@ -8,7 +8,6 @@ USE dataTYP
 
 IMPLICIT NONE
 TYPE(inTYP)  :: in0
-TYPE(derTYP) :: der0
 REAL(r8) :: xip0, kep0, zp0, ecnt, pcnt
 REAL(r8) :: xip1, kep1
 REAL(r8) :: u, xb
@@ -29,14 +28,14 @@ INTEGER(i4) :: species_a, species_b
 REAL(r8) :: Za, Zb, Ma, Mb
 
 ! Test particle mass:
-m_t = der0%m_t
+m_t = in0%m_t
 
 ! Test particle charge:
-q_t = der0%q
+q_t = in0%q_t
 
 ! Species to use:
 species_a = in0%species_a
-species_b = der0%species_b
+species_b = in0%species_b
 
 ! In the following, Za needs to be specified in "data.in"
 if(species_b .EQ. 1) then       ! Field electron
