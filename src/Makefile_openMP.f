@@ -2,9 +2,11 @@
 COMPILER = gfortran
 OPTFLAGS = -O3
 DBGFLAGS = -g
+OBJ_1 = Modules.o Main.o PotentialProfile.o
+OBJ_2 = fitpack.o MoveParticlePack.o CoulombCollisions.o
 
-All: Modules.o Main.o PotentialProfile.o fitpack.o MoveParticlePack.o CoulombCollisions.o
-	gfortran  $(OPTFLAGS) -fopenmp Modules.o Main.o PotentialProfile.o fitpack.o MoveParticlePack.o CoulombCollisions.o -o MPEX
+All: $(OBJ_1) $(OBJ_2)
+	gfortran  $(OPTFLAGS) -fopenmp $(OBJ_1) $(OBJ_2) -o MPEX
 	rm *.o *.mod
 
 Modules.o: Modules.f90

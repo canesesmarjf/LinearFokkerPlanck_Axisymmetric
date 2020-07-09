@@ -19,7 +19,6 @@ USE OMP_LIB
 IMPLICIT NONE
 ! User-defined structures:
 TYPE(inTYP)  :: in
-TYPE(derTYP) :: der
 TYPE(splTYP) :: spline_Bz
 TYPE(splTYP) :: spline_ddBz
 TYPE(splTYP) :: spline_Phi
@@ -42,7 +41,7 @@ REAL(r8) :: df
 ! Main simulation variables:
 ! simulation time:
 REAl(r8) :: tp
-! Particle position (zp), kinetic energy (kep), pitch angle (xip):                                              ! Hold simulation time
+! Particle position (zp), kinetic energy (kep), pitch angle (xip):
 REAL(r8), DIMENSION(:)  , ALLOCATABLE :: xip, zp, kep
 ! subset of zp, kep and xip to save:
 REAL(r8), DIMENSION(:,:), ALLOCATABLE :: zp_hist, kep_hist, xip_hist
@@ -232,7 +231,7 @@ TimeStepping: do j = 1,in%Nsteps
     ! Push particles adiabatically:
     ! ==========================================================================
     if (in%iPush) then
-      !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC)
+      !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC,in%chunk)
         do i = 1,in%Nparts
             call MoveParticle(zp(i),kep(i),xip(i),in,spline_Bz,spline_Phi)
         end do
@@ -244,7 +243,7 @@ TimeStepping: do j = 1,in%Nsteps
     if (.true.) then
       !$OMP PARALLEL PRIVATE(ecnt1, ecnt2, pcnt1, pcnt2)
           ecnt1 = 0; ecnt2 = 0; pcnt1 = 0; pcnt2 = 0
-          !$OMP DO
+          !$OMP DO SCHEDULE(STATIC,in%chunk)
               do i = 1,in%Nparts
                   if (zp(i) .GE. in%zmax) then
                       call ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
@@ -270,7 +269,7 @@ TimeStepping: do j = 1,in%Nsteps
               id = OMP_GET_THREAD_NUM()
 
               in%species_b = 1
-          		!$OMP DO SCHEDULE(STATIC)
+          		!$OMP DO SCHEDULE(STATIC,in%chunk)
               		do i = 1,in%Nparts
                     !if (id .EQ. 0) write(*,*) "Thread", id, " at i = ", i
               			call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt,in)
@@ -278,7 +277,7 @@ TimeStepping: do j = 1,in%Nsteps
           		!$OMP END DO
 
               in%species_b = 2
-          		!$OMP DO
+          		!$OMP DO SCHEDULE(STATIC,in%chunk)
               		do i = 1,in%Nparts
               		    call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt,in)
               		end do
@@ -297,7 +296,7 @@ TimeStepping: do j = 1,in%Nsteps
     if (in%iHeat) then
       !$OMP PARALLEL PRIVATE(i, ecnt, pcnt, df, fnew)
           ecnt = 0; pcnt = 0; df = 0;
-          !$OMP DO SCHEDULE(STATIC)
+          !$OMP DO SCHEDULE(STATIC,in%chunk)
               do i = 1,in%Nparts
                       call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_Bz)
                       df = dsign(1.d0,fcurr(i)*fnew(i))
@@ -324,7 +323,7 @@ TimeStepping: do j = 1,in%Nsteps
         do k = 1,jsize
             if (j .EQ. jrng(k)) then
                 t_hist(k) = tp
-				        !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC)
+				        !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC,in%chunk)
                     do i = 1,in%Nparts
                             ! Record "ith" particle position at "kth" time
                             zp_hist(i,k) = zp(i)

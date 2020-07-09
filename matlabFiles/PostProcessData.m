@@ -1,12 +1,12 @@
 clear all
-% close all
+close all
 
 homeAddress = cd;
 addpath(homeAddress);
 rootAddress = 'C:\Users\nfc\Documents\Programming\LinearFokkerPlanck\outputFiles';
 
 cd(rootAddress);
-folderName = 'Case16';
+folderName = 'Case9';
 cd(folderName);
 
 % Simulation conditions:
@@ -82,12 +82,12 @@ cd(homeAddress);
 
 %% Plot data:
 % =========================================================================
-if 0
+if 1
     figure; 
    
     EmaxPlot = 45000;   
     EminPlot = 0;
-    n_persist = 35;
+    n_persist = 0;
     k = 1;
     for ii = 1:6:(size(zp{k},2)-n_persist)
         t_rng = ii:(ii+n_persist);

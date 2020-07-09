@@ -10,7 +10,6 @@ r4=SELECTED_REAL_KIND(6,37),r8=SELECTED_REAL_KIND(13,307)
 
 END MODULE local
 
-
 !  **************************************************************
 ! MODULE dataTYP
 ! module containing definition of an object to contain all data used in
@@ -27,7 +26,7 @@ TYPE inTYP
   REAL(r8) :: Aion, Zeff, Zion
   INTEGER(i4) :: Nparts, Nsteps, nz, species_a, species_b
   INTEGER(i4) :: jstart, jend, jincr
-  INTEGER(i4) :: threads_request, threads_given
+  INTEGER(i4) :: threads_request, threads_given, chunk
   LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
   INTEGER(i4) :: zp_InitType,kep_InitType, xip_InitType
   REAL(r8) :: zp_init, kep_init, xip_init, zp_init_std
@@ -40,55 +39,6 @@ TYPE inTYP
   REAL(r8) :: tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
   REAL(r8) :: m_t, q_t
 END TYPE inTYP
-
-TYPE outTYP
-  REAL(r8), DIMENSION(:), ALLOCATABLE :: kep, xip, zp
-  REAL(r8), DIMENSION(:), ALLOCATABLE :: pcount1, pcount2, pcount3, pcount4
-  REAL(r8), DIMENSION(:), ALLOCATABLE :: ecount1, ecount2, ecount3, ecount4
-END TYPE outTYP
-
-TYPE derTYP
-  REAL(r8) :: q
-  REAL(r8) :: m_t
-  INTEGER(i4) :: species_b
-  REAL(r8),DIMENSION(:), ALLOCATABLE :: fcurr, fnew
-END TYPE derTYP
-
-CONTAINS
-  SUBROUTINE InitOut(out0,in0)
-    IMPLICIT NONE
-    TYPE(inTYP)  :: in0
-    TYPE(outTYP) :: out0
-    INTEGER(i4)  :: n1, n2
-
-    ! Allocate memory:
-    n1 = in0%Nparts
-    n2 = in0%Nsteps
-    WRITE(*,*) "Nparts", in0%Nparts
-    WRITE(*,*) "Nsteps", in0%Nsteps
-    ALLOCATE(out0%kep(n1), out0%xip(n1), out0%zp(n1))
-    ALLOCATE(out0%pcount1(n2), out0%pcount2(n2), out0%pcount3(n2), out0%pcount4(n2))
-    ALLOCATE(out0%ecount1(n2), out0%ecount2(n2), out0%ecount3(n2), out0%ecount4(n2))
-
-    ! Initialize variables
-    out0%kep = 0.; out0%xip = 0.; out0%zp = 0.
-    out0%pcount1 = 0.; out0%pcount2 = 0.; out0%pcount3 = 0.; out0%pcount4 = 0.
-    out0%ecount1 = 0.; out0%ecount2 = 0.; out0%ecount3 = 0.; out0%ecount4 = 0.
-  END SUBROUTINE InitOut
-
-  SUBROUTINE InitDer(der0,in0)
-    IMPLICIT NONE
-    TYPE(inTYP)  :: in0
-    TYPE(derTYP) :: der0
-    INTEGER(i4)  :: n1
-
-    ! Allocate memory:
-    n1 = in0%Nparts
-    ALLOCATE(der0%fcurr(n1), der0%fnew(n1))
-
-    ! Initialize variables
-    der0%fcurr = 0.; der0%fnew = 0.
-  END SUBROUTINE InitDer
 
 END MODULE dataTYP
 
