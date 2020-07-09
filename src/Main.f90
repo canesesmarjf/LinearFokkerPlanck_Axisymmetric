@@ -213,6 +213,7 @@ call OMP_SET_NUM_THREADS(in%threads_request)
     id = OMP_GET_THREAD_NUM()
     in%threads_given = OMP_GET_NUM_THREADS()
     if (id .EQ. 0) write(*,*) "number of threads given: ", in%threads_given
+    if (id .EQ. 0) write(*,*) "chunk size: ", in%chunk
 !$OMP END PARALLEL
 
 ! Start of simulation:

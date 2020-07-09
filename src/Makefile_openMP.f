@@ -19,7 +19,7 @@ PotentialProfile.o: PotentialProfile.f90
 	$(COMPILER) $(OPTFLAGS) -c PotentialProfile.f90
 
 fitpack.o: fitpack.f
-	$(COMPILER) $(OPTFLAGS) -c fitpack.f
+	$(COMPILER) $(OPTFLAGS) -c -w fitpack.f
 
 MoveParticlePack.o: MoveParticlePack.f90
 	$(COMPILER) $(OPTFLAGS) -c MoveParticlePack.f90
