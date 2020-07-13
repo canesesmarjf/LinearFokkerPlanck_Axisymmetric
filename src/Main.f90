@@ -61,7 +61,7 @@ REAL(r8) :: ecnt, ecnt1, ecnt2
 REAL(r8) :: pcnt, pcnt1, pcnt2
 ! To store system commands and fileNames:
 CHARACTER*150 :: command, mpwd
-CHARACTER*250 :: fileName
+CHARACTER*250 :: fileName, fileSelector
 
 ! Create input namelist from the user-defined structures:
 ! ==============================================================================
@@ -73,7 +73,23 @@ ostart = OMP_GET_WTIME()
 
 ! Read input data into in structure:
 ! ==============================================================================
-fileName = "data.in"
+fileName = "/InputFiles/fileSelector.in"
+
+write(*,*) trim(adjustl(in%rootDir))
+return
+
+fileName = trim(adjustl(in%rootDir))//fileName
+
+write(*,*) fileName
+return
+
+open(unit=4,file=fileName,status='old',form='formatted')
+read(4,*) fileSelector
+close(unit=4)
+
+fileName = "/InputFiles/"//fileSelector
+fileName = ""//fileName
+fileName = trim(adjustl(in%rootDir))//fileName
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,in_nml)
 close(unit=4)
