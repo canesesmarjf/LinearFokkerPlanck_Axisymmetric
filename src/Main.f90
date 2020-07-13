@@ -484,18 +484,6 @@ if (in%iSave) then
     !write(*,*) 'copy command: ', command
     call system(command)
 
-    return
-
-    ! Move output directory to its final destination:
-    dir0 = trim(in%rootDir)//'/src/'//trim(in%fileDescriptor)
-    dir1 = ' '//trim(in%rootDir)//'/OutputFiles'
-    write(*,*) dir0
-    write(*,*) dir1
-
-    command = trim(trim(dir0)//trim(dir1))
-    command = 'mv '//command
-    call system(command)
-
 end if
 
 End PROGRAM
