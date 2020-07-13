@@ -28,4 +28,4 @@ CoulombCollisions.o: CoulombCollisions.f90
 	$(COMPILER) $(OPTFLAGS) -fopenmp -c CoulombCollisions.f90
 
 clean:
-	rm *.o *.mod mpex
+	rm *.o *.mod MPEX *.dat
