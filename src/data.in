@@ -1,8 +1,7 @@
 &in_nml
-in%fileDescriptor = 'Case19',
+in%fileDescriptor = 'Case1_Xray3rdHarmonic',
 
 in%rootDir = "/Users/nfc/Documents/Programming/LinearFokkerPlanck",
-!in%rootDir = "$HOME/LinearFokkerPlanck"
 in%BFieldFileDir = "/BfieldData",   ! Location of file
 !in%BFieldFile = "/CDa_Gap_0p0inch.txt",
 in%BFieldFile = "/Bfield_case_1.txt",
@@ -17,7 +16,7 @@ in%chunk = 1,
 in%iSave = .true.,
 in%iPush = .true.,                                                             ! Enable RK4 particle pusher
 in%iColl = .true.,                                                             ! Collisions or no collisions
-in%iHeat = .false.,                                                             ! Enable RF heating operator
+in%iHeat = .true.,                                                             ! Enable RF heating operator
 in%iPotential = .false.,                                                       ! Enable electric potential
 in%iDrag = .false.,                                                             ! Enable plasma drag
 

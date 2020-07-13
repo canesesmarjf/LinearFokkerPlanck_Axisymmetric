@@ -69,7 +69,6 @@ namelist/in_nml/in
 
 ! Record start time:
 ! ==============================================================================
-call cpu_time(tstart)
 ostart = OMP_GET_WTIME()
 
 ! Read input data into in structure:
@@ -345,12 +344,10 @@ end do TimeStepping
 ! Record end time:
 ! =========================================================================
 in%tSimTime = tp
-call cpu_time(tend)
 oend = OMP_GET_WTIME()
 
-in%tComputeTime = (tend-tstart)/in%threads_given
+in%tComputeTime = oend-ostart
 print *, 'Reached End of Program, Computational time [s] = ', in%tComputeTime
-print *, 'OMP: Reached End of Program, Computational time [s] = ', oend-ostart
 
 ! Save data:
 ! ==============================================================================
