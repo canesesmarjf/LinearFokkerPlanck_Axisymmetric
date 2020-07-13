@@ -390,15 +390,10 @@ if (in%iSave) then
     dir1 = trim(dir1)//'/'//trim(in%fileDescriptor)
     command = 'mkdir '// dir1
     call system(command,STATUS)
-	  !write(*,*) command
     call getcwd(mpwd)
-
-    !WRITE(*,*) 'STATUS:', STATUS
-    !WRITE(*,*) 'command 386:', command
 
     ! Saving zp_hist to file:
     ! --------------------------------------------------------------------------
-    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'zp.out')
     fileName = trim(trim(dir1)//'/'//'zp.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) zp_hist
@@ -406,7 +401,6 @@ if (in%iSave) then
 
     ! Saving kep_hist to file:
     ! --------------------------------------------------------------------------
-    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'kep.out')
     fileName = trim(trim(dir1)//'/'//'kep.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) kep_hist
@@ -414,7 +408,6 @@ if (in%iSave) then
 
     ! Saving xip_hist to file:
     ! --------------------------------------------------------------------------
-    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'xip.out')
     fileName = trim(trim(dir1)//'/'//'xip.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) xip_hist
@@ -422,7 +415,6 @@ if (in%iSave) then
 
     ! Saving t_hist to file:
     ! --------------------------------------------------------------------------
-    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'tp.out')
     fileName = trim(trim(dir1)//'/'//'tp.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) t_hist
@@ -449,29 +441,24 @@ if (in%iSave) then
 
     ! Saving ecount to file:
     ! --------------------------------------------------------------------------
-    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount1.out')
     fileName = trim(trim(dir1)//'/'//'ecount1.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount1
     close(unit=8)
     fileName = trim(trim(dir1)//'/'//'ecount2.out')
-    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount2.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount2
     close(unit=8)
-    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount3.out')
     fileName = trim(trim(dir1)//'/'//'ecount3.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount3
     close(unit=8)
     fileName = trim(trim(dir1)//'/'//'ecount4.out')
-    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount4.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount4
     close(unit=8)
 
     ! Write output data:
-    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'data.out')
     fileName = trim(trim(dir1)//'/'//'data.out')
     open(unit=8,file=fileName,form="formatted",status="unknown")
     write(8,NML = in_nml)
@@ -479,9 +466,7 @@ if (in%iSave) then
 
     ! Copy inputdata to output file:
     dir0 = trim(in%rootDir)//'/InputFiles/'//trim(xpSelector)
-    !dir1 = ' '//trim(in%rootDir)//'/src/'//trim(in%fileDescriptor)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
-    !write(*,*) 'copy command: ', command
     call system(command)
 
 end if

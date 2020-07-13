@@ -7,7 +7,7 @@ in%BFieldFileDir = "/BfieldData",   ! Location of file
 in%BFieldFile = "/Bfield_case_1.txt",
 in%nz = 501,						                                                        ! Number of points in BFieldFile
 
-in%Nparts = 40000,                                                                ! Total number of particles
+in%Nparts = 100,                                                                ! Total number of particles
 in%Nsteps = 1000,                                                              ! Total number of time steps
 in%dt     = 30E-9,
 in%threads_request = 4,                                                            ! Time step in [s]
