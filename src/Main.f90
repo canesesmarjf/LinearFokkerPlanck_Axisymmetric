@@ -60,39 +60,41 @@ REAL(r8), DIMENSION(:)  , ALLOCATABLE :: fcurr, fnew
 REAL(r8) :: ecnt, ecnt1, ecnt2
 REAL(r8) :: pcnt, pcnt1, pcnt2
 ! To store system commands and fileNames:
-CHARACTER*150 :: command, mpwd
-CHARACTER*250 :: fileName, fileSelector
+CHARACTER*250 :: command, mpwd
+INTEGER(i4) :: n_mpwd, STATUS
+CHARACTER*250 :: fileName, fileSelector, rootDir, dir0, dir1
 
 ! Create input namelist from the user-defined structures:
 ! ==============================================================================
 namelist/in_nml/in
+namelist/fs_nml/fileSelector
 
-! Record start time:
+! Get root directory:
 ! ==============================================================================
-ostart = OMP_GET_WTIME()
+call getcwd(mpwd)
+! Get length of directory string:
+n_mpwd = LEN(trim(adjustl(mpwd)))
+! Remove parts of string:
+n_mpwd = n_mpwd - 4
+rootDir = mpwd(1:n_mpwd)
+write(*,*) rootDir
 
-! Read input data into in structure:
+! Read input data into "in" structure:
 ! ==============================================================================
+! Read contents of fileSelector:
 fileName = "/InputFiles/fileSelector.in"
-
-write(*,*) trim(adjustl(in%rootDir))
-return
-
-fileName = trim(adjustl(in%rootDir))//fileName
-
-write(*,*) fileName
-return
-
+fileName = trim(adjustl(rootDir))//fileName
 open(unit=4,file=fileName,status='old',form='formatted')
-read(4,*) fileSelector
+read(4,fs_nml)
 close(unit=4)
 
-fileName = "/InputFiles/"//fileSelector
-fileName = ""//fileName
-fileName = trim(adjustl(in%rootDir))//fileName
+! Read the file with name given by contents of fileSelector:
+fileName = trim(adjustl(rootDir))//"/InputFiles/"//trim(adjustl(fileSelector))
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,in_nml)
 close(unit=4)
+! populate the in%rootDir field:
+in%rootDir = trim(adjustl(rootDir))
 
 if (in%species_a .eq. 1) then
     in%q_t = -e_c
@@ -104,6 +106,7 @@ end if
 
 ! Print to the terminal:
 ! ==============================================================================
+print *, 'Input file         ', fileSelector
 print *, 'fileDescriptor     ', in%fileDescriptor
 print *, 'Number of particles', in%Nparts
 print *, 'Number of steps    ', in%Nsteps
@@ -192,6 +195,10 @@ if (.true.) then
     end do
     close(unit=8)
 end if
+
+! Record start time:
+! ==============================================================================
+ostart = OMP_GET_WTIME()
 
 ! Initialize pseudo random number generator:
 ! ===========================================================================
@@ -370,10 +377,13 @@ print *, 'Reached End of Program, Computational time [s] = ', in%tComputeTime
 if (in%iSave) then
     ! Create new directory to save output data:
     ! --------------------------------------------------------------------------
-	command = 'mkdir '// trim(in%fileDescriptor)
-	write(*,*) command
-    call system(command)
+	  command = 'mkdir '// trim(in%fileDescriptor)
+	  write(*,*) command
+    call system(command,STATUS)
     call getcwd(mpwd)
+
+    WRITE(*,*) 'STATUS:', STATUS
+    WRITE(*,*) 'command 386:', command
 
     ! Saving zp_hist to file:
     ! --------------------------------------------------------------------------
@@ -446,6 +456,24 @@ if (in%iSave) then
     open(unit=8,file=fileName,form="formatted",status="unknown")
     write(8,NML = in_nml)
     close(unit=8)
+
+    ! Copy inputdata to output file:
+    dir0 = trim(in%rootDir)//'/InputFiles/'//trim(fileSelector)
+    dir1 = ' '//trim(in%rootDir)//'/src/'//trim(in%fileDescriptor)
+    command = 'cp '//trim(trim(dir0)//trim(dir1))
+    write(*,*) 'copy command: ', command
+    call system(command)
+
+    ! Move output directory to its final destination:
+    dir0 = trim(in%rootDir)//'/src/'//trim(in%fileDescriptor)
+    dir1 = ' '//trim(in%rootDir)//'/OutputFiles'
+    write(*,*) dir0
+    write(*,*) dir1
+
+    command = trim(trim(dir0)//trim(dir1))
+    command = 'mv '//command
+    call system(command)
+
 end if
 
 End PROGRAM

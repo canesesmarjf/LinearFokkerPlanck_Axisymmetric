@@ -1,14 +1,13 @@
 &in_nml
-in%fileDescriptor = 'Case1_Xray3rdHarmonic',
+in%fileDescriptor = 'Case1_Template',
 
-in%rootDir = "",
+in%rootDir = "use system commands to fetch",
 in%BFieldFileDir = "/BfieldData",   ! Location of file
-!in%BFieldFile = "/CDa_Gap_0p0inch.txt",
 in%BFieldFile = "/Bfield_case_1.txt",
 in%nz = 501,						                                                        ! Number of points in BFieldFile
 
-in%Nparts = 40000,                                                                ! Total number of particles
-in%Nsteps = 1000,                                                              ! Total number of time steps
+in%Nparts = 100,                                                                ! Total number of particles
+in%Nsteps = 100,                                                              ! Total number of time steps
 in%dt     = 30E-9,
 in%threads_request = 4,                                                            ! Time step in [s]
 in%chunk = 1,
@@ -21,8 +20,8 @@ in%iPotential = .false.,                                                       !
 in%iDrag = .false.,                                                             ! Enable plasma drag
 
 in%jstart = 1,                                                               !
-in%jend   = 1000,                                                              !
-in%jincr  = 100,                                                                !
+in%jend   = 100,                                                              !
+in%jincr  = 10,                                                                !
 
 in%Te0 = 600.,	                                                                ! eV
 in%Ti0 = 600.,                                                                   ! eV

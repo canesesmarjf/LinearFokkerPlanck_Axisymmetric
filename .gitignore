@@ -5,6 +5,9 @@
 
 # Ignore all output directories, these are usually called case?
 case?/
+/OutputFiles/*
+# !OutputFiles/Case1_Template/
 
 # Ignore executable files
 *.exe
+MPEX
