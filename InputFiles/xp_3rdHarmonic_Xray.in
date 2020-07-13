@@ -1,5 +1,5 @@
 &in_nml
-in%fileDescriptor = 'Case1_Xray3rdHarmonic',
+in%fileDescriptor = 'Case1',
 
 in%rootDir = "",
 in%BFieldFileDir = "/BfieldData",   ! Location of file

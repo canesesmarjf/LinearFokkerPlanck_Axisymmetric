@@ -62,12 +62,12 @@ REAL(r8) :: pcnt, pcnt1, pcnt2
 ! To store system commands and fileNames:
 CHARACTER*250 :: command, mpwd
 INTEGER(i4) :: n_mpwd, STATUS
-CHARACTER*250 :: fileName, fileSelector, rootDir, dir0, dir1
+CHARACTER*250 :: fileName, xpSelector, rootDir, dir0, dir1
 
 ! Create input namelist from the user-defined structures:
 ! ==============================================================================
 namelist/in_nml/in
-namelist/fs_nml/fileSelector
+namelist/xp_nml/xpSelector
 
 ! Get root directory:
 ! ==============================================================================
@@ -77,19 +77,19 @@ n_mpwd = LEN(trim(adjustl(mpwd)))
 ! Remove parts of string:
 n_mpwd = n_mpwd - 4
 rootDir = mpwd(1:n_mpwd)
-write(*,*) rootDir
+write(*,*) 'root directory: ', rootDir
 
 ! Read input data into "in" structure:
 ! ==============================================================================
-! Read contents of fileSelector:
-fileName = "/InputFiles/fileSelector.in"
+! Read contents of xpSelector:
+fileName = "/InputFiles/xpSelector.in"
 fileName = trim(adjustl(rootDir))//fileName
 open(unit=4,file=fileName,status='old',form='formatted')
-read(4,fs_nml)
+read(4,xp_nml)
 close(unit=4)
 
-! Read the file with name given by contents of fileSelector:
-fileName = trim(adjustl(rootDir))//"/InputFiles/"//trim(adjustl(fileSelector))
+! Read the file with name given by contents of xpSelector:
+fileName = trim(adjustl(rootDir))//"/InputFiles/"//trim(adjustl(xpSelector))
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,in_nml)
 close(unit=4)
@@ -106,7 +106,7 @@ end if
 
 ! Print to the terminal:
 ! ==============================================================================
-print *, 'Input file         ', fileSelector
+print *, 'Input file         ', xpSelector
 print *, 'fileDescriptor     ', in%fileDescriptor
 print *, 'Number of particles', in%Nparts
 print *, 'Number of steps    ', in%Nsteps
@@ -377,92 +377,114 @@ print *, 'Reached End of Program, Computational time [s] = ', in%tComputeTime
 if (in%iSave) then
     ! Create new directory to save output data:
     ! --------------------------------------------------------------------------
-	  command = 'mkdir '// trim(in%fileDescriptor)
-	  write(*,*) command
+    dir1 = trim(in%rootDir)//'/OutputFiles'
+    command = 'mkdir '//dir1
+    call system(command)
+
+    n_mpwd = lEN_TRIM(xpSelector)-3
+    dir0 = xpSelector
+    dir0 = dir0(1:n_mpwd)
+    dir1 = trim(in%rootDir)//'/OutputFiles/'//trim(dir0)
+    command = 'mkdir '//dir1
     call system(command,STATUS)
+    dir1 = trim(dir1)//'/'//trim(in%fileDescriptor)
+    command = 'mkdir '// dir1
+    call system(command,STATUS)
+	  !write(*,*) command
     call getcwd(mpwd)
 
-    WRITE(*,*) 'STATUS:', STATUS
-    WRITE(*,*) 'command 386:', command
+    !WRITE(*,*) 'STATUS:', STATUS
+    !WRITE(*,*) 'command 386:', command
 
     ! Saving zp_hist to file:
     ! --------------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'zp.out')
+    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'zp.out')
+    fileName = trim(trim(dir1)//'/'//'zp.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) zp_hist
     close(unit=8)
 
     ! Saving kep_hist to file:
     ! --------------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'kep.out')
+    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'kep.out')
+    fileName = trim(trim(dir1)//'/'//'kep.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) kep_hist
     close(unit=8)
 
     ! Saving xip_hist to file:
     ! --------------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'xip.out')
+    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'xip.out')
+    fileName = trim(trim(dir1)//'/'//'xip.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) xip_hist
     close(unit=8)
 
     ! Saving t_hist to file:
     ! --------------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'tp.out')
+    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'tp.out')
+    fileName = trim(trim(dir1)//'/'//'tp.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) t_hist
     close(unit=8)
 
     ! Saving pcount to file:
     ! --------------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'pcount1.out')
+    fileName = trim(trim(dir1)//'/'//'pcount1.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount1
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'pcount2.out')
+    fileName = trim(trim(dir1)//'/'//'pcount2.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount2
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'pcount3.out')
+    fileName = trim(trim(dir1)//'/'//'pcount3.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount3
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'pcount4.out')
+    fileName = trim(trim(dir1)//'/'//'pcount4.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) pcount4
     close(unit=8)
 
     ! Saving ecount to file:
     ! --------------------------------------------------------------------------
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount1.out')
+    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount1.out')
+    fileName = trim(trim(dir1)//'/'//'ecount1.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount1
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount2.out')
+    fileName = trim(trim(dir1)//'/'//'ecount2.out')
+    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount2.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount2
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount3.out')
+    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount3.out')
+    fileName = trim(trim(dir1)//'/'//'ecount3.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount3
     close(unit=8)
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount4.out')
+    fileName = trim(trim(dir1)//'/'//'ecount4.out')
+    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'ecount4.out')
     open(unit=8,file=fileName,form="unformatted",status="unknown")
     write(8) ecount4
     close(unit=8)
 
     ! Write output data:
-    fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'data.out')
+    !fileName = trim(trim(mpwd)//'/'//trim(in%fileDescriptor)//'/'//'data.out')
+    fileName = trim(trim(dir1)//'/'//'data.out')
     open(unit=8,file=fileName,form="formatted",status="unknown")
     write(8,NML = in_nml)
     close(unit=8)
 
     ! Copy inputdata to output file:
-    dir0 = trim(in%rootDir)//'/InputFiles/'//trim(fileSelector)
-    dir1 = ' '//trim(in%rootDir)//'/src/'//trim(in%fileDescriptor)
-    command = 'cp '//trim(trim(dir0)//trim(dir1))
-    write(*,*) 'copy command: ', command
+    dir0 = trim(in%rootDir)//'/InputFiles/'//trim(xpSelector)
+    !dir1 = ' '//trim(in%rootDir)//'/src/'//trim(in%fileDescriptor)
+    command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
+    !write(*,*) 'copy command: ', command
     call system(command)
+
+    return
 
     ! Move output directory to its final destination:
     dir0 = trim(in%rootDir)//'/src/'//trim(in%fileDescriptor)

@@ -1,5 +1,5 @@
 &in_nml
-in%fileDescriptor = 'Case1_Template',
+in%fileDescriptor = 'Case2_Template',
 
 in%rootDir = "use system commands to fetch",
 in%BFieldFileDir = "/BfieldData",   ! Location of file
