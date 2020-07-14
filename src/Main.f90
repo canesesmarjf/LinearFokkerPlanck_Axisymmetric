@@ -60,9 +60,9 @@ REAL(r8), DIMENSION(:)  , ALLOCATABLE :: fcurr, fnew
 REAL(r8) :: ecnt, ecnt1, ecnt2
 REAL(r8) :: pcnt, pcnt1, pcnt2
 ! To store system commands and fileNames:
-CHARACTER*250 :: command, mpwd
+CHARACTER*300 :: command, mpwd
 INTEGER(i4) :: n_mpwd, STATUS
-CHARACTER*250 :: fileName, xpSelector, rootDir, dir0, dir1
+CHARACTER*300 :: fileName, xpSelector, rootDir, dir0, dir1
 
 ! Create input namelist from the user-defined structures:
 ! ==============================================================================
@@ -90,6 +90,7 @@ close(unit=4)
 
 ! Read the file with name given by contents of xpSelector:
 fileName = trim(adjustl(rootDir))//"/InputFiles/"//trim(adjustl(xpSelector))
+write(*,*) fileName
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,in_nml)
 close(unit=4)
@@ -468,6 +469,11 @@ if (in%iSave) then
     dir0 = trim(in%rootDir)//'/InputFiles/'//trim(xpSelector)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
     call system(command)
+
+    ! copy magnetic field data:
+    dir0 = trim(in%rootDir)//'/BfieldData'//trim(in%BFieldFile)
+    command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
+    call system(command
 
 end if
 
