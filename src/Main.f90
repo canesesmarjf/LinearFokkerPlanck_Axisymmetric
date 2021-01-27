@@ -87,10 +87,11 @@ fileName = trim(adjustl(rootDir))//fileName
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,xp_nml)
 close(unit=4)
+write(*,*) 'content of xpSelector:', fileName
 
 ! Read the file with name given by contents of xpSelector:
 fileName = trim(adjustl(rootDir))//"/InputFiles/"//trim(adjustl(xpSelector))
-write(*,*) fileName
+write(*,*) 'Name of input file:', fileName
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,in_nml)
 close(unit=4)
@@ -107,24 +108,24 @@ end if
 
 ! Print to the terminal:
 ! ==============================================================================
-print *, 'Input file         ', xpSelector
-print *, 'fileDescriptor     ', in%fileDescriptor
-print *, 'Number of particles', in%Nparts
-print *, 'Number of steps    ', in%Nsteps
-print *, 'dt [ns]            ', in%dt*1E+9
-print *, 'iPush              ', in%iPush
-print *, 'iDrag              ', in%iDrag
-print *, 'iColl              ', in%iColl
-print *, 'iHeat              ', in%iHeat
-print *, 'iSave              ', in%iSave
-print *, 'elevel             ', in%elevel
-print *, 'zTarget [m]        ', in%zmax
-print *, 'zDump [m]          ', in%zmin
-print *, 'zp_init [m]        ', in%zp_init
-print *, 'B field file       ', in%BFieldFile
-print *, 'Ew                 ', in%Ew
-print *, 'Te0                ', in%Te0
-print *, 'ne0                ', in%ne0
+print *, 'Input file:         ', xpSelector
+print *, 'fileDescriptor:     ', in%fileDescriptor
+print *, 'Number of particles:', in%Nparts
+print *, 'Number of steps:    ', in%Nsteps
+print *, 'dt [ns]:            ', in%dt*1E+9
+print *, 'iPush:              ', in%iPush
+print *, 'iDrag:              ', in%iDrag
+print *, 'iColl:              ', in%iColl
+print *, 'iHeat:              ', in%iHeat
+print *, 'iSave:              ', in%iSave
+print *, 'elevel:             ', in%elevel
+print *, 'zTarget [m]:        ', in%zmax
+print *, 'zDump [m]:          ', in%zmin
+print *, 'zp_init [m]:        ', in%zp_init
+print *, 'B field file:       ', in%BFieldFile
+print *, 'Ew:                 ', in%Ew
+print *, 'Te0:                 ', in%Te0
+print *, 'ne0:                ', in%ne0
 if (in%CollOperType .EQ. 1) print *, 'Boozer-Only collision operator'
 if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
 
@@ -258,7 +259,7 @@ TimeStepping: do j = 1,in%Nsteps
     ! Push particles adiabatically:
     ! ==========================================================================
     if (in%iPush) then
-      !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC,in%chunk)
+      !$OMP PARALLEL DO PRIVATE(i)
         do i = 1,in%Nparts
             call MoveParticle(zp(i),kep(i),xip(i),in,spline_Bz,spline_Phi)
         end do
@@ -270,7 +271,7 @@ TimeStepping: do j = 1,in%Nsteps
     if (.true.) then
       !$OMP PARALLEL PRIVATE(ecnt1, ecnt2, pcnt1, pcnt2)
           ecnt1 = 0; ecnt2 = 0; pcnt1 = 0; pcnt2 = 0
-          !$OMP DO SCHEDULE(STATIC,in%chunk)
+          !$OMP DO 
               do i = 1,in%Nparts
                   if (zp(i) .GE. in%zmax) then
                       call ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
@@ -296,7 +297,7 @@ TimeStepping: do j = 1,in%Nsteps
               id = OMP_GET_THREAD_NUM()
 
               in%species_b = 1
-          		!$OMP DO SCHEDULE(STATIC,in%chunk)
+          		!$OMP DO
               		do i = 1,in%Nparts
                     !if (id .EQ. 0) write(*,*) "Thread", id, " at i = ", i
               			call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt,in)
@@ -304,7 +305,7 @@ TimeStepping: do j = 1,in%Nsteps
           		!$OMP END DO
 
               in%species_b = 2
-          		!$OMP DO SCHEDULE(STATIC,in%chunk)
+          		!$OMP DO 
               		do i = 1,in%Nparts
               		    call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt,in)
               		end do
@@ -323,7 +324,7 @@ TimeStepping: do j = 1,in%Nsteps
     if (in%iHeat) then
       !$OMP PARALLEL PRIVATE(i, ecnt, pcnt, df, fnew)
           ecnt = 0; pcnt = 0; df = 0;
-          !$OMP DO SCHEDULE(STATIC,in%chunk)
+          !$OMP DO
               do i = 1,in%Nparts
                       call CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_Bz)
                       df = dsign(1.d0,fcurr(i)*fnew(i))
@@ -350,7 +351,7 @@ TimeStepping: do j = 1,in%Nsteps
         do k = 1,jsize
             if (j .EQ. jrng(k)) then
                 t_hist(k) = tp
-				        !$OMP PARALLEL DO PRIVATE(i) SCHEDULE(STATIC,in%chunk)
+                    !$OMP PARALLEL DO PRIVATE(i)
                     do i = 1,in%Nparts
                             ! Record "ith" particle position at "kth" time
                             zp_hist(i,k) = zp(i)
@@ -359,7 +360,7 @@ TimeStepping: do j = 1,in%Nsteps
                             ! Record "ith" particle pitch angle at "kth" time
                             xip_hist(i,k) = xip(i)
                     end do
-				        !$OMP END PARALLEL DO
+		   !$OMP END PARALLEL DO
             endif
         end do
     end if
@@ -473,7 +474,7 @@ if (in%iSave) then
     ! copy magnetic field data:
     dir0 = trim(in%rootDir)//'/BfieldData'//trim(in%BFieldFile)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
-    call system(command
+    call system(command)
 
 end if
 
