@@ -11,7 +11,7 @@ targetAddress = [homeAddress,'\',folderName];
 
 % Extract simulation conditions:
 % =========================================================================
-fileName = [targetAddress,'\data.out'];
+fileName = [targetAddress,'\metadata.txt'];
 metadata = GetMetadata(fileName,1);
 dt  = metadata.DT;
 Te0 = metadata.TE0;
@@ -68,7 +68,7 @@ clearvars f1 f2 fid
 
 % Magnetic field data
 % =========================================================================
-BfieldAddress = dir([targetAddress,'\*.txt']);
+BfieldAddress = dir([targetAddress,'*field.txt']);
 f = load([BfieldAddress.folder,'\',BfieldAddress.name]);
 zb = f(:,1);
 b  = f(:,2);
