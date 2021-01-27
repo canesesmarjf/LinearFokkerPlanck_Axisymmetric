@@ -459,7 +459,7 @@ if (in%iSave) then
     close(unit=8)
 
     ! Write output data:
-    fileName = trim(trim(dir1)//'/'//'data.out')
+    fileName = trim(trim(dir1)//'/'//'metadata.txt')
     open(unit=8,file=fileName,form="formatted",status="unknown")
     write(8,NML = in_nml)
     close(unit=8)
@@ -471,7 +471,8 @@ if (in%iSave) then
 
     ! copy magnetic field data:
     dir0 = trim(in%rootDir)//'/BfieldData'//trim(in%BFieldFile)
-    command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
+    command = 'cp '//trim(trim(dir0)//' '//trim(dir1))//'/Bfield.txt'
+    WRITE(*,*) 'command: ', command 
     call system(command)
 
     ! create text file with commit Hash:
@@ -480,7 +481,6 @@ if (in%iSave) then
     dir0 = dir0(1:n_mpwd)
     dir0 = trim(in%rootDir)//'/OutputFiles/'//trim(dir0)//'/'//trim(in%fileDescriptor)
     fileName = trim(dir0)//'/commitHash.txt'
-    WRITE(*,*) 'fileName', fileName 
     command = 'git log --oneline -1 > '//trim(fileName)
     call system(command)
 
