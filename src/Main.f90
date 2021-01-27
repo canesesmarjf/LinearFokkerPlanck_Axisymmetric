@@ -123,7 +123,7 @@ print *, 'zDump [m]:          ', in%zmin
 print *, 'zp_init [m]:        ', in%zp_init
 print *, 'B field file:       ', in%BFieldFile
 print *, 'Ew:                 ', in%Ew
-print *, 'Te0:                 ', in%Te0
+print *, 'Te0:                ', in%Te0
 print *, 'ne0:                ', in%ne0
 if (in%CollOperType .EQ. 1) print *, 'Boozer-Only collision operator'
 if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'

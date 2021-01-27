@@ -29,7 +29,7 @@ TYPE inTYP
   INTEGER(i4) :: threads_request, threads_given, particleBC
   LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
   INTEGER(i4) :: zp_InitType,kep_InitType, xip_InitType
-  REAL(r8) :: zp_init, kep_init, xip_init, zp_init_std
+  REAL(r8) :: zp_init, kep_init, xip_init, zp_init_std, xip_init_std
   REAL(r8) :: zmin, zmax
   INTEGER(i4) :: CollOperType
   REAL(r8) :: elevel

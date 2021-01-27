@@ -45,6 +45,7 @@ in%kep_init = 30000.,                                                           
 
 in%xip_InitType = 2,                                                             ! = 1 Isotropic   , = 2 Beam at xip = xip_init
 in%xip_init = 0.7,
+in%xip_init_std = 0.98,                                                        ! standard deviation in xip
 
 in%f_RF = 12.957E+6                                                             ! RF frequency
 in%zRes1 = -5.0                                                                  ! Defines interval where RF is present

@@ -43,8 +43,9 @@ in%zp_init_std = 0.001,		                                               ! STD of
 in%kep_InitType = 1,                                                           ! = 1 Maxwellian  , = 2 Beam at E = T_init
 in%kep_init = 6.,                                                              ! Initial energy of EEDF
 
-in%xip_InitType = 1,                                                           ! = 1 Isotropic   , = 2 Beam at xip = xip_init
-in%xip_init = 0.7,
+in%xip_InitType = 2,                                                           ! 1: Isotropic, 2: Beam at xip = xip_init
+in%xip_init = 0.707,                                                           ! mean value of xip = upar/u
+in%xip_init_std = 0.98,                                                        ! standard deviation in xip
 
 in%f_RF = 28.0E+9                                                              ! RF frequency
 in%zRes1 = 2.4                                                                 ! Defines interval where RF is present

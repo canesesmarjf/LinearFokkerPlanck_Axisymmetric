@@ -375,6 +375,10 @@ SUBROUTINE loadParticles(zp,kep,xip,in0)
   elseif (in0%xip_InitType .EQ. 2) then
       ! Beam pitch angle
       xip = in0%xip_init
+      ! Beam pitch angle with a Gaussian distribution in pitch angle space:
+      !call random_number(RmArray1)
+      !call random_number(RmArray2)
+      !xip = in0%xip_init_std*sqrt(-2.*log(RmArray1))*cos(2.*pi*RmArray2)  +  in0%xip_init
   end if
 return
 END SUBROUTINE loadParticles
