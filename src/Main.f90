@@ -77,7 +77,6 @@ n_mpwd = LEN(trim(adjustl(mpwd)))
 ! Remove parts of string:
 n_mpwd = n_mpwd - 4
 rootDir = mpwd(1:n_mpwd)
-write(*,*) 'root directory: ', rootDir
 
 ! Read input data into "in" structure:
 ! ==============================================================================
@@ -87,14 +86,13 @@ fileName = trim(adjustl(rootDir))//fileName
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,xp_nml)
 close(unit=4)
-write(*,*) 'content of xpSelector:', fileName
 
 ! Read the file with name given by contents of xpSelector:
 fileName = trim(adjustl(rootDir))//"/InputFiles/"//trim(adjustl(xpSelector))
-write(*,*) 'Name of input file:', fileName
 open(unit=4,file=fileName,status='old',form='formatted')
 read(4,in_nml)
 close(unit=4)
+
 ! populate the in%rootDir field:
 in%rootDir = trim(adjustl(rootDir))
 
@@ -481,8 +479,9 @@ if (in%iSave) then
     dir0 = xpSelector
     dir0 = dir0(1:n_mpwd)
     dir0 = trim(in%rootDir)//'/OutputFiles/'//trim(dir0)//'/'//trim(in%fileDescriptor)
-    fileName = dir0//'/commitHash.txt'
-    command = 'git log -1 > '//trim(dir0)
+    fileName = trim(dir0)//'/commitHash.txt'
+    WRITE(*,*) 'fileName', fileName 
+    command = 'git log --oneline -1 > '//trim(fileName)
     call system(command)
 
 end if

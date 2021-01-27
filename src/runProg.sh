@@ -11,4 +11,12 @@ sed -i "s|REPO_DIR|"$REPO_DIR"|g" $INPUT_FILE
 # Compile:
 make -f $REPO_DIR/src/Makefile_openMP.f
 
+# Run code:
+if [ $? -eq 0 ] ; then
+echo 'Succesfull compilation'
+echo 'Code is running...'
 ./MPEX
+echo 'Calculation complete!'
+else
+echo 'Compilation error'
+fi
