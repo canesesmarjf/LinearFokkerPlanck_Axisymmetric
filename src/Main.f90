@@ -477,7 +477,10 @@ if (in%iSave) then
     call system(command)
 
     ! create text file with commit Hash:
-    dir0 = trim(in%rootDir)//'/OutputFiles/'//trim(xpSelector)//'/'//trim(in%fileDescriptor)
+    n_mpwd = lEN_TRIM(xpSelector)-3
+    dir0 = xpSelector
+    dir0 = dir0(1:n_mpwd)
+    dir0 = trim(in%rootDir)//'/OutputFiles/'//trim(dir0)//'/'//trim(in%fileDescriptor)
     fileName = dir0//'/commitHash.txt'
     command = 'git log -1 > '//trim(dir0)
     call system(command)
