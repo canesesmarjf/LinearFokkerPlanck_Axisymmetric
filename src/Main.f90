@@ -275,7 +275,7 @@ TimeStepping: do j = 1,in%Nsteps
 
                       if (in%particleBC .EQ. 1) then
                         call ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
-                      elseif
+                      else if (in%particleBC .EQ. 2) then
                         zp(i) = in%zmin
                       end if
 
@@ -283,8 +283,8 @@ TimeStepping: do j = 1,in%Nsteps
 
                       if (in%particleBC .EQ. 1) then
                         call ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt1,pcnt1)
-                      elseif
-                        zp(i) = in%max
+                      else if (in%particleBC .EQ. 2) then
+                        zp(i) = in%zmax
                       end if
 
                   end if
