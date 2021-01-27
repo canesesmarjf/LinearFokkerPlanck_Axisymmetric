@@ -10,7 +10,7 @@ in%Nparts = 100,                                                                
 in%Nsteps = 100,                                                              ! Total number of time steps
 in%dt     = 30E-9,
 in%threads_request = 4,                                                            ! Time step in [s]
-in%chunk = 1,
+in%particleBC = 1,                                                              ! 1: source, 2: periodic
 
 in%iSave = .true.,
 in%iPush = .true.,                                                             ! Enable RK4 particle pusher

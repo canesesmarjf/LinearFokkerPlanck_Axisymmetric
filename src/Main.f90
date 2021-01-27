@@ -472,7 +472,7 @@ if (in%iSave) then
     ! copy magnetic field data:
     dir0 = trim(in%rootDir)//'/BfieldData'//trim(in%BFieldFile)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))//'/Bfield.txt'
-    WRITE(*,*) 'command: ', command 
+    WRITE(*,*) 'command: ', command
     call system(command)
 
     ! create text file with commit Hash:
