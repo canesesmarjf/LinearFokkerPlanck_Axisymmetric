@@ -1,15 +1,15 @@
 &in_nml
-in%fileDescriptor = '2021_01_27b',
+in%fileDescriptor = '2021_01_27d',
 
 in%rootDir ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
 in%BFieldFileDir = "/BfieldData",   ! Location of file
 in%BFieldFile = "/PS1_3500_PS2_2200_TR1_160_TR2_600_Upgrade.txt",
-in%nz = 501,						                                                        ! Number of points in BFieldFile
+in%nz = 501,			                                               ! Number of points in BFieldFile
 
-in%Nparts =2000,                                                                ! Total number of particles
-in%Nsteps = 500,                                                              ! Total number of time steps
+in%Nparts =2000,                                                               ! Total number of particles
+in%Nsteps = 500,                                                               ! Total number of time steps
 in%dt     = 0.5E-9,
-in%threads_request = 10,                                                            ! Time step in [s]
+in%threads_request = 10,                                                       ! Time step in [s]
 in%particleBC = 1,                                                             ! 1: source, 2: periodic
 
 in%iSave = .true.,
@@ -17,42 +17,42 @@ in%iPush = .true.,                                                             !
 in%iColl = .true.,                                                             ! Collisions or no collisions
 in%iHeat = .true.,                                                             ! Enable RF heating operator
 in%iPotential = .false.,                                                       ! Enable electric potential
-in%iDrag = .false.,                                                             ! Enable plasma drag
+in%iDrag = .false.,                                                            ! Enable plasma drag
 
-in%jstart = 1,                                                               !
-in%jend   = 500,                                                              !
+in%jstart = 1,                                                                 !
+in%jend   = 500,                                                               !
 in%jincr  = 10,                                                                !
 
-in%Te0 = 10.,	                                                                ! eV
-in%Ti0 = 10.,                                                                   ! eV
-in%ne0 = 2.0E+18,	                                                            ! /m**3
+in%Te0 = 10.,	                                                               ! eV
+in%Ti0 = 10.,                                                                  ! eV
+in%ne0 = 2.0E+18,	                                                       ! /m**3
 in%zmax = 4.23,
 in%zmin = 0.98,
 
 in%Aion = 2.,
-in%Zeff = 1.,                                                                   ! Zeff for ion/impurity mixture
-in%Zion = 1.,                                                                   ! Charge number for main ion species
+in%Zeff = 1.,                                                                  ! Zeff for ion/impurity mixture
+in%Zion = 1.,                                                                  ! Charge number for main ion species
 in%species_a = 1,                                                              ! =1 for electrons, =2 for ions
 in%elevel = 10,                                                                ! Energy at which slowing down power is calculated E = elevel*Te0
 in%CollOperType = 2,                                                           ! 1 for Boozer-Only, 2 for Boozer-Kim
 
-in%zp_InitType = 1,                                                              ! = 1 uniform load, = 2 gaussian load
-in%zp_init = 1.76,                                                               ! Mean particle injection
-in%zp_init_std = 0.001,				                                                      ! STD of particle injection
+in%zp_InitType = 1,                                                            ! = 1 uniform load, = 2 gaussian load
+in%zp_init = 1.76,                                                             ! Mean particle injection
+in%zp_init_std = 0.001,		                                               ! STD of particle injection
 
 in%kep_InitType = 1,                                                           ! = 1 Maxwellian  , = 2 Beam at E = T_init
-in%kep_init = 6.,                                                             ! Initial energy of EEDF
+in%kep_init = 6.,                                                              ! Initial energy of EEDF
 
-in%xip_InitType = 1,                                                             ! = 1 Isotropic   , = 2 Beam at xip = xip_init
+in%xip_InitType = 1,                                                           ! = 1 Isotropic   , = 2 Beam at xip = xip_init
 in%xip_init = 0.7,
 
-in%f_RF = 28.0E+9                                                             ! RF frequency
-in%zRes1 = 2.4                                                                  ! Defines interval where RF is present
+in%f_RF = 28.0E+9                                                              ! RF frequency
+in%zRes1 = 2.4                                                                 ! Defines interval where RF is present
 in%zRes2 = 3.0                                                                 ! Defines interval where RF is present
 in%kper = 29920.                                                               ! Perpendicular wave number of EBW
 in%kpar = 5864.                                                                ! Parallel wave number of EBW
-in%Ew   = 10000                                                              ! EBW E-minus wave electric field magnitude
-in%n_harmonic = 4                                                               ! Cyclotron harmonic
+in%Ew   = 10000                                                                ! EBW E-minus wave electric field magnitude
+in%n_harmonic = 4                                                              ! Cyclotron harmonic
 
 in%s1 = 0,
 in%s2 = 1.3,

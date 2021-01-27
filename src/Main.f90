@@ -110,6 +110,7 @@ print *, 'Input file:         ', xpSelector
 print *, 'fileDescriptor:     ', in%fileDescriptor
 print *, 'Number of particles:', in%Nparts
 print *, 'Number of steps:    ', in%Nsteps
+print *, 'Particle BC:        ', in%particleBC
 print *, 'dt [ns]:            ', in%dt*1E+9
 print *, 'iPush:              ', in%iPush
 print *, 'iDrag:              ', in%iDrag
@@ -238,7 +239,6 @@ call OMP_SET_NUM_THREADS(in%threads_request)
     id = OMP_GET_THREAD_NUM()
     in%threads_given = OMP_GET_NUM_THREADS()
     if (id .EQ. 0) write(*,*) "number of threads given: ", in%threads_given
-    if (id .EQ. 0) write(*,*) "chunk size: ", in%chunk
 !$OMP END PARALLEL
 
 ! Start of simulation:
