@@ -271,7 +271,7 @@ TimeStepping: do j = 1,in%Nsteps
     if (.true.) then
       !$OMP PARALLEL PRIVATE(ecnt1, ecnt2, pcnt1, pcnt2)
           ecnt1 = 0; ecnt2 = 0; pcnt1 = 0; pcnt2 = 0
-          !$OMP DO 
+          !$OMP DO
               do i = 1,in%Nparts
                   if (zp(i) .GE. in%zmax) then
                       call ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
@@ -305,7 +305,7 @@ TimeStepping: do j = 1,in%Nsteps
           		!$OMP END DO
 
               in%species_b = 2
-          		!$OMP DO 
+          		!$OMP DO
               		do i = 1,in%Nparts
               		    call collisionOperator(zp(i),kep(i),xip(i),ecnt,pcnt,in)
               		end do
@@ -474,6 +474,12 @@ if (in%iSave) then
     ! copy magnetic field data:
     dir0 = trim(in%rootDir)//'/BfieldData'//trim(in%BFieldFile)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
+    call system(command)
+
+    ! create text file with commit Hash:
+    dir0 = trim(in%rootDir)//'/OutputFiles/'//trim(xpSelector)//'/'//trim(in%fileDescriptor)
+    fileName = dir0//'/commitHash.txt'
+    command = 'git log -1 > '//trim(dir0)
     call system(command)
 
 end if
