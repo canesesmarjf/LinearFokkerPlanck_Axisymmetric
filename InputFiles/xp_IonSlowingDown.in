@@ -1,5 +1,5 @@
 &in_nml
-in%fileDescriptor = '2021_01_27j',
+in%fileDescriptor = '2021_01_27k',
 
 in%rootDir ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
 in%BFieldFileDir = "/BfieldData",                                              ! Location of file
