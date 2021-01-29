@@ -1,7 +1,7 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_01_29f',
+in%fileDescriptor = '2021_01_29h',
 
 ! Magnetic field input data:
 ! =========================
@@ -46,7 +46,7 @@ in%CollOperType = 2,                                                           !
 
 ! Particle boundary conditions:
 ! ============================
-in%particleBC = 3,                                                             ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
+in%particleBC = 2,                                                             ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
 
 ! Initial conditions:
 !===================

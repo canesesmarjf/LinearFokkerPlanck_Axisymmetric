@@ -127,7 +127,7 @@ IMPLICIT NONE
 ! Define local variables:
 TYPE(inTYP)  :: in0
 REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
-REAL(r8) :: uper, upar, u, sigma_u0
+!REAL(r8) :: uper, upar, u, sigma_u0
 REAL(r8), DIMENSION(6) :: Rm6
 REAL(r8) :: m_t, T0, T, vT, sigma_v, E, U, Ux, Uy, Uz
 REAL(r8) :: R_1, R_3, t_2, t_4
@@ -143,14 +143,13 @@ pcnt = pcnt + 1
 ! 3: Periodic boundary
 if (in0%particleBC .EQ. 1 .OR. in0%particleBC .EQ. 2) then
 
-  select case (in0%particleBC)
-  case 1 'Isotropic plasma source'
+  if (in0%particleBC .EQ. 1) then
     T = in0%Te0
     E = 0
-  case 2 'Neutral beam injection'
+  else if (in0%particleBC .EQ. 2) then
     T = in0%Tp_init
     E = in0%Ep_init
-  end select
+  end if
 
   ! Velocity distribution:
   m_t = in0%m_t
