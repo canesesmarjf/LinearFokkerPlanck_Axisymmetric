@@ -120,41 +120,89 @@ END SUBROUTINE RightHandSide
 SUBROUTINE ReinjectParticles(zp0,kep0,xip0,in0,ecnt,pcnt)
 ! =======================================================================================================
 USE local
-!USE ParticlePusher
 USE PhysicalConstants
-!USE plasma_params
-!USE collision_data
 USE dataTYP
 
 IMPLICIT NONE
 ! Define local variables:
 TYPE(inTYP)  :: in0
-REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt     ! Input variables
+REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
 REAL(r8) :: uper, upar, u, sigma_u0
-REAL(r8), DIMENSION(6) :: Rm6               ! Variable for storing 6 random numbers
-REAL(r8) :: m_t, T0
+REAL(r8), DIMENSION(6) :: Rm6
+REAL(r8) :: m_t, T0, T, vT, sigma_v, E, U, Ux, Uy, Uz
+REAL(r8) :: R_1, R_3, t_2, t_4
+REAL(r8) :: wx, wy, wz, vx, vy, vz, v
 
 ! Record event:
 ecnt = ecnt + kep0
 pcnt = pcnt + 1
 
-! Test particle mass:
-m_t = in0%m_t
+! Choose particle BC:
+! 1: Isotropic plasma source
+! 2: NBI
+! 3: Periodic boundary
+if (in0%particleBC .EQ. 1 .OR. in0%particleBC .EQ. 2) then
 
-! Background particle temperature:
-T0 = in0%Te0
+  select case (in0%particleBC)
+  case 1 'Isotropic plasma source'
+    T = in0%Te0
+    E = 0
+  case 2 'Neutral beam injection'
+    T = in0%Tp_init
+    E = in0%Ep_init
+  end select
+
+  ! Velocity distribution:
+  m_t = in0%m_t
+  vT = sqrt(2.*e_c*T/m_t)
+  U  = sqrt(2.*e_c*E/m_t)
+  Ux = 0
+  Uy = U*sqrt(1. - in0%xip_init**2.)
+  Uz = U*in0%xip_init
+  sigma_v = vT/sqrt(2.)
+
+  ! Box-muller terms:
+  call random_number(Rm6)
+  R_1 = sigma_v*sqrt(-2.*log(Rm6(1)))
+  t_2 = 2.*pi*Rm6(2)
+  R_3 = sigma_v*sqrt(-2.*log(Rm6(3)))
+  t_4 = 2.*pi*Rm6(4)
+
+  wx = R_1*cos(t_2)
+  wy = R_1*sin(t_2)
+  wz = R_3*cos(t_4)
+
+  vx = Ux + wx
+  vy = Uy + wy
+  vz = Uz + wz
+  v = sqrt( vx**2. + vy**2. + vz**2. )
+
+  ! Populate output variables:
+  kep0 = 0.5*(m_t/e_c)*v**2
+  xip0 = vz/v
+
+  ! Position distribution:
+  zp0 = in0%zp_init_std*sqrt(-2.*log(Rm6(5)))*cos(2.*pi*Rm6(6)) + in0%zp_init
+
+else if (in0%particleBC .EQ. 3) then
+  if (zp0 .GE. in0%zmax) then
+    zp0 = in0%zmin
+  else
+    zp0 = in0%zmax
+  end if
+end if
 
 ! Particle velocity standard deviation:
-sigma_u0 = sqrt(e_c*T0/m_t)
+!sigma_u0 = sqrt(e_c*T0/m_t)
 
 ! Re-inject particle at source with new zp, kep, xip
-call random_number(Rm6)
-zp0 = in0%zp_init_std*sqrt(-2.*log(Rm6(1)))*cos(2.*pi*Rm6(2)) + in0%zp_init
-uper = sigma_u0*sqrt(-2.*log(Rm6(3)))
-upar = sigma_u0*sqrt(-2.*log(Rm6(4)))*cos(2.*pi*Rm6(5))
-u    = sqrt( uper**2 + upar**2 )
-kep0 = (m_t*u**2.)/(2.*e_c)
-xip0 = upar/u
+!call random_number(Rm6)
+!zp0 = in0%zp_init_std*sqrt(-2.*log(Rm6(1)))*cos(2.*pi*Rm6(2)) + in0%zp_init
+!uper = sigma_u0*sqrt(-2.*log(Rm6(3)))
+!upar = sigma_u0*sqrt(-2.*log(Rm6(4)))*cos(2.*pi*Rm6(5))
+!u    = sqrt( uper**2 + upar**2 )
+!kep0 = (m_t*u**2.)/(2.*e_c)
+!xip0 = upar/u
 
 return
 END SUBROUTINE ReinjectParticles

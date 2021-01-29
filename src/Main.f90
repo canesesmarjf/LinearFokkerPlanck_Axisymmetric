@@ -272,21 +272,9 @@ TimeStepping: do j = 1,in%Nsteps
           !$OMP DO
               do i = 1,in%Nparts
                   if (zp(i) .GE. in%zmax) then
-
-                      if (in%particleBC .EQ. 1) then
-                        call ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
-                      else if (in%particleBC .EQ. 3) then
-                        zp(i) = in%zmin
-                      end if
-
+                    call ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
                   else if (zp(i) .LE. in%zmin) then
-
-                      if (in%particleBC .EQ. 1) then
-                        call ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt1,pcnt1)
-                      else if (in%particleBC .EQ. 3) then
-                        zp(i) = in%zmax
-                      end if
-
+                    call ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt1,pcnt1)
                   end if
               end do
           !$OMP END DO
