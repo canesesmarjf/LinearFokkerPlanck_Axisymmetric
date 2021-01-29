@@ -1,5 +1,5 @@
 &in_nml
-in%fileDescriptor = '2021_01_27k',
+in%fileDescriptor = '2021_01_29a',
 
 in%rootDir ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
 in%BFieldFileDir = "/BfieldData",                                              ! Location of file
@@ -39,13 +39,9 @@ in%CollOperType = 2,                                                           !
 in%zp_InitType = 2,                                                            ! 1: uniform load, 2: gaussian load
 in%zp_init = 0.0,                                                              ! Mean particle injection
 in%zp_init_std = 0.3,      	  	                                               ! STD of particle injection
-
-in%kep_InitType = 2,                                                           ! 1: Maxwellian, 2: Beam at E = kep_init
-in%kep_init = 1000.,                                                           ! Initial energy of EEDF
-
-in%xip_InitType = 2,                                                           ! 1: Isotropic, 2: Beam at xip = xip_init
-in%xip_init = 0.707,                                                           ! Mean value of xip = upar/u
-in%xip_init_std = 0.98,                                                        ! STD in xip
+in%Ep_init = 1000.,                                                            ! Drift kinetic energy
+in%Tp_init_std = 10.;                                                          ! Thermal kinetic energy
+in%xip_init = 0.707,                                                           ! Mean pitch angle where xip = cos(theta) = vpar/v
 
 in%f_RF = 28.0E+9                                                              ! RF frequency
 in%zRes1 = 2.4                                                                 ! Defines interval where RF is present

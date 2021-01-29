@@ -145,7 +145,7 @@ m_t = in0%m_t
 T0 = in0%Te0
 
 ! Particle velocity standard deviation:
-sigma_u0     = sqrt(e_c*T0/m_t)
+sigma_u0 = sqrt(e_c*T0/m_t)
 
 ! Re-inject particle at source with new zp, kep, xip
 call random_number(Rm6)
@@ -332,53 +332,62 @@ SUBROUTINE loadParticles(zp,kep,xip,in0)
   ! Declare internal variables:
   TYPE(inTYP)  :: in0
   REAL(r8), DIMENSION(in0%Nparts) :: zp, kep, xip
-  REAL(r8), DIMENSION(in0%Nparts) :: RmArray1, RmArray2, RmArray3
-  REAL(r8), DIMENSION(in0%Nparts) :: uperArray, uparArray, uArray
-  REAL(r8) :: zmin, zmax, sigma_u_init, m_t
+  REAL(r8), DIMENSION(in0%Nparts) :: X1, X2, X3, X4
+  REAL(r8), DIMENSION(in0%Nparts) :: R1, R2, R3, R4, t2, t4
+  REAL(r8), DIMENSION(in0%Nparts) :: wx, wy, wz, vx, vy, vz, v
+  REAL(r8) :: zmin, zmax, sigma_v, m_t
+  REAL(r8) :: Ux, Uy, Uz, vT, U, T, E
 
   ! Particle position:
   zmin = in0%zmin + .01*(in0%zmax-in0%zmin)
   zmax = in0%zmax - .01*(in0%zmax-in0%zmin)
   if (in0%zp_InitType .EQ. 1) then
       ! Uniform load
-      call random_number(RmArray1)
-      zp = zmin + (zmax - zmin)*RmArray1
+      call random_number(X1)
+      zp = zmin + (zmax - zmin)*X1
   elseif (in0%zp_InitType .EQ. 2) then
       ! Gaussian load
-      call random_number(RmArray1)
-      call random_number(RmArray2)
-      zp = in0%zp_init_std*sqrt(-2.*log(RmArray1))*cos(2.*pi*RmArray2)  +  in0%zp_init
+      call random_number(X1)
+      call random_number(X2)
+      zp = in0%zp_init_std*sqrt(-2.*log(X1))*cos(2.*pi*X2)  +  in0%zp_init
   end if
 
-  ! Particle kinetic energy:
-  call random_number(RmArray1)
-  call random_number(RmArray2)
-  call random_number(RmArray3)
+  ! Particle kinetic energy and pitch angle:
+  ! Generate random numbers:
+  call random_number(X1)
+  call random_number(X2)
+  call random_number(X3)
+  call random_number(X4)
+
+  ! Derived quantities:
   m_t = in0%m_t
-  sigma_u_init = sqrt(e_c*in0%kep_init/m_t)
-  uperArray = sigma_u_init*sqrt(-2.*log(RmArray1))
-  uparArray = sigma_u_init*sqrt(-2.*log(RmArray2))*cos(2.*pi*RmArray3)
-  uArray    = sqrt( uperArray**2 + uparArray**2 )
+  T = in0%Tp_init
+  E = in0%Ep_init
+  vT = sqrt(2.*e_c*T/m_t)
+  U  = sqrt(2.*e_c*E/m_t)
+  Ux = 0
+  Uy = U*sqrt(1. - in0%xip_init**2.)
+  Uz = U*in0%xip_init
+  sigma_v = vT/sqrt(2.)
 
-  if (in0%kep_InitType .EQ. 1) then
-      ! Maxwellian EEDF:
-      kep = (m_t*uArray**2.)/(2.*e_c)
-  elseif (in0%kep_InitType .EQ. 2) then
-      ! Beam EEDF:
-      kep = in0%kep_init
-  end if
+  ! Box-muller:
+  R1 = sigma_v*sqrt(-2.*log(X1))
+  t2 = 2.*pi*X2
+  R3 = sigma_v*sqrt(-2.*log(X3))
+  t4 = 2.*pi*X4
 
-  ! Particle pitch angle:
-  if (in0%xip_InitType .EQ. 1) then
-      ! Isotropic pitch angle
-      xip = uparArray/uArray
-  elseif (in0%xip_InitType .EQ. 2) then
-      ! Beam pitch angle
-      !xip = in0%xip_init
-      ! Beam pitch angle with a Gaussian distribution in pitch angle space:
-      call random_number(RmArray1)
-      call random_number(RmArray2)
-      xip = in0%xip_init_std*sqrt(-2.*log(RmArray1))*cos(2.*pi*RmArray2)  +  in0%xip_init
-  end if
+  wx = R1*cos(t2)
+  wy = R1*cos(t2)
+  wz = R3*cos(t4)
+
+  vx = Ux + wx
+  vy = Uy + wy
+  vz = Uz + wz
+  v = sqrt( vx**2. + vy**2. + vz**2. )
+
+  ! Populate output variables:
+  kep = 0.5*(m_t/e_c)*v**2
+  xip = vz/v
+
 return
 END SUBROUTINE loadParticles
