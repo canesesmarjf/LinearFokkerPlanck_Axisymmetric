@@ -1,5 +1,5 @@
 &in_nml
-in%fileDescriptor = '2021_01_29a',
+in%fileDescriptor = '2021_01_29b',
 
 in%rootDir ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
 in%BFieldFileDir = "/BfieldData",                                              ! Location of file
@@ -7,7 +7,7 @@ in%BFieldFile = "/Bfield_b.txt",
 in%nz = 501,			                                                             ! Number of points in BFieldFile
 
 in%Nparts = 50000,                                                             ! Total number of particles
-in%Nsteps = 500,                                                               ! Total number of time steps
+in%Nsteps = 1000,                                                               ! Total number of time steps
 in%dt     = 0.5E-7,
 in%threads_request = 10,                                                       ! Time step in [s]
 in%particleBC = 2,                                                             ! 1: source, 2: periodic
@@ -20,8 +20,8 @@ in%iPotential = .false.,                                                       !
 in%iDrag = .false.,                                                            ! Enable plasma drag
 
 in%jstart = 1,                                                                 !
-in%jend   = 500,                                                               !
-in%jincr  = 1,                                                                 !
+in%jend   = 1000,                                                               !
+in%jincr  = 4,                                                                 !
 
 in%Te0 = 10.,	                                                                 ! eV
 in%Ti0 = 10.,                                                                  ! eV
@@ -38,10 +38,10 @@ in%CollOperType = 2,                                                           !
 
 in%zp_InitType = 2,                                                            ! 1: uniform load, 2: gaussian load
 in%zp_init = 0.0,                                                              ! Mean particle injection
-in%zp_init_std = 0.3,      	  	                                               ! STD of particle injection
+in%zp_init_std = 0.3,                                                          ! STD of particle injection
 in%Ep_init = 1000.,                                                            ! Drift kinetic energy
-in%Tp_init_std = 10.;                                                          ! Thermal kinetic energy
-in%xip_init = 0.707,                                                           ! Mean pitch angle where xip = cos(theta) = vpar/v
+in%Tp_init = 1.;                                                               ! Thermal kinetic energy
+in%xip_init = 0.924,                                                           ! Mean pitch angle where xip = cos(theta) = vpar/v
 
 in%f_RF = 28.0E+9                                                              ! RF frequency
 in%zRes1 = 2.4                                                                 ! Defines interval where RF is present

@@ -333,7 +333,7 @@ SUBROUTINE loadParticles(zp,kep,xip,in0)
   TYPE(inTYP)  :: in0
   REAL(r8), DIMENSION(in0%Nparts) :: zp, kep, xip
   REAL(r8), DIMENSION(in0%Nparts) :: X1, X2, X3, X4
-  REAL(r8), DIMENSION(in0%Nparts) :: R1, R2, R3, R4, t2, t4
+  REAL(r8), DIMENSION(in0%Nparts) :: R_1, R_2, R_3, R_4, t_2, t_4
   REAL(r8), DIMENSION(in0%Nparts) :: wx, wy, wz, vx, vy, vz, v
   REAL(r8) :: zmin, zmax, sigma_v, m_t
   REAL(r8) :: Ux, Uy, Uz, vT, U, T, E
@@ -371,14 +371,14 @@ SUBROUTINE loadParticles(zp,kep,xip,in0)
   sigma_v = vT/sqrt(2.)
 
   ! Box-muller:
-  R1 = sigma_v*sqrt(-2.*log(X1))
-  t2 = 2.*pi*X2
-  R3 = sigma_v*sqrt(-2.*log(X3))
-  t4 = 2.*pi*X4
+  R_1 = sigma_v*sqrt(-2.*log(X1))
+  t_2 = 2.*pi*X2
+  R_3 = sigma_v*sqrt(-2.*log(X3))
+  t_4 = 2.*pi*X4
 
-  wx = R1*cos(t2)
-  wy = R1*cos(t2)
-  wz = R3*cos(t4)
+  wx = R_1*cos(t_2)
+  wy = R_1*cos(t_2)
+  wz = R_3*cos(t_4)
 
   vx = Ux + wx
   vy = Uy + wy
