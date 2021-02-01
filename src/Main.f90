@@ -75,8 +75,8 @@ CALL GET_ENVIRONMENT_VARIABLE('REPO_DIR',rootDir)
 
 ! Get input file name and directory:
 ! =============================================================================
-CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE',inputFile) 
-CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE_DIR',inputFileDir) 
+CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE',inputFile)
+CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE_DIR',inputFileDir)
 
 ! Read input data into "in" structure:
 ! ==============================================================================
@@ -364,6 +364,15 @@ TimeStepping: do j = 1,in%Nsteps
             endif
         end do
     end if
+
+    ! Estimate computational time:
+    ! =====================================================================
+    id = OMP_GET_THREAD_NUM()
+    if (id .EQ. 0) then        
+      if (j .EQ. 10) then
+        WRITE(*,*) 'Estimated compute time: ', in%Nsteps*tp/j
+      end if
+  end if
 end do TimeStepping
 
 ! Record end time:
@@ -387,9 +396,9 @@ if (in%iSave) then
     command = 'mkdir '//dir1
     call system(command,STATUS)
     WRITE(*,*) 'Status: ', STATUS
-	
+
     ! Create subdirectory with input file name:
-    ! -------------------------------------------------------------------------	
+    ! -------------------------------------------------------------------------
     n_mpwd = lEN_TRIM(inputFile)-3
     dir0 = inputFile
     dir0 = dir0(1:n_mpwd)
