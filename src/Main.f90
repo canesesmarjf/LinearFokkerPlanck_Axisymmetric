@@ -37,7 +37,7 @@ INTEGER(i4) :: id
 ! CPU time at start and end of computation:
 REAL(r8) :: tstart, tend
 ! openMP computational time:
-DOUBLE PRECISION :: ostart, oend
+DOUBLE PRECISION :: ostart, oend, oend_estimate
 ! Cyclotron resonance number change:
 REAL(r8) :: df
 ! Main simulation variables:
@@ -369,10 +369,12 @@ TimeStepping: do j = 1,in%Nsteps
     ! =====================================================================
     id = OMP_GET_THREAD_NUM()
     if (id .EQ. 0) then        
-      if (j .EQ. 10) then
-        WRITE(*,*) 'Estimated compute time: ', in%Nsteps*tp/j
+      if (j .EQ. 50) then
+	oend_estimate = OMP_GET_WTIME()
+        WRITE(*,*) 'Estimated compute time: ', in%Nsteps*(oend_estimate-ostart)/j,' [s]'
       end if
-  end if
+   end if
+
 end do TimeStepping
 
 ! Record end time:

@@ -12,7 +12,7 @@ in%nz = 501,			                                                              ! N
 
 ! Simulation conditions:
 ! =====================
-in%Nparts = 100000,                                                              ! Total number of particles
+in%Nparts = 80000,                                                              ! Total number of particles
 in%Nsteps = 6000,                                                               ! Total number of time steps
 in%dt     = 0.5E-7,                                                             ! Time step in [s]
 in%zmax = +5.0,
