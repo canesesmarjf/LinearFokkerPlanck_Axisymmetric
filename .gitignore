@@ -10,3 +10,6 @@ case?/
 # Ignore executable files
 *.exe
 MPEX
+
+# Ignore all .save fils
+**.save

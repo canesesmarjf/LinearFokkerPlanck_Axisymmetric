@@ -8,6 +8,4 @@ To create custom made postprocessing scripts, create a new directory and add thi
 
 Questions:
 - How does it scale on megabucky?
-- How to save output files directly to the "outputFile" directory?
 - How to set the fueling rate independent of the leak rate?
-- How to we calculate the wall time of the calculation correctly?

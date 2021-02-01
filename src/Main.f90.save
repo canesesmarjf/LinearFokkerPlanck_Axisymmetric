@@ -62,30 +62,56 @@ REAL(r8) :: pcnt, pcnt1, pcnt2
 ! To store system commands and fileNames:
 CHARACTER*300 :: command, mpwd
 INTEGER(i4) :: n_mpwd, STATUS
-CHARACTER*300 :: inputFileDir, inputFile, fileName, xpSelector, rootDir, dir0, dir1
+CHARACTER*300 :: fileName, xpSelector, rootDir, dir0, dir1
 
 ! Create input namelist from the user-defined structures:
 ! ==============================================================================
 namelist/in_nml/in
-!namelist/xp_nml/xpSelector
+namelist/xp_nml/xpSelector
 
 ! Get root directory:
 ! ==============================================================================
-CALL GET_ENVIRONMENT_VARIABLE('REPO_DIR',rootDir)
+call getcwd(mpwd)
+! Get length of directory string:
+n_mpwd = LEN(trim(adjustl(mpwd)))
+! Remove parts of string:
+n_mpwd = n_mpwd - 4
+rootDir = mpwd(1:n_mpwd)
+!CALL GET_ENVIRONMENT_VARIABLE('REPO_DIR',rootDir)
+WRITE(*,*) 'rootDir', rootDir
 
-! Get input file name and directory:
-! =============================================================================
-CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE',inputFile) 
-CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE_DIR',inputFileDir) 
+CALL GET_ENVIRONMENT_VARIABLE('REPO_DIR',rootDir)
+WRITE(*,*) 'rootDir', rootDir
+
 
 ! Read input data into "in" structure:
 ! ==============================================================================
-open(unit=4,file=inputFileDir,status='old',form='formatted')
+! Read contents of xpSelector:
+xCALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE',fileName) 
+WRITE(*,*) 'INPUT_FILE: ', TRIM(fileName)
+
+fileName = "/InputFiles/xpSelector.in"
+fileName = trim(adjustl(rootDir))//fileName
+WRITE(*,*) 'INPUT_FILE: ', TRIM(fileName)
+
+return
+
+open(unit=4,file=fileName,status='old',form='formatted')
+read(4,xp_nml)
+close(unit=4)
+
+WRITE(*,*) 'xpSelector', xpSelector
+
+return
+
+
+! Read the file with name given by contents of xpSelector:
+fileName = trim(adjustl(rootDir))//"/InputFiles/"//trim(adjustl(xpSelector))
+open(unit=4,file=fileName,status='old',form='formatted')
 read(4,in_nml)
 close(unit=4)
 
-! Populate the in%rootDir field:
-! =============================================================================
+! populate the in%rootDir field:
 in%rootDir = trim(adjustl(rootDir))
 
 if (in%species_a .eq. 1) then
@@ -98,10 +124,8 @@ end if
 
 ! Print to the terminal:
 ! ==============================================================================
-WRITE(*,*) ''
-WRITE(*,*) '*********************************************************************'
-print *, 'Input file:         ', TRIM(inputFile)
-print *, 'fileDescriptor:     ', TRIM(in%fileDescriptor)
+print *, 'Input file:         ', xpSelector
+print *, 'fileDescriptor:     ', in%fileDescriptor
 print *, 'Number of particles:', in%Nparts
 print *, 'Number of steps:    ', in%Nsteps
 print *, 'Particle BC:        ', in%particleBC
@@ -115,14 +139,12 @@ print *, 'elevel:             ', in%elevel
 print *, 'zTarget [m]:        ', in%zmax
 print *, 'zDump [m]:          ', in%zmin
 print *, 'zp_init [m]:        ', in%zp_init
-print *, 'B field file:       ', TRIM(in%BFieldFile)
+print *, 'B field file:       ', in%BFieldFile
 print *, 'Ew:                 ', in%Ew
 print *, 'Te0:                ', in%Te0
 print *, 'ne0:                ', in%ne0
 if (in%CollOperType .EQ. 1) print *, 'Boozer-Only collision operator'
 if (in%CollOperType .EQ. 2) print *, 'Boozer-Kim collision operator'
-WRITE(*,*) '*********************************************************************'
-WRITE(*,*) ''
 
 ! Allocate memory to splines:
 ! ===========================================================================
@@ -232,15 +254,9 @@ ecount1 = 0; ecount2 = 0; ecount3 = 0; ecount4 = 0
 ! Set the number of threads:
 call OMP_SET_NUM_THREADS(in%threads_request)
 !$OMP PARALLEL PRIVATE(id)
-id = OMP_GET_THREAD_NUM()
-in%threads_given = OMP_GET_NUM_THREADS()
-if (id .EQ. 0) then
-	WRITE(*,*) ''
-	WRITE(*,*) '*********************************************************************'
-	write(*,*) "number of threads given: ", in%threads_given
-	WRITE(*,*) '*********************************************************************'
-	WRITE(*,*) ''
-end if
+    id = OMP_GET_THREAD_NUM()
+    in%threads_given = OMP_GET_NUM_THREADS()
+    if (id .EQ. 0) write(*,*) "number of threads given: ", in%threads_given
 !$OMP END PARALLEL
 
 ! Start of simulation:
@@ -372,11 +388,7 @@ in%tSimTime = tp
 oend = OMP_GET_WTIME()
 
 in%tComputeTime = oend-ostart
-WRITE(*,*) ''
-WRITE(*,*) '*********************************************************************'
 print *, 'Reached End of Program, Computational time [s] = ', in%tComputeTime
-WRITE(*,*) '*********************************************************************'
-WRITE(*,*) ''
 
 ! Save data:
 ! ==============================================================================
@@ -385,20 +397,14 @@ if (in%iSave) then
     ! --------------------------------------------------------------------------
     dir1 = trim(in%rootDir)//'/OutputFiles'
     command = 'mkdir '//dir1
-    call system(command,STATUS)
-    WRITE(*,*) 'Status: ', STATUS
-	
-    ! Create subdirectory with input file name:
-    ! -------------------------------------------------------------------------	
-    n_mpwd = lEN_TRIM(inputFile)-3
-    dir0 = inputFile
+    call system(command)
+
+    n_mpwd = lEN_TRIM(xpSelector)-3
+    dir0 = xpSelector
     dir0 = dir0(1:n_mpwd)
     dir1 = trim(in%rootDir)//'/OutputFiles/'//trim(dir0)
     command = 'mkdir '//dir1
     call system(command,STATUS)
-
-    ! Create subdirectory based on "fileDescriptor" inside the input file:
-    ! -------------------------------------------------------------------------
     dir1 = trim(dir1)//'/'//trim(in%fileDescriptor)
     command = 'mkdir '// dir1
     call system(command,STATUS)
@@ -470,29 +476,26 @@ if (in%iSave) then
     write(8) ecount4
     close(unit=8)
 
-    ! Write output metadata:
-    ! --------------------------------------------------------------------------
+    ! Write output data:
     fileName = trim(trim(dir1)//'/'//'metadata.txt')
     open(unit=8,file=fileName,form="formatted",status="unknown")
     write(8,NML = in_nml)
     close(unit=8)
 
-    ! Copy input file to output directory:
-    ! --------------------------------------------------------------------------
-    dir0 = trim(in%rootDir)//'/InputFiles/'//trim(inputFile)
+    ! Copy inputdata to output file:
+    dir0 = trim(in%rootDir)//'/InputFiles/'//trim(xpSelector)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
     call system(command)
 
-    ! Copy magnetic field data:
-    ! --------------------------------------------------------------------------
+    ! copy magnetic field data:
     dir0 = trim(in%rootDir)//'/BfieldData'//trim(in%BFieldFile)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))//'/Bfield.txt'
+    WRITE(*,*) 'command: ', command
     call system(command)
 
-    ! Create text file with commit Hash:
-    ! --------------------------------------------------------------------------
-    n_mpwd = lEN_TRIM(inputFile)-3
-    dir0 = inputFile
+    ! create text file with commit Hash:
+    n_mpwd = lEN_TRIM(xpSelector)-3
+    dir0 = xpSelector
     dir0 = dir0(1:n_mpwd)
     dir0 = trim(in%rootDir)//'/OutputFiles/'//trim(dir0)//'/'//trim(in%fileDescriptor)
     fileName = trim(dir0)//'/commitHash.txt'
