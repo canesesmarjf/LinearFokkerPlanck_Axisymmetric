@@ -191,18 +191,6 @@ else if (in0%particleBC .EQ. 3) then
   end if
 end if
 
-! Particle velocity standard deviation:
-!sigma_u0 = sqrt(e_c*T0/m_t)
-
-! Re-inject particle at source with new zp, kep, xip
-!call random_number(Rm6)
-!zp0 = in0%zp_init_std*sqrt(-2.*log(Rm6(1)))*cos(2.*pi*Rm6(2)) + in0%zp_init
-!uper = sigma_u0*sqrt(-2.*log(Rm6(3)))
-!upar = sigma_u0*sqrt(-2.*log(Rm6(4)))*cos(2.*pi*Rm6(5))
-!u    = sqrt( uper**2 + upar**2 )
-!kep0 = (m_t*u**2.)/(2.*e_c)
-!xip0 = upar/u
-
 return
 END SUBROUTINE ReinjectParticles
 
@@ -231,7 +219,7 @@ q_t = in0%q_t
 upar = sqrt(2.*e_c*kep0/m_t)*xip0
 ! Magnetic field at location zp0 of test particle:
 Bf = Interp1(zp0,spline0)
-! Cyclotron frequenc of test particle:
+! Cyclotron frequency of test particle:
 Omega = abs(q_t)*Bf/m_t
 ! RF frequency in rad/s:
 Omega_RF = 2*pi*in0%f_RF
