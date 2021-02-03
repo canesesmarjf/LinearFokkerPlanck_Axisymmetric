@@ -24,7 +24,7 @@ TYPE(splTYP) :: spline_ddBz
 TYPE(splTYP) :: spline_Phi
 TYPE(spltestTYP) :: spline_Test
 ! DO loop indices:
-INTEGER(i4) :: i,j,k
+INTEGER(i4) :: i,j,k,tt
 ! Pseudo random number seed:
 INTEGER(i4) :: seed_size
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: seed
@@ -44,7 +44,7 @@ REAL(r8) :: df
 ! simulation time:
 REAl(r8) :: tp
 ! Particle position (zp), kinetic energy (kep), pitch angle (xip):
-REAL(r8), DIMENSION(:)  , ALLOCATABLE :: xip, zp, kep
+REAL(r8), DIMENSION(:,:)  , ALLOCATABLE :: xip, zp, kep
 ! subset of zp, kep and xip to save:
 REAL(r8), DIMENSION(:,:), ALLOCATABLE :: zp_hist, kep_hist, xip_hist
 ! Subset of tp:
@@ -132,7 +132,7 @@ CALL InitSplineTest(spline_Test,in%nz)
 
 ! Allocate memory to main simulation variables:
 ! ==============================================================================
-ALLOCATE(zp(in%Nparts), kep(in%Nparts), xip(in%Nparts))
+ALLOCATE(zp(in%Nparts,in%padding), kep(in%Nparts,in%padding), xip(in%Nparts,in%padding))
 ALLOCATE(pcount1(in%Nsteps),pcount2(in%Nsteps),pcount3(in%Nsteps),pcount4(in%Nsteps))
 ALLOCATE(ecount1(in%Nsteps),ecount2(in%Nsteps),ecount3(in%Nsteps),ecount4(in%Nsteps))
 
@@ -193,10 +193,6 @@ if (.true.) then
     CLOSE(unit=8)
 end if
 
-! Record start time:
-! ==============================================================================
-ostart = OMP_GET_WTIME()
-
 ! Initialize pseudo random number generator:
 ! ===========================================================================
 CALL random_seed(size=seed_size)
@@ -213,16 +209,18 @@ CALL OMP_SET_NUM_THREADS(in%threads_request)
 ! Inititalize zp, kep, xip
 ! ==============================================================================
 kep = 0.; xip = 0.; zp = 0.;
+!$OMP PARALLEL DO
 DO i = 1,in%Nparts
-  CALL loadParticles(zp(i),kep(i),xip(i),in)
+  CALL loadParticles(zp(i,1),kep(i,1),xip(i,1),in)
 END DO
+!$OMP END PARALLEL DO
 
 ! Test initial distribution:
 ! ==========================================================================
 fileName = "LoadParticles.dat"
 OPEN(unit=8,file=fileName,form="formatted",status="unknown")
 do i = 1,in%Nparts
-    WRITE(8,*) zp(i), kep(i), xip(i)
+    WRITE(8,*) zp(i,1), kep(i,1), xip(i,1)
 end do
 CLOSE(unit=8)
 
@@ -234,6 +232,10 @@ tp = 0
 pcount1 = 0; pcount2 = 0; pcount3 = 0; pcount4 = 0
 ! Energy leak diagnotics:
 ecount1 = 0; ecount2 = 0; ecount3 = 0; ecount4 = 0
+
+! Record start time:
+! ==============================================================================
+ostart = OMP_GET_WTIME()
 
 ! Loop over time:
 ! ==============================================================================
@@ -258,23 +260,24 @@ TimeStepping: do j = 1,in%Nsteps
             		  WRITE(*,*) ''
             		  WRITE(*,*) '*********************************************************************'
             		  WRITE(*,*) "Number of threads given: ", in%threads_given
+            		  WRITE(*,*) "Padding: ", in%padding, " Real(r8)"
             		  WRITE(*,*) '*********************************************************************'
             		  WRITE(*,*) ''
             		end if
 
                 ! Calculate Cyclotron resonance number:
                 ! ------------------------------------------------------------------------
-                if (in%iHeat) CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i),in,spline_Bz)
+                if (in%iHeat) CALL CyclotronResonanceNumber(zp(i,1),kep(i,1),xip(i,1),fcurr(i),in,spline_Bz)
                 ! fcurr and fnew could be declared private
 
                 ! Push particles adiabatically:
                 ! ------------------------------------------------------------------------
-                if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_Bz,spline_Phi)
+		if (in%iPush) CALL MoveParticle(zp(i,1),kep(i,1),xip(i,1),in,spline_Bz,spline_Phi)
 
                 ! Re-inject particles:
                 ! ------------------------------------------------------------------------
-                if (zp(i) .GE. in%zmax) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
-                if (zp(i) .LE. in%zmin) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt1,pcnt1)
+                if (zp(i,1) .GE. in%zmax) CALL ReinjectParticles(zp(i,1),kep(i,1),xip(i,1),in,ecnt2,pcnt2)
+                if (zp(i,1) .LE. in%zmin) CALL ReinjectParticles(zp(i,1),kep(i,1),xip(i,1),in,ecnt1,pcnt1)
 
                 ! Apply Coulomb collision operator:
                 ! ------------------------------------------------------------------------
@@ -282,18 +285,18 @@ TimeStepping: do j = 1,in%Nsteps
                     ! "in" needs to be private to avoid race condition. This can be
                     ! fixed by looping over species inside the subroutine "collisionOperator"
                     in%species_b = 1
-                    CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
+                    CALL collisionOperator(zp(i,1),kep(i,1),xip(i,1),ecnt4,pcnt4,in)
                     in%species_b = 2
-                    CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
+                    CALL collisionOperator(zp(i,1),kep(i,1),xip(i,1),ecnt4,pcnt4,in)
                 end if
 
                 ! Apply RF heating operator:
                 ! ------------------------------------------------------------------------
                 if (in%iHeat) then
-                  CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_Bz)
+                  CALL CyclotronResonanceNumber(zp(i,1),kep(i,1),xip(i,1),fnew(i),in,spline_Bz)
                   df = dsign(1.d0,fcurr(i)*fnew(i))
-                  if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
-                    CALL RFHeatingOperator(zp(i),kep(i),xip(i),ecnt3,pcnt3,in,spline_Bz,spline_ddBz,spline_Phi)
+                  if (df .LT. 0 .AND. zp(i,1) .GT. in%zRes1 .AND. zp(i,1) .LT. in%zRes2)  then
+                    CALL RFHeatingOperator(zp(i,1),kep(i,1),xip(i,1),ecnt3,pcnt3,in,spline_Bz,spline_ddBz,spline_Phi)
                   end if
                 end if
 
@@ -327,11 +330,11 @@ TimeStepping: do j = 1,in%Nsteps
                     !$OMP PARALLEL DO PRIVATE(i)
                     do i = 1,in%Nparts
                             ! Record "ith" particle position at "kth" time
-                            zp_hist(i,k) = zp(i)
+                            zp_hist(i,k) = zp(i,1)
                             ! Record "ith" particle KE at "kth" time
-                            kep_hist(i,k) = kep(i)
+                            kep_hist(i,k) = kep(i,1)
                             ! Record "ith" particle pitch angle at "kth" time
-                            xip_hist(i,k) = xip(i)
+                            xip_hist(i,k) = xip(i,1)
                     end do
                    !$OMP END PARALLEL DO
             endif
@@ -342,7 +345,7 @@ TimeStepping: do j = 1,in%Nsteps
     ! =====================================================================
     id = OMP_GET_THREAD_NUM()
     if (id .EQ. 0) then
-      if (j .EQ. 10) then
+      if (j .EQ. 1) then
 	       oend_estimate = OMP_GET_WTIME()
          WRITE(*,*) 'Estimated compute time: ', in%Nsteps*(oend_estimate-ostart)/j,' [s]'
       end if

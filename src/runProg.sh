@@ -5,6 +5,10 @@
 INPUT_FILE="xp_IonSlowingDown.in"
 #INPUT_FILE="xp_Test.in"
 
+# Set processor binding for openMP:
+# ===================================================
+OMP_PROC_BIND=true
+
 # Get repo directory:
 # ===================================================
 REPO_DIR=$(echo $PWD | sed "s|/src||g")
