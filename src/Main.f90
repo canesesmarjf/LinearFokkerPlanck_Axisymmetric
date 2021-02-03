@@ -211,11 +211,13 @@ CALL OMP_SET_NUM_THREADS(in%threads_request)
 ! Inititalize zp, kep, xip
 ! ==============================================================================
 kep = 0.; xip = 0.; zp = 0.;
+WRITE(*,*) "Initializing PDF..."
 !$OMP PARALLEL DO
 DO i = 1,in%Nparts
   CALL loadParticles(zp(i,1),kep(i,1),xip(i,1),in)
 END DO
 !$OMP END PARALLEL DO
+WRITE(*,*) "Initialization complete"
 
 ! Test initial distribution:
 ! ==========================================================================
@@ -243,7 +245,11 @@ ostart = OMP_GET_WTIME()
 ! ==============================================================================
 TimeStepping: do j = 1,in%Nsteps
 
-    !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,i,df)
+!$OMP PARALLEL DEFAULT(PRIVATE) &
+!$OMP SHARED(j,zp,kep,xip,fcurr,fnew,in,ecount1,ecount2,ecount3,ecount4,pcount1,pcount2,pcount3,pcount4) , &
+!$OMP& SHARED(spline_ddBz,spline_Bz,spline_Phi)
+
+          ! ! PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,i,df)
 
           ! Initialize private particle counters:
           pcnt1 = 0; pcnt2 = 0; pcnt3 = 0; pcnt4 = 0
@@ -258,7 +264,10 @@ TimeStepping: do j = 1,in%Nsteps
               AllParticles: do i = 1,in%Nparts
 
             		if (j .EQ. 1 .AND. i .EQ. 1) then
-            		  in%threads_given = OMP_GET_NUM_THREADS()
+	                  WRITE(*,*) "spline_ddBz", spline_ddBz%n
+	                  WRITE(*,*) "spline_Phi", spline_Phi%n
+	                  WRITE(*,*) "spline_Bz", spline_Bz%n
+			  in%threads_given = OMP_GET_NUM_THREADS()
             		  WRITE(*,*) ''
             		  WRITE(*,*) '*********************************************************************'
             		  WRITE(*,*) "Number of threads given: ", in%threads_given
