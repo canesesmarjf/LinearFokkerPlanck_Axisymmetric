@@ -114,15 +114,6 @@ CONTAINS
 
   END SUBROUTINE ComputeSpline
 
-  FUNCTION Interp1(xq, spline0)
-    IMPLICIT NONE
-    TYPE(splTYP) :: spline0
-    REAL(r8) :: xq, Interp1, curv2
-
-    Interp1 = curv2(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
-
-  END FUNCTION Interp1
-
   FUNCTION diff1(xq, spline0)
     IMPLICIT NONE
     TYPE(splTYP) :: spline0
