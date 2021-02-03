@@ -22,7 +22,8 @@ REAL(r8) :: L1, L2, L3, L4
 REAL(r8) :: mu0, mu1, mu2, mu3
 REAL(r8) :: M1, M2, M3, M4
 REAL(r8) :: u2
-REAL(r8) :: B, Phi                            ! Variables to hold potential field
+REAL(r8) :: B, Phi
+REAL(r8) :: Interp1
 
 ! Time step:
 dt = in0%dt
@@ -210,6 +211,7 @@ REAL(r8) :: upar, Bf, Omega, Omega_RF
 REAL(r8) :: m_t, q_t
 TYPE(inTYP)  :: in0
 TYPE(splTYP) :: spline0
+REAL(r8) :: Interp1
 
 ! Test particle mass:
 m_t = in0%m_t
@@ -253,6 +255,7 @@ REAL(r8) :: dkep_par, dkep, kep1
 REAL(r8) :: kep_per1, kep_par1
 REAL(r8) :: upar1, u1
 REAL(r8) :: m_t, q_t
+REAL(r8) :: Interp1
 
 ! Test particle mass:
 m_t = in0%m_t
@@ -427,7 +430,13 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
 return
 END SUBROUTINE loadParticles
 
+! =======================================================================================================
 FUNCTION Interp1(xq, spline0)
+! =======================================================================================================
+  USE local
+  USE spline_fits 
+  USE dataTYP
+
   IMPLICIT NONE
   TYPE(splTYP) :: spline0
   REAL(r8) :: xq, Interp1, curv2
