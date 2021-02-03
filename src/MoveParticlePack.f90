@@ -23,7 +23,8 @@ REAL(r8) :: mu0, mu1, mu2, mu3
 REAL(r8) :: M1, M2, M3, M4
 REAL(r8) :: u2
 REAL(r8) :: B, Phi
-REAL(r8) :: Interp1
+!REAL(r8) :: Interp1
+REAL(r8) :: curv2
 
 ! Time step:
 dt = in0%dt
@@ -38,7 +39,8 @@ upar0 = xip0*sqrt(2.*e_c*kep0/m_t)
 u2 = 2.*e_c*kep0/m_t
 
 ! Calculate initial magnetic moment:
-B = Interp1(zp0,spline0)
+!B = Interp1(zp0,spline0)
+B = curv2(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
 mu0 = 0.5*m_t*u2*(1 - xip0*xip0)/B
 
 ! Begin assembling RK4 solution:
@@ -63,7 +65,8 @@ uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*dt
 munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*dt
 
 ! Calculate the magnetic field at zpnew:
-B = Interp1(zpnew,spline0)
+!B = Interp1(zpnew,spline0)
+B = curv2(zpnew,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
 
 ! Based on new B and new mu, calculate new uper:
 upernew = sqrt(2.*munew*B/m_t)
@@ -96,7 +99,8 @@ TYPE(inTYP) :: in0
 REAL(r8) :: zp0, upar0, mu0, K, L, M
 REAL(r8) :: dB, dPhi
 REAL(r8) :: m_t, q_t
-REAL(r8) :: diff1
+!REAL(r8) :: diff1
+REAL(r8) :: curvd
 
 ! Test particle mass:
 m_t = in0%m_t
@@ -105,10 +109,12 @@ m_t = in0%m_t
 q_t = in0%q_t
 
 ! Calculate the magnetic field gradient at zp0:
-dB = diff1(zp0,spline0)
+!dB = diff1(zp0,spline0)
+dB = curvd(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
 
 ! Calculate electric potential gradient at zp0:
-dPhi = diff1(zp0,spline1)
+!dPhi = diff1(zp0,spline1)
+dPhi = curvd(zp0,spline1%n,spline1%x,spline1%y,spline1%yp,spline1%sigma)
 
 ! Assign values to output variables:
 K = upar0
