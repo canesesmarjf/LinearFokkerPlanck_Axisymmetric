@@ -63,9 +63,8 @@ REAL(r8) :: pcnt1, pcnt2, pcnt3, pcnt4
 CHARACTER*300 :: command, mpwd
 INTEGER(i4) :: n_mpwd, STATUS
 CHARACTER*300 :: inputFileDir, inputFile, fileName, xpSelector, rootDir, dir0, dir1
-! functions
-REAL(r8) :: Interp1
-
+! Declare user-defined functions:
+REAL(r8) :: Interp1, diff1
 
 ! Create input namelist from the user-defined structures:
 ! ==============================================================================

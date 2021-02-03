@@ -114,15 +114,6 @@ CONTAINS
 
   END SUBROUTINE ComputeSpline
 
-  FUNCTION diff1(xq, spline0)
-    IMPLICIT NONE
-    TYPE(splTYP) :: spline0
-    REAL(r8) :: xq, diff1, curvd
-
-    diff1 = curvd(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
-
-  END FUNCTION diff1
-
 END MODULE spline_fits
 
 !  **************************************************************

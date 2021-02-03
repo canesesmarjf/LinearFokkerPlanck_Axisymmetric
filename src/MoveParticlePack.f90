@@ -96,6 +96,7 @@ TYPE(inTYP) :: in0
 REAL(r8) :: zp0, upar0, mu0, K, L, M
 REAL(r8) :: dB, dPhi
 REAL(r8) :: m_t, q_t
+REAL(r8) :: diff1
 
 ! Test particle mass:
 m_t = in0%m_t
@@ -255,7 +256,7 @@ REAL(r8) :: dkep_par, dkep, kep1
 REAL(r8) :: kep_per1, kep_par1
 REAL(r8) :: upar1, u1
 REAL(r8) :: m_t, q_t
-REAL(r8) :: Interp1
+REAL(r8) :: Interp1, diff1
 
 ! Test particle mass:
 m_t = in0%m_t
@@ -434,7 +435,7 @@ END SUBROUTINE loadParticles
 FUNCTION Interp1(xq, spline0)
 ! =======================================================================================================
   USE local
-  USE spline_fits 
+  USE spline_fits
   USE dataTYP
 
   IMPLICIT NONE
@@ -444,3 +445,18 @@ FUNCTION Interp1(xq, spline0)
   Interp1 = curv2(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
 
 END FUNCTION Interp1
+
+! =======================================================================================================
+FUNCTION diff1(xq, spline0)
+! =======================================================================================================
+  USE local
+  USE spline_fits
+  USE dataTYP
+
+  IMPLICIT NONE
+  TYPE(splTYP) :: spline0
+  REAL(r8) :: xq, diff1, curvd
+
+  diff1 = curvd(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+
+END FUNCTION diff1
