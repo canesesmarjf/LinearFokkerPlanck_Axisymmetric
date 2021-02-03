@@ -205,10 +205,17 @@ CALL random_seed(get=seed)
 seed = 314159565
 CALL random_seed(put=seed)
 
+! OMP setup:
+! ==============================================================================
+! Set the number of threads:
+CALL OMP_SET_NUM_THREADS(in%threads_request)
+
 ! Inititalize zp, kep, xip
 ! ==============================================================================
 kep = 0.; xip = 0.; zp = 0.;
-CALL loadParticles(zp,kep,xip,in)
+DO i = 1,in%Nparts
+  CALL loadParticles(zp(i),kep(i),xip(i),in)
+END DO
 
 ! Test initial distribution:
 ! ==========================================================================
@@ -228,11 +235,6 @@ pcount1 = 0; pcount2 = 0; pcount3 = 0; pcount4 = 0
 ! Energy leak diagnotics:
 ecount1 = 0; ecount2 = 0; ecount3 = 0; ecount4 = 0
 
-! OMP setup:
-! ==============================================================================
-! Set the number of threads:
-CALL OMP_SET_NUM_THREADS(in%threads_request)
-
 ! Loop over time:
 ! ==============================================================================
 TimeStepping: do j = 1,in%Nsteps
@@ -250,15 +252,15 @@ TimeStepping: do j = 1,in%Nsteps
           ! ==============================================================================
           !$OMP DO SCHEDULE(STATIC,in%Nparts/in%threads_request)
               AllParticles: do i = 1,in%Nparts
-		
-		if (j .EQ. 1 .AND. i .EQ. 1) then
-		  in%threads_given = OMP_GET_NUM_THREADS()
-		  WRITE(*,*) ''
-		  WRITE(*,*) '*********************************************************************'
-		  WRITE(*,*) "Number of threads given: ", in%threads_given
-		  WRITE(*,*) '*********************************************************************'
-		  WRITE(*,*) ''
-		end if 
+
+            		if (j .EQ. 1 .AND. i .EQ. 1) then
+            		  in%threads_given = OMP_GET_NUM_THREADS()
+            		  WRITE(*,*) ''
+            		  WRITE(*,*) '*********************************************************************'
+            		  WRITE(*,*) "Number of threads given: ", in%threads_given
+            		  WRITE(*,*) '*********************************************************************'
+            		  WRITE(*,*) ''
+            		end if
 
                 ! Calculate Cyclotron resonance number:
                 ! ------------------------------------------------------------------------

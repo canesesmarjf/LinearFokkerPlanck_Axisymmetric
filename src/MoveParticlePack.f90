@@ -357,7 +357,7 @@ return
 END SUBROUTINE RFHeatingOperator
 
 ! =======================================================================================================
-SUBROUTINE loadParticles(zp,kep,xip,in0)
+SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
 ! =======================================================================================================
   USE local
   use PhysicalConstants
@@ -365,11 +365,11 @@ SUBROUTINE loadParticles(zp,kep,xip,in0)
 
   IMPLICIT NONE
   ! Declare internal variables:
-  TYPE(inTYP)  :: in0
-  REAL(r8), DIMENSION(in0%Nparts) :: zp, kep, xip
-  REAL(r8), DIMENSION(in0%Nparts) :: X1, X2, X3, X4
-  REAL(r8), DIMENSION(in0%Nparts) :: R_1, R_2, R_3, R_4, t_2, t_4
-  REAL(r8), DIMENSION(in0%Nparts) :: wx, wy, wz, vx, vy, vz, v
+  TYPE(inTYP) :: in0
+  REAL(r8) :: zp0, kep0, xip0
+  REAL(r8) :: X1, X2, X3, X4
+  REAL(r8) :: R_1, R_2, R_3, R_4, t_2, t_4
+  REAL(r8) :: wx, wy, wz, vx, vy, vz, v
   REAL(r8) :: zmin, zmax, sigma_v, m_t
   REAL(r8) :: Ux, Uy, Uz, vT, U, T, E
 
@@ -379,12 +379,12 @@ SUBROUTINE loadParticles(zp,kep,xip,in0)
   if (in0%zp_InitType .EQ. 1) then
       ! Uniform load
       call random_number(X1)
-      zp = zmin + (zmax - zmin)*X1
+      zp0 = zmin + (zmax - zmin)*X1
   elseif (in0%zp_InitType .EQ. 2) then
       ! Gaussian load
       call random_number(X1)
       call random_number(X2)
-      zp = in0%zp_init_std*sqrt(-2.*log(X1))*cos(2.*pi*X2)  +  in0%zp_init
+      zp0 = in0%zp_init_std*sqrt(-2.*log(X1))*cos(2.*pi*X2)  +  in0%zp_init
   end if
 
   ! Particle kinetic energy and pitch angle:
@@ -421,8 +421,8 @@ SUBROUTINE loadParticles(zp,kep,xip,in0)
   v = sqrt( vx**2. + vy**2. + vz**2. )
 
   ! Populate output variables:
-  kep = 0.5*(m_t/e_c)*v**2
-  xip = vz/v
+  kep0 = 0.5*(m_t/e_c)*v**2
+  xip0 = vz/v
 
 return
 END SUBROUTINE loadParticles
