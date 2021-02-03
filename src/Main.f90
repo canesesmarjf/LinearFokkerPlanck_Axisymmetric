@@ -232,23 +232,6 @@ ecount1 = 0; ecount2 = 0; ecount3 = 0; ecount4 = 0
 ! ==============================================================================
 ! Set the number of threads:
 CALL OMP_SET_NUM_THREADS(in%threads_request)
-in%threads_given = OMP_GET_NUM_THREADS()
-WRITE(*,*) ''
-WRITE(*,*) '*********************************************************************'
-WRITE(*,*) "number of threads given: ", in%threads_given
-WRITE(*,*) '*********************************************************************'
-WRITE(*,*) ''
-
-!$OMP PARALLEL PRIVATE(id)
-    !id = OMP_GET_THREAD_NUM()
-    !if (id .EQ. 0) then
-    !	WRITE(*,*) ''
-    !	WRITE(*,*) '*********************************************************************'
-    !	WRITE(*,*) "number of threads given: ", in%threads_given
-    !	WRITE(*,*) '*********************************************************************'
-    !	WRITE(*,*) ''
-  !  end if
-!$OMP END PARALLEL
 
 ! Loop over time:
 ! ==============================================================================
@@ -265,8 +248,17 @@ TimeStepping: do j = 1,in%Nsteps
 
           ! Loop over particles:
           ! ==============================================================================
-          !$OMP DO
+          !$OMP DO SCHEDULE(STATIC,in%Nparts/in%threads_request)
               AllParticles: do i = 1,in%Nparts
+		
+		if (j .EQ. 1 .AND. i .EQ. 1) then
+		  in%threads_given = OMP_GET_NUM_THREADS()
+		  WRITE(*,*) ''
+		  WRITE(*,*) '*********************************************************************'
+		  WRITE(*,*) "Number of threads given: ", in%threads_given
+		  WRITE(*,*) '*********************************************************************'
+		  WRITE(*,*) ''
+		end if 
 
                 ! Calculate Cyclotron resonance number:
                 ! ------------------------------------------------------------------------
@@ -306,7 +298,7 @@ TimeStepping: do j = 1,in%Nsteps
               end do AllParticles
           !$OMP END DO
 
-          !$OMP CRITICAL AccumulateCounters
+          !$OMP CRITICAL
           ecount1(j) = ecount1(j) + ecnt1
           ecount2(j) = ecount2(j) + ecnt2
           ecount3(j) = ecount3(j) + ecnt3
@@ -315,7 +307,7 @@ TimeStepping: do j = 1,in%Nsteps
           pcount2(j) = pcount2(j) + pcnt2
           pcount3(j) = pcount3(j) + pcnt3
           pcount4(j) = pcount4(j) + pcnt4
-          !$OMP END CRITICAL AccumulateCounters
+          !$OMP END CRITICAL
 
     !$OMP END PARALLEL
 
@@ -339,7 +331,7 @@ TimeStepping: do j = 1,in%Nsteps
                             ! Record "ith" particle pitch angle at "kth" time
                             xip_hist(i,k) = xip(i)
                     end do
-		               !$OMP END PARALLEL DO
+                   !$OMP END PARALLEL DO
             endif
         end do
     end if
@@ -348,7 +340,7 @@ TimeStepping: do j = 1,in%Nsteps
     ! =====================================================================
     id = OMP_GET_THREAD_NUM()
     if (id .EQ. 0) then
-      if (j .EQ. 50) then
+      if (j .EQ. 10) then
 	       oend_estimate = OMP_GET_WTIME()
          WRITE(*,*) 'Estimated compute time: ', in%Nsteps*(oend_estimate-ostart)/j,' [s]'
       end if

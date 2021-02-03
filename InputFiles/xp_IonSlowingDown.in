@@ -1,7 +1,7 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_01_29k',
+in%fileDescriptor = '2021_02_02b',
 
 ! Magnetic field input data:
 ! =========================
@@ -12,16 +12,16 @@ in%nz = 501,			                                                              ! N
 
 ! Simulation conditions:
 ! =====================
-in%Nparts = 80000,                                                              ! Total number of particles
-in%Nsteps = 6000,                                                               ! Total number of time steps
+in%Nparts = 500000,                                                              ! Total number of particles
+in%Nsteps = 5000,                                                               ! Total number of time steps
 in%dt     = 0.5E-7,                                                             ! Time step in [s]
 in%zmax = +5.0,
 in%zmin = -5.0,
-in%threads_request = 10,
+in%threads_request = 8,
 
 in%iSave = .true.,
 in%iPush = .true.,                                                             ! Enable RK4 particle pusher
-in%iColl = .true.,                                                             ! Collisions or no collisions
+in%iColl = .false.,                                                             ! Collisions or no collisions
 in%iHeat = .false.,                                                            ! Enable RF heating operator
 in%iPotential = .false.,                                                       ! Enable electric potential
 in%iDrag = .false.,                                                            ! Enable plasma drag
@@ -29,8 +29,8 @@ in%iDrag = .false.,                                                            !
 ! Time steps to record:
 ! ==============
 in%jstart = 1,                                                                  ! start frame
-in%jend   = 6000,                                                               ! end frame
-in%jincr  = 12,                                                                 ! increment
+in%jend   = 5000,                                                               ! end frame
+in%jincr  = 10,                                                                 ! increment
 
 ! Collision operator conditions:
 ! ==============================
@@ -55,7 +55,7 @@ in%zp_init = 0.0,                                                              !
 in%zp_init_std = 0.3,                                                          ! STD of particle injection
 in%Ep_init = 1000.,                                                            ! Drift kinetic energy
 in%Tp_init = 10.;                                                               ! Thermal kinetic energy
-in%xip_init = 0.707,                                                           ! Mean pitch angle where xip = cos(theta) = vpar/v
+in%xip_init = 0.9240,                                                           ! Mean pitch angle where xip = cos(theta) = vpar/v
 
 ! RF heating operator conditions:
 ! ===============================
