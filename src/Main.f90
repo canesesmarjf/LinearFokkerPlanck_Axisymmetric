@@ -44,7 +44,7 @@ REAL(r8) :: df
 ! simulation time:
 REAl(r8) :: tp
 ! Particle position (zp), kinetic energy (kep), pitch angle (xip):
-REAL(r8), DIMENSION(:,:)  , ALLOCATABLE :: xip, zp, kep
+REAL(r8), DIMENSION(:)  , ALLOCATABLE :: xip, zp, kep
 ! subset of zp, kep and xip to save:
 REAL(r8), DIMENSION(:,:), ALLOCATABLE :: zp_hist, kep_hist, xip_hist
 ! Subset of tp:
@@ -280,7 +280,6 @@ TimeStepping: do j = 1,in%Nsteps
             		  WRITE(*,*) ''
             		  WRITE(*,*) '*********************************************************************'
             		  WRITE(*,*) "Number of threads given: ", in%threads_given
-            		  WRITE(*,*) "Padding: ", in%padding, " Real(r8)"
             		  WRITE(*,*) '*********************************************************************'
             		  WRITE(*,*) ''
             		end if
