@@ -136,13 +136,13 @@ CALL InitSpline(spline_Phi ,in%nz,0._8,0._8,1,0._8)
 
 ! Allocate memory for spline_test variable:
 ! ==============================================================================
-! Spline_test is a variable that holds up to 6 different test profiles "y" and 
+! Spline_test is a variable that holds up to 6 different test profiles "y" and
 ! one "x" coordinate.
 CALL InitSplineTest(spline_Test,in%nz)
 
 ! Allocate memory to main simulation variables:
 ! ==============================================================================
-ALLOCATE(zp(in%Nparts,in%padding), kep(in%Nparts,in%padding), xip(in%Nparts,in%padding))
+ALLOCATE(zp(in%Nparts), kep(in%Nparts), xip(in%Nparts))
 ALLOCATE(pcount1(in%Nsteps),pcount2(in%Nsteps),pcount3(in%Nsteps),pcount4(in%Nsteps))
 ALLOCATE(ecount1(in%Nsteps),ecount2(in%Nsteps),ecount3(in%Nsteps),ecount4(in%Nsteps))
 
@@ -223,7 +223,7 @@ kep = 0.; xip = 0.; zp = 0.;
 WRITE(*,*) "Initializing PDF..."
 !$OMP PARALLEL DO
 DO i = 1,in%Nparts
-  CALL loadParticles(zp(i,1),kep(i,1),xip(i,1),in)
+  CALL loadParticles(zp(i),kep(i),xip(i),in)
 END DO
 !$OMP END PARALLEL DO
 WRITE(*,*) "Initialization complete"
@@ -233,7 +233,7 @@ WRITE(*,*) "Initialization complete"
 fileName = "LoadParticles.dat"
 OPEN(unit=8,file=fileName,form="formatted",status="unknown")
 do i = 1,in%Nparts
-    WRITE(8,*) zp(i,1), kep(i,1), xip(i,1)
+    WRITE(8,*) zp(i), kep(i), xip(i)
 end do
 CLOSE(unit=8)
 
@@ -273,10 +273,10 @@ TimeStepping: do j = 1,in%Nsteps
               AllParticles: do i = 1,in%Nparts
 
             		if (j .EQ. 1 .AND. i .EQ. 1) then
-	                  WRITE(*,*) "spline_ddBz", spline_ddBz%n
-	                  WRITE(*,*) "spline_Phi", spline_Phi%n
-	                  WRITE(*,*) "spline_Bz", spline_Bz%n
-			  in%threads_given = OMP_GET_NUM_THREADS()
+	                WRITE(*,*) "spline_ddBz", spline_ddBz%n
+	                WRITE(*,*) "spline_Phi", spline_Phi%n
+	                WRITE(*,*) "spline_Bz", spline_Bz%n
+			            in%threads_given = OMP_GET_NUM_THREADS()
             		  WRITE(*,*) ''
             		  WRITE(*,*) '*********************************************************************'
             		  WRITE(*,*) "Number of threads given: ", in%threads_given
@@ -287,17 +287,17 @@ TimeStepping: do j = 1,in%Nsteps
 
                 ! Calculate Cyclotron resonance number:
                 ! ------------------------------------------------------------------------
-                if (in%iHeat) CALL CyclotronResonanceNumber(zp(i,1),kep(i,1),xip(i,1),fcurr(i),in,spline_Bz)
+                if (in%iHeat) CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i),in,spline_Bz)
                 ! fcurr and fnew could be declared private
 
                 ! Push particles adiabatically:
                 ! ------------------------------------------------------------------------
-		if (in%iPush) CALL MoveParticle(zp(i,1),kep(i,1),xip(i,1),in,spline_Bz,spline_Phi)
+		            if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_Bz,spline_Phi)
 
                 ! Re-inject particles:
                 ! ------------------------------------------------------------------------
-                if (zp(i,1) .GE. in%zmax) CALL ReinjectParticles(zp(i,1),kep(i,1),xip(i,1),in,ecnt2,pcnt2)
-                if (zp(i,1) .LE. in%zmin) CALL ReinjectParticles(zp(i,1),kep(i,1),xip(i,1),in,ecnt1,pcnt1)
+                if (zp(i) .GE. in%zmax) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
+                if (zp(i) .LE. in%zmin) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt1,pcnt1)
 
                 ! Apply Coulomb collision operator:
                 ! ------------------------------------------------------------------------
@@ -305,18 +305,18 @@ TimeStepping: do j = 1,in%Nsteps
                     ! "in" needs to be private to avoid race condition. This can be
                     ! fixed by looping over species inside the subroutine "collisionOperator"
                     in%species_b = 1
-                    CALL collisionOperator(zp(i,1),kep(i,1),xip(i,1),ecnt4,pcnt4,in)
+                    CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
                     in%species_b = 2
-                    CALL collisionOperator(zp(i,1),kep(i,1),xip(i,1),ecnt4,pcnt4,in)
+                    CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
                 end if
 
                 ! Apply RF heating operator:
                 ! ------------------------------------------------------------------------
                 if (in%iHeat) then
-                  CALL CyclotronResonanceNumber(zp(i,1),kep(i,1),xip(i,1),fnew(i),in,spline_Bz)
+                  CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_Bz)
                   df = dsign(1.d0,fcurr(i)*fnew(i))
-                  if (df .LT. 0 .AND. zp(i,1) .GT. in%zRes1 .AND. zp(i,1) .LT. in%zRes2)  then
-                    CALL RFHeatingOperator(zp(i,1),kep(i,1),xip(i,1),ecnt3,pcnt3,in,spline_Bz,spline_ddBz,spline_Phi)
+                  if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
+                    CALL RFHeatingOperator(zp(i),kep(i),xip(i),ecnt3,pcnt3,in,spline_Bz,spline_ddBz,spline_Phi)
                   end if
                 end if
 
@@ -350,11 +350,11 @@ TimeStepping: do j = 1,in%Nsteps
                     !$OMP PARALLEL DO PRIVATE(i)
                     do i = 1,in%Nparts
                             ! Record "ith" particle position at "kth" time
-                            zp_hist(i,k) = zp(i,1)
+                            zp_hist(i,k) = zp(i)
                             ! Record "ith" particle KE at "kth" time
-                            kep_hist(i,k) = kep(i,1)
+                            kep_hist(i,k) = kep(i)
                             ! Record "ith" particle pitch angle at "kth" time
-                            xip_hist(i,k) = xip(i,1)
+                            xip_hist(i,k) = xip(i)
                     end do
                    !$OMP END PARALLEL DO
             endif

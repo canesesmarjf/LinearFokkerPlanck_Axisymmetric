@@ -26,7 +26,7 @@ TYPE inTYP
   REAL(r8) :: Aion, Zeff, Zion
   INTEGER(i4) :: Nparts, Nsteps, nz, species_a, species_b
   INTEGER(i4) :: jstart, jend, jincr
-  INTEGER(i4) :: padding, threads_given, particleBC
+  INTEGER(i4) :: threads_given, particleBC
   LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
   INTEGER(i4) :: zp_InitType
   REAL(r8) :: zp_init, Ep_init, xip_init, zp_init_std, Tp_init
