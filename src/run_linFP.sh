@@ -34,6 +34,7 @@ export INPUT_FILE
 # Compile source code:
 # ===================================================
 make -f $REPO_DIR/src/make_linFP.f
+mv $REPO_DIR/src/linFP $REPO_DIR/bin/
 
 # Run code:
 # ===================================================
@@ -45,7 +46,7 @@ if [ $? -eq 0 ] ; then
 	echo 'Code is running...'
 	echo '**********************'
 	echo ''
-	./linFP
+	$REPO_DIR/bin/linFP
 	echo ''
 	echo 'Calculation complete!'
 	echo ''

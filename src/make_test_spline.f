@@ -2,7 +2,7 @@
 COMPILER=gfortran
 DBGFLAGS=-g
 OPTFLAGS=-O3
-OBJ_1 = Modules.o testSpline.o
+OBJ_1 = Modules.o test_spline.o
 OBJ_2 = fitpack.o MoveParticlePack.o
 
 All: $(OBJ_1) $(OBJ_2)
@@ -12,8 +12,8 @@ All: $(OBJ_1) $(OBJ_2)
 Modules.o: Modules.f90
 	$(COMPILER) $(OPTFLAGS) -c Modules.f90
 
-testSpline.o: testSpline.f90
-	$(COMPILER) $(OPTFLAGS) -fopenmp -c testSpline.f90
+test_spline.o: test_spline.f90
+	$(COMPILER) $(OPTFLAGS) -fopenmp -c test_spline.f90
 
 fitpack.o: fitpack.f
 	$(COMPILER) $(OPTFLAGS) -c -w fitpack.f

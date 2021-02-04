@@ -33,6 +33,7 @@ export OMP_PROC_BIND
 # Compile source code:
 # ===================================================
 make -f $REPO_DIR/src/make_test_spline.f
+mv $REPO_DIR/src/test_spline $REPO_DIR/bin/
 
 # Run code:
 # ===================================================
@@ -44,7 +45,7 @@ if [ $? -eq 0 ] ; then
 	echo 'Code is running...'
 	echo '**********************'
 	echo ''
-	./test_spline
+	$REPO_DIR/bin/test_spline
 	echo ''
 	echo 'Calculation complete!'
 	echo ''

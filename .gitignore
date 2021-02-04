@@ -3,13 +3,13 @@
 **.dat
 **.asv
 
-# Ignore all output directories, these are usually called case?
-case?/
+# Ignore contents of the following directories
 /OutputFiles/*
+/bin/*
 
 # Ignore executable files
 *.exe
-MPEX
+*.o
 
-# Ignore all .save fils
+# Ignore all .save files
 **.save
