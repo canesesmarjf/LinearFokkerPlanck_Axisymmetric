@@ -33,7 +33,7 @@ export INPUT_FILE
 
 # Compile source code:
 # ===================================================
-make -f $REPO_DIR/src/Makefile_openMP.f
+make -f $REPO_DIR/src/make_linFP.f
 
 # Run code:
 # ===================================================
@@ -45,7 +45,7 @@ if [ $? -eq 0 ] ; then
 	echo 'Code is running...'
 	echo '**********************'
 	echo ''
-	./MPEX
+	./linFP
 	echo ''
 	echo 'Calculation complete!'
 	echo ''

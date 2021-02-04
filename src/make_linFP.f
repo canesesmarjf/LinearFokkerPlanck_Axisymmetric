@@ -6,7 +6,7 @@ OBJ_1 = Modules.o Main.o PotentialProfile.o
 OBJ_2 = fitpack.o MoveParticlePack.o CoulombCollisions.o
 
 All: $(OBJ_1) $(OBJ_2)
-	gfortran  $(OPTFLAGS) -fopenmp $(OBJ_1) $(OBJ_2) -o MPEX
+	gfortran  $(OPTFLAGS) -fopenmp $(OBJ_1) $(OBJ_2) -o linFP
 	rm *.o *.mod
 
 Modules.o: Modules.f90
@@ -28,4 +28,4 @@ CoulombCollisions.o: CoulombCollisions.f90
 	$(COMPILER) $(OPTFLAGS) -fopenmp -c CoulombCollisions.f90
 
 clean:
-	rm *.o *.mod MPEX *.dat
+	rm *.o *.mod linFP *.dat

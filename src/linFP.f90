@@ -1,4 +1,4 @@
-PROGRAM LinearFokkerPlanckSolver_1D2V
+PROGRAM linFP
 ! ==============================================================================
 ! PURPOSE:
 ! Created by JF Caneses Marin on 2019-09-05
@@ -24,7 +24,7 @@ TYPE(splTYP) :: spline_ddBz
 TYPE(splTYP) :: spline_Phi
 TYPE(spltestTYP) :: spline_Test
 ! DO loop indices:
-INTEGER(i4) :: i,j,k,tt
+INTEGER(i4) :: i,j,k
 ! Pseudo random number seed:
 INTEGER(i4) :: seed_size
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: seed
@@ -34,8 +34,6 @@ INTEGER(i4) :: jsize
 INTEGER(i4), DIMENSION(:), ALLOCATABLE :: jrng
 ! Thread ID:
 INTEGER(i4) :: id
-! CPU time at start and end of computation:
-REAL(r8) :: tstart, tend
 ! OPENMP computational time:
 DOUBLE PRECISION :: ostart, oend, oend_estimate
 ! Cyclotron resonance number change:
