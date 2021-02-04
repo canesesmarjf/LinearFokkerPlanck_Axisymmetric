@@ -7,14 +7,17 @@ USE PhysicalConstants
 USE dataTYP
 
 IMPLICIT NONE
-! Define local variables
-TYPE(splTYP) :: spline0, spline1
-TYPE(inTYP)  :: in0
-REAL(r8) :: zp0, kep0, xip0                  ! Position, kinetic energy and pitch of the ith particle
+
+! Define type for interface arguments 
+REAL(r8), INTENT(INOUT) :: zp0, kep0, xip0
+TYPE(inTYP), INTENT(IN)  :: in0
+TYPE(splTYP), INTENT(IN) :: spline0, spline1
+
+! Local variables:
 REAL(r8) :: zpnew, Xipnew, uparnew, upernew, munew  ! Position, kinetic energy and pitch of the ith particle
 REAL(r8) :: m_t, dt
 
-! Storage for the MoverParticle and RHS subroutines
+! Storage for the MoverParticle and RHS subroutines:
 REAL(r8) :: zp1, zp2, zp3
 REAL(r8) :: K1, K2, K3, K4
 REAL(r8) :: upar0, upar1, upar2, upar3
@@ -23,8 +26,8 @@ REAL(r8) :: mu0, mu1, mu2, mu3
 REAL(r8) :: M1, M2, M3, M4
 REAL(r8) :: u2
 REAL(r8) :: B, Phi
-!REAL(r8) :: Interp1
-REAL(r8) :: curv2
+REAL(r8) :: Interp1
+!REAL(r8) :: curv2
 
 ! Time step:
 dt = in0%dt
@@ -39,8 +42,10 @@ upar0 = xip0*sqrt(2.*e_c*kep0/m_t)
 u2 = 2.*e_c*kep0/m_t
 
 ! Calculate initial magnetic moment:
-!B = Interp1(zp0,spline0)
-B = curv2(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+B = Interp1(zp0,spline0)
+!B = curv2(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+!B = 1.
+
 mu0 = 0.5*m_t*u2*(1 - xip0*xip0)/B
 
 ! Begin assembling RK4 solution:
@@ -65,8 +70,9 @@ uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*dt
 munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*dt
 
 ! Calculate the magnetic field at zpnew:
-!B = Interp1(zpnew,spline0)
-B = curv2(zpnew,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+B = Interp1(zpnew,spline0)
+!B = curv2(zpnew,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+!B = 1.
 
 ! Based on new B and new mu, calculate new uper:
 upernew = sqrt(2.*munew*B/m_t)
@@ -77,11 +83,12 @@ u2 = uparnew**2. + upernew**2.
 ! New pitch angle due to new upar and new u:
 Xipnew = uparnew/sqrt(u2)
 
+! Output data:
 zp0  = zpnew
 xip0 = Xipnew
 kep0 = 0.5*m_t*u2/e_c
 
-return
+RETURN
 END SUBROUTINE MoveParticle
 
 ! =======================================================================================================
@@ -93,14 +100,18 @@ USE PhysicalConstants
 USE dataTYP
 
 IMPLICIT NONE
-! Define local variables:
-TYPE(splTYP) :: spline0, spline1
-TYPE(inTYP) :: in0
-REAL(r8) :: zp0, upar0, mu0, K, L, M
+
+! Define type of interface arguments:
+REAL(r8), INTENT(IN) :: zp0, upar0, mu0
+REAL(r8), INTENT(OUT) :: K, L, M
+TYPE(inTYP), INTENT(IN) :: in0
+TYPE(splTYP), INTENT(IN) :: spline0, spline1
+
+! Local variables:
 REAL(r8) :: dB, dPhi
 REAL(r8) :: m_t, q_t
-!REAL(r8) :: diff1
-REAL(r8) :: curvd
+REAL(r8) :: diff1
+!REAL(r8) :: curvd
 
 ! Test particle mass:
 m_t = in0%m_t
@@ -109,19 +120,21 @@ m_t = in0%m_t
 q_t = in0%q_t
 
 ! Calculate the magnetic field gradient at zp0:
-!dB = diff1(zp0,spline0)
-dB = curvd(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+dB = diff1(zp0,spline0)
+!dB = curvd(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+!dB = .01
 
 ! Calculate electric potential gradient at zp0:
-!dPhi = diff1(zp0,spline1)
-dPhi = curvd(zp0,spline1%n,spline1%x,spline1%y,spline1%yp,spline1%sigma)
+dPhi = diff1(zp0,spline1)
+!dPhi = curvd(zp0,spline1%n,spline1%x,spline1%y,spline1%yp,spline1%sigma)
+!dPhi = 0.
 
 ! Assign values to output variables:
 K = upar0
 L = -(1/m_t)*(mu0*dB + q_t*dPhi)
 M = 0
 
-return
+RETURN
 END SUBROUTINE RightHandSide
 
 ! =======================================================================================================
@@ -444,9 +457,15 @@ REAL(r8) FUNCTION Interp1(xq, spline0)
   USE spline_fits
 
   IMPLICIT NONE
-  TYPE(splTYP) :: spline0
-  REAL(r8) :: xq, curv2
+  
+  ! Define type interface arguments:
+  REAL(r8), INTENT(IN) :: xq
+  TYPE(splTYP), INTENT(IN) :: spline0
+  
+  ! Local variables:
+  REAL(r8) :: curv2
 
+  ! Output data:
   Interp1 = curv2(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
   !Interp1 = 1.
 
@@ -460,11 +479,17 @@ REAL(r8) FUNCTION diff1(xq, spline0)
   USE spline_fits
 
   IMPLICIT NONE
-  TYPE(splTYP) :: spline0
-  REAL(r8) :: xq, curvd
 
+  ! Define type interface arguments:
+  REAL(r8), INTENT(IN) :: xq
+  TYPE(splTYP), INTENT(IN) :: spline0
+
+  ! Local variables:
+  REAL(r8) :: curvd
+
+  ! Output data:
   diff1 = curvd(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
- ! diff1 = 0.1
+  ! diff1 = 0.1
 
  RETURN
 END FUNCTION diff1

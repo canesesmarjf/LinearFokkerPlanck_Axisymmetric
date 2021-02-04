@@ -127,9 +127,17 @@ WRITE(*,*) ''
 
 ! Allocate memory to splines:
 ! ===========================================================================
+! InitSpline takes in a variable of splType and performs the following:
+! - Populates it scalar fields
+! - Allocates memory for the profile data "y", indepedent coordinate "x", etc
 CALL InitSpline(spline_Bz  ,in%nz,0._8,0._8,1,0._8)
 CALL InitSpline(spline_ddBz,in%nz,0._8,0._8,1,0._8)
 CALL InitSpline(spline_Phi ,in%nz,0._8,0._8,1,0._8)
+
+! Allocate memory for spline_test variable:
+! ==============================================================================
+! Spline_test is a variable that holds up to 6 different test profiles "y" and 
+! one "x" coordinate.
 CALL InitSplineTest(spline_Test,in%nz)
 
 ! Allocate memory to main simulation variables:
@@ -140,9 +148,11 @@ ALLOCATE(ecount1(in%Nsteps),ecount2(in%Nsteps),ecount3(in%Nsteps),ecount4(in%Nst
 
 ! Allocate memory to output variables:
 ! ==============================================================================
+! Determine size of temporal snapshots to record:
 jsize = (in%jend-in%jstart+1)/in%jincr
 ALLOCATE(jrng(jsize))
 ALLOCATE(zp_hist(in%Nparts,jsize),kep_hist(in%Nparts,jsize),xip_hist(in%Nparts,jsize),t_hist(jsize))
+
 ! Create array with the indices of the time steps to save:
 jrng = (/ (j, j=in%jstart, in%jend, in%jincr) /)
 
@@ -157,7 +167,11 @@ ALLOCATE(fcurr(in%Nparts),fnew(in%Nparts))
 fileName = trim(adjustl(in%BFieldFile))
 fileName = trim(adjustl(in%BFieldFileDir))//fileName
 fileName = trim(adjustl(in%rootDir))//fileName
+
+! Populate profile data based on external file:
 CALL ReadSpline(spline_Bz,fileName)
+
+! Based on profile data. compute spline data:
 CALL ComputeSpline(spline_Bz)
 
 ! Second derivative of the magnetic field:
@@ -165,7 +179,7 @@ spline_ddBz%x = spline_Bz%x
 spline_ddBz%y = spline_Bz%yp
 CALL ComputeSpline(spline_ddBz)
 
-! Predefined electric potential:
+! Electric potential:
 spline_Phi%x = spline_Bz%x
 spline_Phi%y = 0
 if (in%iPotential) then
@@ -356,7 +370,7 @@ TimeStepping: do j = 1,in%Nsteps
     ! =====================================================================
     id = OMP_GET_THREAD_NUM()
     if (id .EQ. 0) then
-      if (j .EQ. 1) then
+      if (j .EQ. 50) then
 	       oend_estimate = OMP_GET_WTIME()
          WRITE(*,*) 'Estimated compute time: ', in%Nsteps*(oend_estimate-ostart)/j,' [s]'
       end if
