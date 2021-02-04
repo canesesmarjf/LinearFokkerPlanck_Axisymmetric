@@ -17,7 +17,6 @@ in%Nsteps = 600,                                                               !
 in%dt     = 0.5E-7,                                                             ! Time step in [s]
 in%zmax = +5.0,
 in%zmin = -5.0,
-in%threads_request = 10,
 
 in%iSave = .true.,
 in%iPush = .true.,                                                             ! Enable RK4 particle pusher

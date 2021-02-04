@@ -17,7 +17,6 @@ in%Nsteps = 5000,                                                               
 in%dt     = 0.5E-7,                                                             ! Time step in [s]
 in%zmax = +5.0,
 in%zmin = -5.0,
-in%threads_request = 4,
 in%padding = 4,
 
 in%iSave = .true.,

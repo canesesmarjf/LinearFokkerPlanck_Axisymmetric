@@ -5,9 +5,13 @@
 INPUT_FILE="xp_IonSlowingDown.in"
 #INPUT_FILE="xp_Test.in"
 
+# Set number of threads:
+# ===================================================
+export OMP_NUM_THREADS=1
+
 # Set processor binding for openMP:
 # ===================================================
-OMP_PROC_BIND=true
+export OMP_PROC_BIND=true
 
 # Get repo directory:
 # ===================================================

@@ -217,11 +217,6 @@ CALL random_seed(get=seed)
 seed = 314159565
 CALL random_seed(put=seed)
 
-! OMP setup:
-! ==============================================================================
-! Set the number of threads:
-CALL OMP_SET_NUM_THREADS(in%threads_request)
-
 ! Inititalize zp, kep, xip
 ! ==============================================================================
 kep = 0.; xip = 0.; zp = 0.;
@@ -274,7 +269,7 @@ TimeStepping: do j = 1,in%Nsteps
 
           ! Loop over particles:
           ! ==============================================================================
-          !$OMP DO SCHEDULE(STATIC,in%Nparts/in%threads_request)
+          !$OMP DO
               AllParticles: do i = 1,in%Nparts
 
             		if (j .EQ. 1 .AND. i .EQ. 1) then
