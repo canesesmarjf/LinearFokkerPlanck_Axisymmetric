@@ -3,15 +3,21 @@
 # Select input file:
 # ===================================================
 INPUT_FILE="Bfield_b.txt"
-NZ_STR=501
+NZ=501
+
+# Select number of query points for interpolation:
+# ===================================================
+NQ=1000000
 
 # Set number of threads:
 # ===================================================
-OMP_NUM_THREADS=4
+export OMP_NUM_THREADS=32
 
 # Set processor binding for openMP:
 # ===================================================
-OMP_PROC_BIND=true
+export OMP_PROC_BIND=true
+export OMP_WAIT_POLICY=active
+export OMP_DYNAMIC=false
 
 # Get repo directory:
 # ===================================================
@@ -26,9 +32,8 @@ INPUT_FILE_DIR=$REPO_DIR/BfieldData/$INPUT_FILE
 export REPO_DIR
 export INPUT_FILE_DIR
 export INPUT_FILE
-export NZ_STR
-export OMP_NUM_THREADS
-export OMP_PROC_BIND
+export NZ
+export NQ
 
 # Compile source code:
 # ===================================================
