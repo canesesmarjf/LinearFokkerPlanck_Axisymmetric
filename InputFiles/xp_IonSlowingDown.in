@@ -1,11 +1,11 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_02_04a',
+in%fileDescriptor = '2021_02_06a',
 
 ! Magnetic field input data:
 ! =========================
-in%rootDir ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
+in%repoDir ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
 in%BFieldFileDir = "/BfieldData",
 in%BFieldFile = "/Bfield_b.txt",
 in%nz = 501,			                                                              ! Number of points in BFieldFile

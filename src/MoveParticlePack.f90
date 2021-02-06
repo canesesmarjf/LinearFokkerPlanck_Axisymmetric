@@ -466,8 +466,8 @@ REAL(r8) FUNCTION Interp1(xq, spline0)
   REAL(r8) :: curv2
 
   ! Output data:
-  !Interp1 = curv2(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
-  Interp1 = COS(xq)
+  Interp1 = curv2(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+  !Interp1 = COS(xq)
 
   RETURN
 END FUNCTION Interp1
@@ -488,8 +488,8 @@ REAL(r8) FUNCTION diff1(xq, spline0)
   REAL(r8) :: curvd
 
   ! Output data:
-  !diff1 = curvd(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
-  diff1 = COS(xq)
+  diff1 = curvd(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
+  !diff1 = COS(xq)
 
  RETURN
 END FUNCTION diff1

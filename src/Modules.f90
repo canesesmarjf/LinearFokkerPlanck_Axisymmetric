@@ -20,7 +20,7 @@ USE local
 
 IMPLICIT NONE
 TYPE inTYP
-  CHARACTER*150 :: fileDescriptor, rootDir
+  CHARACTER*150 :: fileDescriptor, repoDir
   CHARACTER*150 :: BFieldFile, BFieldFileDir
   REAL(r8) :: Ti0, Te0, ne0, dt
   REAL(r8) :: Aion, Zeff, Zion

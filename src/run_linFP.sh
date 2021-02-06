@@ -7,7 +7,7 @@ INPUT_FILE="xp_IonSlowingDown.in"
 
 # Set number of threads:
 # ===================================================
-export OMP_NUM_THREADS=32
+export OMP_NUM_THREADS=1
 
 # Set processor binding for openMP:
 # ===================================================

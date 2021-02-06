@@ -22,12 +22,8 @@ TYPE(inTYP)  :: in
 TYPE(splTYP) :: spline_Bz
 TYPE(splTYP) :: spline_ddBz
 TYPE(splTYP) :: spline_Phi
-TYPE(spltestTYP) :: spline_Test
 ! DO loop indices:
 INTEGER(i4) :: i,j,k
-! Pseudo random number seed:
-INTEGER(i4) :: seed_size
-INTEGER(i4), DIMENSION(:), ALLOCATABLE :: seed
 ! Size of time interval:
 INTEGER(i4) :: jsize
 ! Indices of time steps to save:
@@ -60,9 +56,7 @@ REAL(r8) :: pcnt1, pcnt2, pcnt3, pcnt4
 ! To store system commands and fileNames:
 CHARACTER*300 :: command, mpwd
 INTEGER(i4) :: n_mpwd, STATUS
-CHARACTER*300 :: inputFileDir, inputFile, fileName, xpSelector, rootDir, dir0, dir1
-! Declare user-defined functions:
-REAL(r8) :: Interp1, diff1
+CHARACTER*300 :: inputFileDir, inputFile, fileName, xpSelector, repoDir, dir0, dir1
 
 ! Create input namelist from the user-defined structures:
 ! ==============================================================================
@@ -70,7 +64,7 @@ namelist/in_nml/in
 
 ! Get root directory:
 ! ==============================================================================
-CALL GET_ENVIRONMENT_VARIABLE('REPO_DIR',rootDir)
+CALL GET_ENVIRONMENT_VARIABLE('REPO_DIR',repoDir)
 
 ! Get input file name and directory:
 ! =============================================================================
@@ -83,10 +77,8 @@ OPEN(unit=4,file=inputFileDir,status='old',form='formatted')
 read(4,in_nml)
 CLOSE(unit=4)
 
-! Populate the in%rootDir field:
-! =============================================================================
-in%rootDir = trim(adjustl(rootDir))
-
+! Select the test species:
+! ==============================================================================
 if (in%species_a .eq. 1) then
     in%q_t = -e_c
     in%m_t = m_e
@@ -132,15 +124,9 @@ CALL InitSpline(spline_Bz  ,in%nz,0._8,0._8,1,0._8)
 CALL InitSpline(spline_ddBz,in%nz,0._8,0._8,1,0._8)
 CALL InitSpline(spline_Phi ,in%nz,0._8,0._8,1,0._8)
 
-! Allocate memory for spline_test variable:
-! ==============================================================================
-! Spline_test is a variable that holds up to 6 different test profiles "y" and
-! one "x" coordinate.
-CALL InitSplineTest(spline_Test,in%nz)
-
 ! Allocate memory to main simulation variables:
 ! ==============================================================================
-ALLOCATE(zp(in%Nparts), kep(in%Nparts), xip(in%Nparts))
+ALLOCATE(zp(in%Nparts),kep(in%Nparts),xip(in%Nparts))
 ALLOCATE(pcount1(in%Nsteps),pcount2(in%Nsteps),pcount3(in%Nsteps),pcount4(in%Nsteps))
 ALLOCATE(ecount1(in%Nsteps),ecount2(in%Nsteps),ecount3(in%Nsteps),ecount4(in%Nsteps))
 
@@ -164,7 +150,7 @@ ALLOCATE(fcurr(in%Nparts),fnew(in%Nparts))
 ! Magnetic field data:
 fileName = trim(adjustl(in%BFieldFile))
 fileName = trim(adjustl(in%BFieldFileDir))//fileName
-fileName = trim(adjustl(in%rootDir))//fileName
+fileName = trim(adjustl(in%repoDir))//fileName
 
 ! Populate profile data based on external file:
 CALL ReadSpline(spline_Bz,fileName)
@@ -184,36 +170,6 @@ if (in%iPotential) then
   CALL PotentialProfile(spline_Phi,in)
 end if
 CALL ComputeSpline(spline_Phi)
-
-! Test the splines:
-! ==========================================================================
-if (.true.) then
-    do i=1,in%nz
-        !spline_Test%x(i)  = in%zmin + i*0.03
-        spline_Test%x(i)  = 0.0 + i*0.02
-        spline_Test%y1(i) = Interp1(spline_Test%x(i),spline_Bz)
-        spline_Test%y2(i) = diff1(spline_Test%x(i),spline_Bz)
-        spline_Test%y3(i) = Interp1(spline_Test%x(i),spline_ddBz)
-        spline_Test%y4(i) = Interp1(spline_Test%x(i),spline_Phi)
-        spline_Test%y5(i) = BESSEL_JN(0,spline_Test%x(i))
-        spline_Test%y6(i) = BESSEL_JN(1,spline_Test%x(i))
-    end do
-    fileName = "B_spline.dat"
-    OPEN(unit=8,file=fileName,form="formatted",status="unknown")
-    do j = 1,in%nz
-        WRITE(8,*) spline_Test%x(j), spline_Test%y1(j), spline_Test%y2(j),&
-         spline_Test%y3(j), spline_Test%y4(j), spline_Test%y5(j), spline_Test%y6(j)
-    end do
-    CLOSE(unit=8)
-end if
-
-! Initialize pseudo random number generator:
-! ===========================================================================
-CALL random_seed(size=seed_size)
-ALLOCATE(seed(seed_size))
-CALL random_seed(get=seed)
-seed = 314159565
-CALL random_seed(put=seed)
 
 ! Inititalize zp, kep, xip
 ! ==============================================================================
@@ -270,17 +226,14 @@ TimeStepping: do j = 1,in%Nsteps
           !$OMP DO
               AllParticles: do i = 1,in%Nparts
 
-            		if (j .EQ. 1 .AND. i .EQ. 1) then
-	                WRITE(*,*) "spline_ddBz", spline_ddBz%n
-	                WRITE(*,*) "spline_Phi", spline_Phi%n
-	                WRITE(*,*) "spline_Bz", spline_Bz%n
-			            in%threads_given = OMP_GET_NUM_THREADS()
-            		  WRITE(*,*) ''
-            		  WRITE(*,*) '*********************************************************************'
-            		  WRITE(*,*) "Number of threads given: ", in%threads_given
-            		  WRITE(*,*) '*********************************************************************'
-            		  WRITE(*,*) ''
-            		end if
+            	if (j .EQ. 1 .AND. i .EQ. 1) then
+		   in%threads_given = OMP_GET_NUM_THREADS()
+            	   WRITE(*,*) ''
+            	   WRITE(*,*) '*********************************************************************'
+            	   WRITE(*,*) "Number of threads given: ", in%threads_given
+            	   WRITE(*,*) '*********************************************************************'
+            	   WRITE(*,*) ''
+            	end if
 
                 ! Calculate Cyclotron resonance number:
                 ! ------------------------------------------------------------------------
@@ -289,7 +242,7 @@ TimeStepping: do j = 1,in%Nsteps
 
                 ! Push particles adiabatically:
                 ! ------------------------------------------------------------------------
-		            if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_Bz,spline_Phi)
+                 if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_Bz,spline_Phi)
 
                 ! Re-inject particles:
                 ! ------------------------------------------------------------------------
@@ -387,7 +340,7 @@ WRITE(*,*) ''
 if (in%iSave) then
     ! Create new directory to save output data:
     ! --------------------------------------------------------------------------
-    dir1 = trim(in%rootDir)//'/OutputFiles'
+    dir1 = trim(in%repoDir)//'/OutputFiles'
     command = 'mkdir '//dir1
     CALL system(command,STATUS)
     WRITE(*,*) 'Status: ', STATUS
@@ -397,7 +350,7 @@ if (in%iSave) then
     n_mpwd = lEN_TRIM(inputFile)-3
     dir0 = inputFile
     dir0 = dir0(1:n_mpwd)
-    dir1 = trim(in%rootDir)//'/OutputFiles/'//trim(dir0)
+    dir1 = trim(in%repoDir)//'/OutputFiles/'//trim(dir0)
     command = 'mkdir '//dir1
     CALL system(command,STATUS)
 
@@ -483,13 +436,13 @@ if (in%iSave) then
 
     ! Copy input file to output directory:
     ! --------------------------------------------------------------------------
-    dir0 = trim(in%rootDir)//'/InputFiles/'//trim(inputFile)
+    dir0 = trim(in%repoDir)//'/InputFiles/'//trim(inputFile)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
     CALL system(command)
 
     ! Copy magnetic field data:
     ! --------------------------------------------------------------------------
-    dir0 = trim(in%rootDir)//'/BfieldData'//trim(in%BFieldFile)
+    dir0 = trim(in%repoDir)//'/BfieldData'//trim(in%BFieldFile)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))//'/Bfield.txt'
     CALL system(command)
 
@@ -498,7 +451,7 @@ if (in%iSave) then
     n_mpwd = lEN_TRIM(inputFile)-3
     dir0 = inputFile
     dir0 = dir0(1:n_mpwd)
-    dir0 = trim(in%rootDir)//'/OutputFiles/'//trim(dir0)//'/'//trim(in%fileDescriptor)
+    dir0 = trim(in%repoDir)//'/OutputFiles/'//trim(dir0)//'/'//trim(in%fileDescriptor)
     fileName = trim(dir0)//'/commitHash.txt'
     command = 'git log --oneline -1 > '//trim(fileName)
     CALL system(command)
