@@ -1,7 +1,7 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_02_06a',
+in%fileDescriptor = '2021_02_07b',
 
 ! Magnetic field input data:
 ! =========================
@@ -12,7 +12,7 @@ in%nz = 501,			                                                              ! N
 
 ! Simulation conditions:
 ! =====================
-in%Nparts = 50000,                                                              ! Total number of particles
+in%Nparts = 5000,                                                              ! Total number of particles
 in%Nsteps = 5000,                                                               ! Total number of time steps
 in%dt     = 0.5E-7,                                                             ! Time step in [s]
 in%zmax = +5.0,
@@ -20,7 +20,7 @@ in%zmin = -5.0,
 
 in%iSave = .true.,
 in%iPush = .true.,                                                             ! Enable RK4 particle pusher
-in%iColl = .false.,                                                             ! Collisions or no collisions
+in%iColl = .true.,                                                             ! Collisions or no collisions
 in%iHeat = .false.,                                                            ! Enable RF heating operator
 in%iPotential = .false.,                                                       ! Enable electric potential
 in%iDrag = .false.,                                                            ! Enable plasma drag
@@ -33,9 +33,9 @@ in%jincr  = 50,                                                                 
 
 ! Collision operator conditions:
 ! ==============================
-in%Te0 = 100.,	                                                                 ! eV
-in%Ti0 = 100.,                                                                  ! eV
-in%ne0 = 5.0E+19,	                                                             ! m**-3
+in%Te0 = 10.,	                                                                 ! eV
+in%Ti0 = 10.,                                                                  ! eV
+in%ne0 = 1.0E+19,	                                                             ! m**-3
 in%Aion = 1.,                                                                  ! Ion mass
 in%Zeff = 1.,                                                                  ! Zeff for ion/impurity mixture
 in%Zion = 1.,                                                                  ! Charge number for main ion species
@@ -45,7 +45,7 @@ in%CollOperType = 2,                                                           !
 
 ! Particle boundary conditions:
 ! ============================
-in%particleBC = 2,                                                             ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
+in%particleBC = 1,                                                             ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
 
 ! Initial conditions:
 !===================
@@ -53,7 +53,7 @@ in%zp_InitType = 2,                                                            !
 in%zp_init = 0.0,                                                              ! Mean particle injection
 in%zp_init_std = 0.3,                                                          ! STD of particle injection
 in%Ep_init = 1000.,                                                            ! Drift kinetic energy
-in%Tp_init = 10.;                                                               ! Thermal kinetic energy
+in%Tp_init = 1.;                                                               ! Thermal kinetic energy
 in%xip_init = 0.9240,                                                           ! Mean pitch angle where xip = cos(theta) = vpar/v
 
 ! RF heating operator conditions:

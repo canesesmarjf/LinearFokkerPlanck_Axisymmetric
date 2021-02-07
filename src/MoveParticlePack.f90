@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE MoveParticle(zp0,kep0,xip0,in0,spline0,spline1)
+SUBROUTINE MoveParticle(zp0,kep0,xip0,in0,spline_B,spline_dB,spline_dV)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -11,7 +11,7 @@ IMPLICIT NONE
 ! Define type for interface arguments 
 REAL(r8), INTENT(INOUT) :: zp0, kep0, xip0
 TYPE(inTYP), INTENT(IN)  :: in0
-TYPE(splTYP), INTENT(IN) :: spline0, spline1
+TYPE(splTYP), INTENT(IN) :: spline_B, spline_dB, spline_dV
 
 ! Local variables:
 REAL(r8) :: zpnew, Xipnew, uparnew, upernew, munew  ! Position, kinetic energy and pitch of the ith particle
@@ -25,8 +25,7 @@ REAL(r8) :: L1, L2, L3, L4
 REAL(r8) :: mu0, mu1, mu2, mu3
 REAL(r8) :: M1, M2, M3, M4
 REAL(r8) :: u2
-REAL(r8) :: B, Phi
-REAL(r8) :: Interp1
+REAL(r8) :: B
 !REAL(r8) :: curv2
 
 ! Time step:
@@ -42,37 +41,35 @@ upar0 = xip0*sqrt(2.*e_c*kep0/m_t)
 u2 = 2.*e_c*kep0/m_t
 
 ! Calculate initial magnetic moment:
-B = Interp1(zp0,spline0)
+CALL Interp1(zp0,B,spline_B)
 !B = curv2(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
-!B = 1.
 
 mu0 = 0.5*m_t*u2*(1 - xip0*xip0)/B
 
 ! Begin assembling RK4 solution:
-call RightHandSide(zp0,upar0,mu0,K1,L1,M1,in0,spline0,spline1)             ! Update values of fK, fL and fM
+call RightHandSide(zp0,upar0,mu0,K1,L1,M1,in0,spline_dB,spline_dV)             ! Update values of fK, fL and fM
 zp1   = zp0   + (K1*dt/2.)
 upar1 = upar0 + (L1*dt/2.)
 mu1   = mu0   + (M1*dt/2.)
 
-call RightHandSide(zp1,upar1,mu1,K2,L2,M2,in0,spline0,spline1)             ! Update values of fK, fL and fM
+call RightHandSide(zp1,upar1,mu1,K2,L2,M2,in0,spline_dB,spline_dV)             ! Update values of fK, fL and fM
 zp2   = zp0   + (K2*dt/2.)
 upar2 = upar0 + (L2*dt/2.)
 mu2   = mu0   + (M2*dt/2.)
 
-call RightHandSide(zp2,upar2,mu2,K3,L3,M3,in0,spline0,spline1)             ! Update values of fK, fL and fM
+call RightHandSide(zp2,upar2,mu2,K3,L3,M3,in0,spline_dB,spline_dV)             ! Update values of fK, fL and fM
 zp3   = zp0   + K3*dt
 upar3 = upar0 + L3*dt
 mu3   = mu0   + M3*dt
 
-call RightHandSide(zp3,upar3,mu3,K4,L4,M4,in0,spline0,spline1)             ! Update values of fK, fL and fM
+call RightHandSide(zp3,upar3,mu3,K4,L4,M4,in0,spline_dB,spline_dV)             ! Update values of fK, fL and fM
 zpnew   = zp0   + ( (K1 + (2.*K2) + (2.*K3) + K4)/6. )*dt
 uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*dt
 munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*dt
 
 ! Calculate the magnetic field at zpnew:
-B = Interp1(zpnew,spline0)
+CALL Interp1(zpnew,B,spline_B)
 !B = curv2(zpnew,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
-!B = 1.
 
 ! Based on new B and new mu, calculate new uper:
 upernew = sqrt(2.*munew*B/m_t)
@@ -92,7 +89,7 @@ RETURN
 END SUBROUTINE MoveParticle
 
 ! =======================================================================================================
-SUBROUTINE RightHandSide(zp0,upar0,mu0,K,L,M,in0,spline0,spline1)
+SUBROUTINE RightHandSide(zp0,upar0,mu0,K,L,M,in0,spline_dB,spline_dV)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -105,13 +102,12 @@ IMPLICIT NONE
 REAL(r8), INTENT(IN) :: zp0, upar0, mu0
 REAL(r8), INTENT(OUT) :: K, L, M
 TYPE(inTYP), INTENT(IN) :: in0
-TYPE(splTYP), INTENT(IN) :: spline0, spline1
+TYPE(splTYP), INTENT(IN) :: spline_dB, spline_dV
 
 ! Local variables:
-REAL(r8) :: dB, dPhi
+REAL(r8) :: dB, dV
 REAL(r8) :: m_t, q_t
-REAL(r8) :: diff1
-!REAL(r8) :: curvd
+!REAL(r8) :: curv2
 
 ! Test particle mass:
 m_t = in0%m_t
@@ -120,18 +116,16 @@ m_t = in0%m_t
 q_t = in0%q_t
 
 ! Calculate the magnetic field gradient at zp0:
-dB = diff1(zp0,spline0)
-!dB = curvd(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
-!dB = .01
+CALL Interp1(zp0,dB,spline_dB)
+!dB = curv2(zp0,spline_dB%n,spline_dB%x,spline_dB%y,spline_dB%y2,1)
 
 ! Calculate electric potential gradient at zp0:
-dPhi = diff1(zp0,spline1)
-!dPhi = curvd(zp0,spline1%n,spline1%x,spline1%y,spline1%yp,spline1%sigma)
-!dPhi = 0.
+CALL Interp1(zp0,dV,spline_dV)
+!dV = curvd(zp0,spline_dV%n,spline_dV%x,spline_dV%y,spline_dV%y2,1)
 
 ! Assign values to output variables:
 K = upar0
-L = -(1/m_t)*(mu0*dB + q_t*dPhi)
+L = -(1/m_t)*(mu0*dB + q_t*dV)
 M = 0
 
 RETURN
@@ -216,7 +210,7 @@ return
 END SUBROUTINE ReinjectParticles
 
 ! =======================================================================================================
-SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0,in0,spline0)
+SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0,in0,spline_B)
 ! =======================================================================================================
 
 USE local
@@ -230,8 +224,7 @@ REAL(r8) :: zp0, kep0, xip0, f0     ! Input variables
 REAL(r8) :: upar, Bf, Omega, Omega_RF
 REAL(r8) :: m_t, q_t
 TYPE(inTYP)  :: in0
-TYPE(splTYP) :: spline0
-REAL(r8) :: Interp1
+TYPE(splTYP) :: spline_B
 
 ! Test particle mass:
 m_t = in0%m_t
@@ -240,7 +233,9 @@ q_t = in0%q_t
 ! Parallel velocity of test particle:
 upar = sqrt(2.*e_c*kep0/m_t)*xip0
 ! Magnetic field at location zp0 of test particle:
-Bf = Interp1(zp0,spline0)
+CALL Interp1(zp0,Bf,spline_B)
+!Bf = Interp1(zp0,spline_B)
+
 ! Cyclotron frequency of test particle:
 Omega = abs(q_t)*Bf/m_t
 ! RF frequency in rad/s:
@@ -252,7 +247,7 @@ return
 END SUBROUTINE CyclotronResonanceNumber
 
 ! =======================================================================================================
-SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt,in0,spline0,spline1,spline2)
+SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt,in0,spline_B,spline_dB,spline_ddB,spline_dV)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -262,11 +257,11 @@ USE dataTYP
 IMPLICIT NONE
 ! Define local variables:
 TYPE(inTYP)  :: in0
-TYPE(splTYP) :: spline0, spline1, spline2
+TYPE(splTYP) :: spline_B, spline_dB, spline_ddB, spline_dV
 REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
 REAL(r8) :: u0, upar0, uper0
 REAL(r8) :: kep_par0, kep_per0
-REAL(r8) :: dB, ddB, dPhi
+REAL(r8) :: dB, ddB, dV
 REAL(r8) :: Bf, Omega, dOmega, ddOmega
 REAL(r8) :: Omega_dot, Omega_ddot, tau_rf
 REAL(r8) :: rl, flr, besselterm
@@ -275,7 +270,6 @@ REAL(r8) :: dkep_par, dkep, kep1
 REAL(r8) :: kep_per1, kep_par1
 REAL(r8) :: upar1, u1
 REAL(r8) :: m_t, q_t
-REAL(r8) :: Interp1, diff1
 
 ! Test particle mass:
 m_t = in0%m_t
@@ -291,19 +285,19 @@ kep_par0 = kep0*xip0**2.
 kep_per0 = kep0*(1. - xip0**2.)
 
 ! Gradients:
-dB = diff1(zp0,spline0)
-ddB = Interp1(zp0,spline1)
-dPhi = diff1(zp0,spline2)
+CALL Interp1(zp0,dB ,spline_dB )
+CALL Interp1(zp0,ddB,spline_ddB)
+CALL Interp1(zp0,dV ,spline_dV )
 
 ! Spatial derivatives of the magnetic field:
-Bf        = Interp1(zp0,spline0)
+CALL Interp1(zp0,Bf,spline_B)
 Omega     = in0%n_harmonic*e_c*Bf/m_t
 dOmega    = in0%n_harmonic*e_c*dB/m_t
 ddOmega   = in0%n_harmonic*e_c*ddB/m_t
 
 ! Calculate the first and second time derivative of Omega:
 Omega_dot = upar0*dOmega
-Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - q_t*dPhi*dOmega/m_t
+Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - q_t*dV*dOmega/m_t
 
 ! Calculate the interaction time (tau_RF):
 if ( (Omega_ddot**2.) .GT. 4.8175*ABS(Omega_dot**3.) )  then
@@ -326,7 +320,7 @@ besselterm = BESSEL_JN(in0%n_harmonic-1,flr)
 mean_dkep_per = 0.5*(e_c/m_t)*(in0%Ew*besselterm*tau_rf)**2.
 
 ! Calculate the change in perp, parallel and total energy:
-call random_number(Rm1)
+CALL RANDOM_NUMBER(Rm1)
 Rm1 = 2.*Rm1 - 1.
 dkep_per = mean_dkep_per + Rm1*sqrt(2.*kep_per0*mean_dkep_per)
 
@@ -376,7 +370,7 @@ pcnt = pcnt + 1
 ! Record energy kick:
 ecnt = ecnt + dkep
 
-return
+RETURN
 END SUBROUTINE RFHeatingOperator
 
 ! =======================================================================================================
@@ -449,160 +443,3 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
 
 return
 END SUBROUTINE loadParticles
-
-! =======================================================================================================
-REAL(r8) FUNCTION Interp1(xq, spline0)
-! =======================================================================================================
-  USE local
-  USE spline_fits
-
-  IMPLICIT NONE
-  
-  ! Define type interface arguments:
-  REAL(r8), INTENT(IN) :: xq
-  TYPE(splTYP), INTENT(IN) :: spline0
-  
-  ! Local variables:
-  REAL(r8) :: curv2
-
-  ! Output data:
-  Interp1 = curv2(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
-  !Interp1 = COS(xq)
-
-  RETURN
-END FUNCTION Interp1
-
-! =======================================================================================================
-REAL(r8) FUNCTION diff1(xq, spline0)
-! =======================================================================================================
-  USE local
-  USE spline_fits
-
-  IMPLICIT NONE
-
-  ! Define type interface arguments:
-  REAL(r8), INTENT(IN) :: xq
-  TYPE(splTYP), INTENT(IN) :: spline0
-
-  ! Local variables:
-  REAL(r8) :: curvd
-
-  ! Output data:
-  diff1 = curvd(xq,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
-  !diff1 = COS(xq)
-
- RETURN
-END FUNCTION diff1
-
-! =======================================================================================================
-! source: http://web.gps.caltech.edu/~cdp/cloudmodel/Current/util/
-   SUBROUTINE spline(x, y, n, yp1, ypn, y2)
-!   use nrtype
-!
-! Given arrays x(1:n) and y(1:n) containing a tabulated function, i.e.
-! y(i)=f(x(i)), with x(1)<x(2)<...<x(n), and given values yp1 and ypn for
-! the first derivative of the interpolating function at points 1 and n,
-! respectively, this routine returns an array y2(1:n) of length n which
-! contains the second derivatives of the interpolating function at the
-! tabulated points x(i).  If yp1 and/or ypn are equal to 1.e30 or larger,
-! the routine is signaled to set the corresponding boundary condition for a
-! natural spline with zero second derivative on that boundary.
-! Parameter: nmax is the largest anticipiated value of n
-! (adopted from Numerical Recipes in FORTRAN 77)
-!
-   INTEGER, PARAMETER :: DP=KIND(1.0D0)
-   INTEGER:: n
-   INTEGER, PARAMETER:: nmax=500
-   REAL(DP):: yp1, ypn, x(n), y(n), y2(n)
-   INTEGER:: i, k
-   REAL(DP):: p, qn, sig, un, u(nmax)
-
-     if (yp1.gt..99e30) then
-        y2(1)=0.
-        u(1)=0.
-     else
-        y2(1)=-0.5
-        u(1)=(3./(x(2)-x(1)))*((y(2)-y(1))/(x(2)-x(1))-yp1)
-     endif
-
-     do i=2, n-1
-        sig=(x(i)-x(i-1))/(x(i+1)-x(i-1))
-        p=sig*y2(i-1)+2.
-        y2(i)=(sig-1.)/p
-        u(i)=(6.*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))/&
-             & (x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig*u(i-1))/p
-     enddo
-
-     if (ypn.gt..99e30) then
-        qn=0.
-        un=0.
-     else
-        qn=0.5
-        un=(3./(x(n)-x(n-1)))*(ypn-(y(n)-y(n-1))/(x(n)-x(n-1)))
-     endif
-
-     y2(n)=(un-qn*u(n-1))/(qn*y2(n-1)+1.)
-
-     do k=n-1, 1, -1
-        y2(k)=y2(k)*y2(k+1)+u(k)
-     enddo
-
-     return
-     END
-
-
-! =======================================================================================================
-! source: http://web.gps.caltech.edu/~cdp/cloudmodel/Current/util/
-   SUBROUTINE splint(xa, ya, y2a, n, x, y)
-!   USE nrtype
-!
-! Given the arrays xa(1:n) and ya(1:n) of length n, which tabulate a function
-! (with the xa(i) in order), and given the array y2a(1:n), which is the output
-! from the subroutine spline, and given a value of x, this routine returns a
-! cubic spline interpolated value y.
-! (adopted from Numerical Recipes in FORTRAN 77)
-!
-   INTEGER, PARAMETER :: DP = KIND(1.0D0)
-   INTEGER:: n
-   REAL(DP):: x, y, xa(n), y2a(n), ya(n)
-   INTEGER:: k, khi, klo
-   REAL(DP):: a, b, h
-
-     klo=1
-     khi=n
-1   if (khi-klo.gt.1) then
-        k=(khi+klo)/2
-        if (xa(k).gt.x) then
-           khi=k
-        else
-           klo=k
-        endif
-        goto 1
-     endif
-
-     h=xa(khi)-xa(klo)
-     if (h.eq.0.) pause 'bad xa input in splint'
-
-     a=(xa(khi)-x)/h
-     b=(x-xa(klo))/h
-     y=a*ya(klo)+b*ya(khi)+((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.
-
-     return
-     END
-
-! =======================================================================================================
-SUBROUTINE diff(x,y,n,dy)
-USE local
-  
-IMPLICIT NONE
-REAL(r8), DIMENSION(n) :: x, y, dy
-INTEGER(i4) :: n, i
-
-do i=1,(n-1)
- dy(i) = (y(i+1) - y(i))/(x(i+1) - x(i))
-end do
-
-dy(n) = dy(n-1)  
-
-RETURN
-END SUBROUTINE diff

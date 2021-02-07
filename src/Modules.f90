@@ -1,7 +1,6 @@
-!  **************************************************************
 ! MODULE local
-! module containing definitions of real and integer kinds
-!  **************************************************************
+! =============================================================================
+! Module containing definitions of real and integer kinds
 MODULE local
 
 IMPLICIT NONE
@@ -10,11 +9,26 @@ r4=SELECTED_REAL_KIND(6,37),r8=SELECTED_REAL_KIND(13,307)
 
 END MODULE local
 
-!  **************************************************************
+! MODULE PhysicalConstants
+! =============================================================================
+MODULE PhysicalConstants
+USE local
+
+IMPLICIT NONE
+
+REAL(r8), PARAMETER :: e_0   = 8.854e-12
+REAL(r8), PARAMETER :: pi    = 3.1415926
+REAL(r8), PARAMETER :: e_c   = 1.602e-19
+REAL(r8), PARAMETER :: m_e   = 9.109e-31
+REAL(r8), PARAMETER :: m_p   = 1.672e-27
+REAL(r8), PARAMETER :: c     = 299792458 ! Speed of light [m/s]
+
+END MODULE PhysicalConstants
+
 ! MODULE dataTYP
-! module containing definition of an object to contain all data used in
+! =============================================================================
+! Module containing definition of an object to contain all data used in
 ! computation
-!  **************************************************************
 MODULE dataTYP
 USE local
 
@@ -42,93 +56,184 @@ END TYPE inTYP
 
 END MODULE dataTYP
 
-!  **************************************************************
 ! MODULE spline_fits
-! module containing arrays used in spline fits
-!  **************************************************************
+! =============================================================================
+! Module containing arrays used in spline fits
 MODULE spline_fits
 USE local
 
 IMPLICIT NONE
+! ----------------------------------------------------------------------------
 TYPE splTYP
-  INTEGER(i4) :: n, islpsw, ierr
-  REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y, yp, temp
-  REAL(r8) :: slp1, slpn, sigma
+  INTEGER(i4) :: n
+  REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y, y2
+  REAL(r8) :: slp1, slpn
 END TYPE splTYP
 
-TYPE spltestTYP
-  INTEGER(i4) :: n
-  REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y1, y2, y3, y4, y5, y6
-END TYPE spltestTYP
-
 CONTAINS
-  SUBROUTINE InitSpline(spline0,n,slp1,slpn,islpsw,sigma)
+! ----------------------------------------------------------------------------
+  SUBROUTINE InitSpline(spline0,n,slp1,slpn)
     IMPLICIT NONE
     TYPE(splTYP) :: spline0
-    INTEGER(i4) :: n, islpsw
-    REAL(r8) :: slp1, slpn, sigma
+    INTEGER(i4) :: n
+    REAL(r8) :: slp1, slpn
     ALLOCATE(spline0%x(n))
     ALLOCATE(spline0%y(n))
-    ALLOCATE(spline0%yp(n))
-    ALLOCATE(spline0%temp(n))
+    ALLOCATE(spline0%y2(n))
     spline0%n = n
     spline0%slp1 = slp1
     spline0%slpn = slpn
-    spline0%islpsw = islpsw
-    spline0%sigma = sigma
   END SUBROUTINE InitSpline
 
-  SUBROUTINE InitSplineTest(spline0,n)
-    IMPLICIT NONE
-    TYPE(spltestTYP) :: spline0
-    INTEGER(i4) :: n
-    ALLOCATE(spline0%x(n))
-    ALLOCATE(spline0%y1(n))
-    ALLOCATE(spline0%y2(n))
-    ALLOCATE(spline0%y3(n))
-    ALLOCATE(spline0%y4(n))
-    ALLOCATE(spline0%y5(n))
-    ALLOCATE(spline0%y6(n))
-  END SUBROUTINE InitSplineTest
-
+! ----------------------------------------------------------------------------
   SUBROUTINE ReadSpline(spline0,fileName)
     IMPLICIT NONE
     TYPE(splTYP) :: spline0
     CHARACTER*250 :: fileName
     INTEGER(i4) :: i
-
     open(unit=8,file=fileName,status="old")
     do i=1,(spline0%n)
         read(8,*) spline0%x(i), spline0%y(i)
     end do
     close(unit=8)
-
   END SUBROUTINE ReadSpline
 
+! ----------------------------------------------------------------------------
+  SUBROUTINE DiffSpline(spline0,spline1)
+    ! DiffSpline takes in spline0, replicates it on spline1 AND populates the
+    ! y field with the derivative of spline0
+    IMPLICIT NONE
+    TYPE(splTYP), INTENT(IN)  :: spline0
+    TYPE(splTYP), INTENT(OUT) :: spline1
+
+    spline1 = spline0
+    CALL diff(spline0%x,spline0%y,spline0%n,spline1%y)
+  END SUBROUTINE DiffSpline
+
+! ----------------------------------------------------------------------------
   SUBROUTINE ComputeSpline(spline0)
     IMPLICIT NONE
     TYPE(splTYP) :: spline0
-
-    call curv1(spline0%n,spline0%x,spline0%y,spline0%slp1,spline0%slpn, &
-    spline0%islpsw,spline0%yp,spline0%temp,spline0%sigma,spline0%ierr)
-
+    CALL spline(spline0%x,spline0%y,spline0%n,spline0%slp1,spline0%slpn,spline0%y2)
   END SUBROUTINE ComputeSpline
 
+! ----------------------------------------------------------------------------
+ SUBROUTINE Interp1(xq,yq,spline0)
+    IMPLICIT NONE
+    TYPE(splTYP) :: spline0
+    REAL(r8) :: xq, yq
+    CALL splint(spline0%x,spline0%y,spline0%y2,spline0%n,xq,yq)
+ END SUBROUTINE Interp1
+
+! ----------------------------------------------------------------------------
+ SUBROUTINE diff(x,y,n,dy)
+ USE local 
+ IMPLICIT NONE
+ REAL(r8), DIMENSION(n) :: x, y, dy
+ INTEGER(i4) :: n, i
+
+ do i=1,(n-1)
+  dy(i) = (y(i+1) - y(i))/(x(i+1) - x(i))
+ end do
+
+ dy(n) = dy(n-1)  
+
+ RETURN
+ END SUBROUTINE diff
+
+! ----------------------------------------------------------------------------
+   SUBROUTINE spline(x, y, n, yp1, ypn, y2)
+! source: http://web.gps.caltech.edu/~cdp/cloudmodel/Current/util/
+!   use nrtype
+!
+! Given arrays x(1:n) and y(1:n) containing a tabulated function, i.e.
+! y(i)=f(x(i)), with x(1)<x(2)<...<x(n), and given values yp1 and ypn for
+! the first derivative of the interpolating function at points 1 and n,
+! respectively, this routine returns an array y2(1:n) of length n which
+! contains the second derivatives of the interpolating function at the
+! tabulated points x(i).  If yp1 and/or ypn are equal to 1.e30 or larger,
+! the routine is signaled to set the corresponding boundary condition for a
+! natural spline with zero second derivative on that boundary.
+! Parameter: nmax is the largest anticipiated value of n
+! (adopted from Numerical Recipes in FORTRAN 77)
+!
+   INTEGER, PARAMETER :: DP=KIND(1.0D0)
+   INTEGER:: n
+   INTEGER, PARAMETER:: nmax=500
+   REAL(DP):: yp1, ypn, x(n), y(n), y2(n)
+   INTEGER:: i, k
+   REAL(DP):: p, qn, sig, un, u(nmax)
+
+     if (yp1.gt..99e30) then
+        y2(1)=0.
+        u(1)=0.
+     else
+        y2(1)=-0.5
+        u(1)=(3./(x(2)-x(1)))*((y(2)-y(1))/(x(2)-x(1))-yp1)
+     endif
+
+     do i=2, n-1
+        sig=(x(i)-x(i-1))/(x(i+1)-x(i-1))
+        p=sig*y2(i-1)+2.
+        y2(i)=(sig-1.)/p
+        u(i)=(6.*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))/&
+             & (x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig*u(i-1))/p
+     enddo
+
+     if (ypn.gt..99e30) then
+        qn=0.
+        un=0.
+     else
+        qn=0.5
+        un=(3./(x(n)-x(n-1)))*(ypn-(y(n)-y(n-1))/(x(n)-x(n-1)))
+     endif
+
+     y2(n)=(un-qn*u(n-1))/(qn*y2(n-1)+1.)
+
+     do k=n-1, 1, -1
+        y2(k)=y2(k)*y2(k+1)+u(k)
+     enddo
+
+     return
+     END SUBROUTINE spline
+
+! ----------------------------------------------------------------------------
+   SUBROUTINE splint(xa, ya, y2a, n, x, y)
+! source: http://web.gps.caltech.edu/~cdp/cloudmodel/Current/util/
+!   USE nrtype
+!
+! Given the arrays xa(1:n) and ya(1:n) of length n, which tabulate a function
+! (with the xa(i) in order), and given the array y2a(1:n), which is the output
+! from the subroutine spline, and given a value of x, this routine returns a
+! cubic spline interpolated value y.
+! (adopted from Numerical Recipes in FORTRAN 77)
+!
+   INTEGER, PARAMETER :: DP = KIND(1.0D0)
+   INTEGER:: n
+   REAL(DP):: x, y, xa(n), y2a(n), ya(n)
+   INTEGER:: k, khi, klo
+   REAL(DP):: a, b, h
+
+     klo=1
+     khi=n
+1   if (khi-klo.gt.1) then
+        k=(khi+klo)/2
+        if (xa(k).gt.x) then
+           khi=k
+        else
+           klo=k
+        endif
+        goto 1
+     endif
+
+     h=xa(khi)-xa(klo)
+     if (h.eq.0.) pause 'bad xa input in splint'
+
+     a=(xa(khi)-x)/h
+     b=(x-xa(klo))/h
+     y=a*ya(klo)+b*ya(khi)+((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.
+
+     return
+     END SUBROUTINE splint
+
 END MODULE spline_fits
-
-!  **************************************************************
-! MODULE PhysicalConstants
-!  **************************************************************
-MODULE PhysicalConstants
-USE local
-
-IMPLICIT NONE
-
-REAL(r8), PARAMETER :: e_0   = 8.854e-12
-REAL(r8), PARAMETER :: pi    = 3.1415926
-REAL(r8), PARAMETER :: e_c   = 1.602e-19
-REAL(r8), PARAMETER :: m_e   = 9.109e-31
-REAL(r8), PARAMETER :: m_p   = 1.672e-27
-REAL(r8), PARAMETER :: c     = 299792458 ! Speed of light [m/s]
-
-END MODULE PhysicalConstants

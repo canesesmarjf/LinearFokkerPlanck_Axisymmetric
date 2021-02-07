@@ -19,9 +19,11 @@ USE OMP_LIB
 IMPLICIT NONE
 ! User-defined structures:
 TYPE(inTYP)  :: in
-TYPE(splTYP) :: spline_Bz
-TYPE(splTYP) :: spline_ddBz
-TYPE(splTYP) :: spline_Phi
+TYPE(splTYP) :: spline_B
+TYPE(splTYP) :: spline_dB
+TYPE(splTYP) :: spline_ddB
+TYPE(splTYP) :: spline_V
+TYPE(splTYP) :: spline_dV
 ! DO loop indices:
 INTEGER(i4) :: i,j,k
 ! Size of time interval:
@@ -120,9 +122,11 @@ WRITE(*,*) ''
 ! InitSpline takes in a variable of splType and performs the following:
 ! - Populates it scalar fields
 ! - Allocates memory for the profile data "y", indepedent coordinate "x", etc
-CALL InitSpline(spline_Bz  ,in%nz,0._8,0._8,1,0._8)
-CALL InitSpline(spline_ddBz,in%nz,0._8,0._8,1,0._8)
-CALL InitSpline(spline_Phi ,in%nz,0._8,0._8,1,0._8)
+CALL InitSpline(spline_B  ,in%nz,0._8,0._8)
+CALL InitSpline(spline_dB ,in%nz,0._8,0._8)
+CALL InitSpline(spline_ddB,in%nz,0._8,0._8)
+CALL InitSpline(spline_V  ,in%nz,0._8,0._8)
+CALL InitSpline(spline_dV ,in%nz,0._8,0._8)
 
 ! Allocate memory to main simulation variables:
 ! ==============================================================================
@@ -152,34 +156,50 @@ fileName = trim(adjustl(in%BFieldFile))
 fileName = trim(adjustl(in%BFieldFileDir))//fileName
 fileName = trim(adjustl(in%repoDir))//fileName
 
-! Populate profile data based on external file:
-CALL ReadSpline(spline_Bz,fileName)
+! Populate spline profile data using external file:
+! B:
+CALL ReadSpline(spline_B,fileName)
+! dB and ddB:
+CALL diffSpline(spline_B ,spline_dB )
+CALL diffSpline(spline_dB,spline_ddB)
 
-! Based on profile data. compute spline data:
-CALL ComputeSpline(spline_Bz)
-
-! Second derivative of the magnetic field:
-spline_ddBz%x = spline_Bz%x
-spline_ddBz%y = spline_Bz%yp
-CALL ComputeSpline(spline_ddBz)
-
-! Electric potential:
-spline_Phi%x = spline_Bz%x
-spline_Phi%y = 0
+! Electric potential V:
+spline_V%x = spline_B%x
+spline_V%y = 0
 if (in%iPotential) then
-  CALL PotentialProfile(spline_Phi,in)
+  CALL PotentialProfile(spline_V,in)
 end if
-CALL ComputeSpline(spline_Phi)
+CALL ComputeSpline(spline_V)
+
+! dV:
+CALL diffSpline(spline_V,spline_dV)
+
+! Complete setting up the spline data :
+CALL ComputeSpline(spline_B  )
+CALL ComputeSpline(spline_dB )
+CALL ComputeSpline(spline_ddB)
+CALL ComputeSpline(spline_V  )
+CALL ComputeSpline(spline_dV )
 
 ! Inititalize zp, kep, xip
 ! ==============================================================================
 kep = 0.; xip = 0.; zp = 0.;
 WRITE(*,*) "Initializing PDF..."
-!$OMP PARALLEL DO
+!$OMP PARALLEL
+if (OMP_GET_THREAD_NUM() .EQ. 0) then
+    in%threads_given = OMP_GET_NUM_THREADS()
+    WRITE(*,*) ''
+    WRITE(*,*) '*********************************************************************'
+    WRITE(*,*) "Number of threads given: ", in%threads_given
+    WRITE(*,*) '*********************************************************************'
+    WRITE(*,*) ''
+end if
+!$OMP DO
 DO i = 1,in%Nparts
   CALL loadParticles(zp(i),kep(i),xip(i),in)
 END DO
-!$OMP END PARALLEL DO
+!$OMP END DO
+!$OMP END PARALLEL
 WRITE(*,*) "Initialization complete"
 
 ! Test initial distribution:
@@ -206,13 +226,9 @@ ostart = OMP_GET_WTIME()
 
 ! Loop over time:
 ! ==============================================================================
-TimeStepping: do j = 1,in%Nsteps
+AllTime: do j = 1,in%Nsteps
 
-!$OMP PARALLEL DEFAULT(PRIVATE) &
-!$OMP SHARED(j,zp,kep,xip,fcurr,fnew,in,ecount1,ecount2,ecount3,ecount4,pcount1,pcount2,pcount3,pcount4) , &
-!$OMP& SHARED(spline_ddBz,spline_Bz,spline_Phi)
-
-          ! ! PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,i,df)
+!$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,df) 
 
           ! Initialize private particle counters:
           pcnt1 = 0; pcnt2 = 0; pcnt3 = 0; pcnt4 = 0
@@ -223,26 +239,17 @@ TimeStepping: do j = 1,in%Nsteps
 
           ! Loop over particles:
           ! ==============================================================================
-          !$OMP DO
+          !$OMP DO SCHEDULE(STATIC)
               AllParticles: do i = 1,in%Nparts
-
-            	if (j .EQ. 1 .AND. i .EQ. 1) then
-		   in%threads_given = OMP_GET_NUM_THREADS()
-            	   WRITE(*,*) ''
-            	   WRITE(*,*) '*********************************************************************'
-            	   WRITE(*,*) "Number of threads given: ", in%threads_given
-            	   WRITE(*,*) '*********************************************************************'
-            	   WRITE(*,*) ''
-            	end if
 
                 ! Calculate Cyclotron resonance number:
                 ! ------------------------------------------------------------------------
-                if (in%iHeat) CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i),in,spline_Bz)
+                if (in%iHeat) CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i),in,spline_B)
                 ! fcurr and fnew could be declared private
 
                 ! Push particles adiabatically:
                 ! ------------------------------------------------------------------------
-                 if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_Bz,spline_Phi)
+                 if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_B,spline_dB,spline_dV)
 
                 ! Re-inject particles:
                 ! ------------------------------------------------------------------------
@@ -263,10 +270,10 @@ TimeStepping: do j = 1,in%Nsteps
                 ! Apply RF heating operator:
                 ! ------------------------------------------------------------------------
                 if (in%iHeat) then
-                  CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_Bz)
+                  CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_B)
                   df = dsign(1.d0,fcurr(i)*fnew(i))
                   if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
-                    CALL RFHeatingOperator(zp(i),kep(i),xip(i),ecnt3,pcnt3,in,spline_Bz,spline_ddBz,spline_Phi)
+                    CALL RFHeatingOperator(zp(i),kep(i),xip(i),ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
                   end if
                 end if
 
@@ -321,7 +328,7 @@ TimeStepping: do j = 1,in%Nsteps
       end if
    end if
 
-end do TimeStepping
+end do AllTime
 
 ! Record end time:
 ! =========================================================================

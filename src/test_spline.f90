@@ -16,14 +16,12 @@ IMPLICIT NONE
 ! User-defined structures:
 TYPE(splTYP) :: spline_Bz, spline_dBz
 ! User-defined functions:
-REAL(r8) :: Interp1, diff1
 REAL(r8) :: curv2, curvd
 ! DO loop indices:
 INTEGER(i4) :: i,j
 INTEGER(i4) :: nz, nq
 ! Pseudo random number:
 REAL(r8) :: R
-REAL(r8) :: dummy1, dummy2
 ! Data for interpolation:
 REAL(R8) :: x1, x2
 REAL(r8), DIMENSION(:), ALLOCATABLE :: x , Bz , dBz
@@ -70,23 +68,25 @@ ALLOCATE(xq(nq),Bzq(nq),dBzq(nq))
 
 ! Allocate memory to splines:
 ! ==============================================================================
-CALL InitSpline(spline_Bz ,nz,0._8,0._8,1,0._8)
-CALL InitSpline(spline_dBz,nz,0._8,0._8,1,0._8)
+CALL InitSpline(spline_Bz ,nz,0._8,0._8)
+CALL InitSpline(spline_dBz,nz,0._8,0._8)
 
 ! Read external file data and create spline data:
 ! =============================================================================
-! spline_Bz:
+! Read magnetic field data:
 CALL ReadSpline(spline_Bz,inputFileDir)
-x1 =  MINVAL(spline_Bz%x)
-x2 =  MAXVAL(spline_Bz%x)
-!spline_dBz:
-spline_dBz = spline_Bz
-CALL diff(spline_dBz%x,spline_Bz%y,nz,spline_dBz%y)
+! Calculate first derivative of Bz data:
+CALL DiffSpline(spline_Bz,spline_dBz)
 
 ! Based on profile data. compute spline data:
 ! =============================================================================
 CALL ComputeSpline(spline_Bz)
 CALL ComputeSpline(spline_dBz)
+
+! Get length of domain:
+! =============================================================================
+x1 =  MINVAL(spline_Bz%x)
+x2 =  MAXVAL(spline_Bz%x)
 
 ! Random number generator:
 ! ============================================================================
@@ -94,7 +94,7 @@ ostart = OMP_GET_WTIME()
 
 ! Perfom interpolation:
 ! ===========================================================================
-!$OMP PARALLEL DO SHARED(xq,Bzq,dBzq) PRIVATE(R,dummy1,dummy2) SCHEDULE(STATIC)
+!$OMP PARALLEL DO SHARED(xq,Bzq,dBzq) PRIVATE(R) SCHEDULE(STATIC)
 do i=1,nq
 do j=1,10
   ! R needs to be private to avoid race conditions:
@@ -105,21 +105,21 @@ do j=1,10
 
   ! Select between levels of abstraction:
   if (.false.) then
-    ! Using fitpack functions directly:
-    Bzq(i)  = curv2(xq(i),spline_Bz%n,spline_Bz%x,spline_Bz%y,spline_Bz%yp,spline_Bz%sigma)
-    dBzq(i) = curvd(xq(i),spline_Bz%n,spline_Bz%x,spline_Bz%y,spline_Bz%yp,spline_Bz%sigma)
-  else if (.false.) then
-    ! Using user-defined functions:
-    Bzq(i)  = Interp1(xq(i),spline_Bz)
-    dBzq(i) = diff1(xq(i),spline_Bz)
+    ! Use fitpack:
+    Bzq(i)  = curv2(xq(i),spline_Bz%n,spline_Bz%x,spline_Bz%y,spline_Bz%y2,1)
+    dBzq(i) = curvd(xq(i),spline_Bz%n,spline_Bz%x,spline_Bz%y,spline_Bz%y2,1)
   else if (.true.) then
-    ! Using Intrinsic functions which are probably vectorized:
+    ! Using user-defined functions:
+    CALL Interp1(xq(i),Bzq(i) ,spline_Bz )
+    CALL Interp1(xq(i),dBzq(i),spline_dBz)
+  else if (.false.) then
+    ! Using intrinsic functions which are probably vectorized:
     Bzq(i)  = COS(xq(i))
     dBzq(i) = SIN(xq(i))
   else if (.false.) then
     ! Use another spline interpolation tool:
-    CALL splint(spline_Bz%x ,spline_Bz%y ,spline_Bz%yp ,nz,xq(i),Bzq(i) )
-    CALL splint(spline_dBz%x,spline_dBz%y,spline_dBz%yp,nz,xq(i),dBzq(i))
+    CALL splint(spline_Bz%x ,spline_Bz%y ,spline_Bz%y2 ,nz,xq(i),Bzq(i) )
+    CALL splint(spline_dBz%x,spline_dBz%y,spline_dBz%y2,nz,xq(i),dBzq(i))
   end if
 end do
 end do
