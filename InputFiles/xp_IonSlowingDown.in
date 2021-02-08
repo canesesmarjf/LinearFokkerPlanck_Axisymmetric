@@ -1,7 +1,7 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_02_07b',
+in%fileDescriptor = '2021_02_07d',
 
 ! Magnetic field input data:
 ! =========================
@@ -19,7 +19,7 @@ in%zmax = +5.0,
 in%zmin = -5.0,
 
 in%iSave = .true.,
-in%iPush = .true.,                                                             ! Enable RK4 particle pusher
+in%iPush = .false.,                                                             ! Enable RK4 particle pusher
 in%iColl = .true.,                                                             ! Collisions or no collisions
 in%iHeat = .false.,                                                            ! Enable RF heating operator
 in%iPotential = .false.,                                                       ! Enable electric potential
@@ -53,7 +53,7 @@ in%zp_InitType = 2,                                                            !
 in%zp_init = 0.0,                                                              ! Mean particle injection
 in%zp_init_std = 0.3,                                                          ! STD of particle injection
 in%Ep_init = 1000.,                                                            ! Drift kinetic energy
-in%Tp_init = 1.;                                                               ! Thermal kinetic energy
+in%Tp_init = 0.1,                                                               ! Thermal kinetic energy
 in%xip_init = 0.9240,                                                           ! Mean pitch angle where xip = cos(theta) = vpar/v
 
 ! RF heating operator conditions:

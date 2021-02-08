@@ -34,8 +34,8 @@ INTEGER(i4), DIMENSION(:), ALLOCATABLE :: jrng
 INTEGER(i4) :: id
 ! OPENMP computational time:
 DOUBLE PRECISION :: ostart, oend, oend_estimate
-! Cyclotron resonance number change:
-REAL(r8) :: df
+! Cyclotron resonance numbers:
+REAL(r8) :: df, f0, f1
 ! Main simulation variables:
 ! simulation time:
 REAl(r8) :: tp
@@ -50,8 +50,6 @@ REAl(r8), DIMENSION(:)  , ALLOCATABLE :: t_hist
 REAL(r8), DIMENSION(:)  , ALLOCATABLE :: pcount1, pcount2, pcount3, pcount4
 ! Record the total energy of particle incident on (1) dump, (2) target, (3) cyclotron resonance, (4) slowing down
 REAL(r8), DIMENSION(:)  , ALLOCATABLE :: ecount1, ecount2, ecount3, ecount4
-! Cyclotron resonance number:
-REAL(r8), DIMENSION(:)  , ALLOCATABLE :: fcurr, fnew
 ! Local simulation diagnostic counters:
 REAL(r8) :: ecnt1, ecnt2, ecnt3, ecnt4
 REAL(r8) :: pcnt1, pcnt2, pcnt3, pcnt4
@@ -144,11 +142,6 @@ ALLOCATE(zp_hist(in%Nparts,jsize),kep_hist(in%Nparts,jsize),xip_hist(in%Nparts,j
 ! Create array with the indices of the time steps to save:
 jrng = (/ (j, j=in%jstart, in%jend, in%jincr) /)
 
-! Allocate memory to local variables:
-! ==============================================================================
-! Cyclotron resonance number:
-ALLOCATE(fcurr(in%Nparts),fnew(in%Nparts))
-
 ! Create splines of electromagnetic fields:
 ! ===========================================================================
 ! Magnetic field data:
@@ -213,6 +206,8 @@ CLOSE(unit=8)
 
 ! Initialize simulation diagnostics:
 ! ==============================================================================
+! Record time index:
+k = 1
 ! Time array:
 tp = 0
 ! Leak current diagnostics:
@@ -227,106 +222,99 @@ ostart = OMP_GET_WTIME()
 ! Loop over time:
 ! ==============================================================================
 AllTime: do j = 1,in%Nsteps
+    
+    !$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,df,f0,f1) 
 
-!$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,df) 
+    ! Initialize private particle counters:
+    pcnt1 = 0; pcnt2 = 0; pcnt3 = 0; pcnt4 = 0
+    ! Initialize private energy counters:
+    ecnt1 = 0; ecnt2 = 0; ecnt3 = 0; ecnt4 = 0
+    ! Initialize resonance number difference:
+    df = 0
 
-          ! Initialize private particle counters:
-          pcnt1 = 0; pcnt2 = 0; pcnt3 = 0; pcnt4 = 0
-          ! Initialize private energy counters:
-          ecnt1 = 0; ecnt2 = 0; ecnt3 = 0; ecnt4 = 0
-          ! Initialize resonance number difference:
-          df = 0
+    ! Loop over particles:
+    ! ==============================================================================
+    !$OMP DO SCHEDULE(STATIC)
+    AllParticles: do i = 1,in%Nparts
 
-          ! Loop over particles:
-          ! ==============================================================================
-          !$OMP DO SCHEDULE(STATIC)
-              AllParticles: do i = 1,in%Nparts
+        ! Calculate Cyclotron resonance number:
+        ! ------------------------------------------------------------------------
+        if (in%iHeat) CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),f0,in,spline_B)
+ 
+        ! Push particles adiabatically:
+        ! ------------------------------------------------------------------------
+        if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_B,spline_dB,spline_dV)
 
-                ! Calculate Cyclotron resonance number:
-                ! ------------------------------------------------------------------------
-                if (in%iHeat) CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fcurr(i),in,spline_B)
-                ! fcurr and fnew could be declared private
+        ! Re-inject particles:
+        ! ------------------------------------------------------------------------
+        if (zp(i) .GE. in%zmax) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
+        if (zp(i) .LE. in%zmin) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt1,pcnt1)
 
-                ! Push particles adiabatically:
-                ! ------------------------------------------------------------------------
-                 if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_B,spline_dB,spline_dV)
+        ! Apply Coulomb collision operator:
+        ! ------------------------------------------------------------------------
+        if (in%iColl) then
+           ! "in" needs to be private to avoid race condition. This can be
+           ! fixed by looping over species inside the subroutine "collisionOperator"
+           in%species_b = 1
+           CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
+           in%species_b = 2
+           CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
+        end if
 
-                ! Re-inject particles:
-                ! ------------------------------------------------------------------------
-                if (zp(i) .GE. in%zmax) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
-                if (zp(i) .LE. in%zmin) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt1,pcnt1)
+        ! Apply RF heating operator:
+        ! ------------------------------------------------------------------------
+        if (in%iHeat) then
+           CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),f1,in,spline_B)
+           df = dsign(1.d0,f0*f1)
+           if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
+              CALL RFHeatingOperator(zp(i),kep(i),xip(i),ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
+           end if
+        end if
+   
+    end do AllParticles
+    !$OMP END DO
 
-                ! Apply Coulomb collision operator:
-                ! ------------------------------------------------------------------------
-                if (in%iColl) then
-                    ! "in" needs to be private to avoid race condition. This can be
-                    ! fixed by looping over species inside the subroutine "collisionOperator"
-                    in%species_b = 1
-                    CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
-                    in%species_b = 2
-                    CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
-                end if
-
-                ! Apply RF heating operator:
-                ! ------------------------------------------------------------------------
-                if (in%iHeat) then
-                  CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),fnew(i),in,spline_B)
-                  df = dsign(1.d0,fcurr(i)*fnew(i))
-                  if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
-                    CALL RFHeatingOperator(zp(i),kep(i),xip(i),ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
-                  end if
-                end if
-
-              end do AllParticles
-          !$OMP END DO
-
-          !$OMP CRITICAL
-          ecount1(j) = ecount1(j) + ecnt1
-          ecount2(j) = ecount2(j) + ecnt2
-          ecount3(j) = ecount3(j) + ecnt3
-          ecount4(j) = ecount4(j) + ecnt4
-          pcount1(j) = pcount1(j) + pcnt1
-          pcount2(j) = pcount2(j) + pcnt2
-          pcount3(j) = pcount3(j) + pcnt3
-          pcount4(j) = pcount4(j) + pcnt4
-          !$OMP END CRITICAL
+    !$OMP CRITICAL
+     ecount1(j) = ecount1(j) + ecnt1
+     ecount2(j) = ecount2(j) + ecnt2
+     ecount3(j) = ecount3(j) + ecnt3
+     ecount4(j) = ecount4(j) + ecnt4
+     pcount1(j) = pcount1(j) + pcnt1
+     pcount2(j) = pcount2(j) + pcnt2
+     pcount3(j) = pcount3(j) + pcnt3
+     pcount4(j) = pcount4(j) + pcnt4
+    !$OMP END CRITICAL
 
     !$OMP END PARALLEL
-
-    ! Update time array:
-    ! =========================================================================
-    tp = tp + in%dt
 
     ! Select data to save:
     ! =====================================================================
     ! Check if data is to be saved
     if (in%iSave) then
-        do k = 1,jsize
-            if (j .EQ. jrng(k)) then
-                t_hist(k) = tp
-                    !$OMP PARALLEL DO PRIVATE(i)
-                    do i = 1,in%Nparts
-                            ! Record "ith" particle position at "kth" time
-                            zp_hist(i,k) = zp(i)
-                            ! Record "ith" particle KE at "kth" time
-                            kep_hist(i,k) = kep(i)
-                            ! Record "ith" particle pitch angle at "kth" time
-                            xip_hist(i,k) = xip(i)
-                    end do
-                   !$OMP END PARALLEL DO
-            endif
-        end do
+       if (j .EQ. jrng(k)) then
+          t_hist(k) = tp
+          !$OMP PARALLEL DO
+          do i = 1,in%Nparts
+             ! Record "ith" particle at "kth" time
+             zp_hist(i,k) = zp(i)
+             kep_hist(i,k) = kep(i)
+             xip_hist(i,k) = xip(i)
+          end do
+         !$OMP END PARALLEL DO
+         k = k + 1
+      end if
     end if
+
+    ! Update time array:
+    ! =========================================================================
+    tp = tp + in%dt
 
     ! Estimate computational time:
     ! =====================================================================
-    id = OMP_GET_THREAD_NUM()
-    if (id .EQ. 0) then
-      if (j .EQ. 150) then
-	       oend_estimate = OMP_GET_WTIME()
-         WRITE(*,*) 'Estimated compute time: ', in%Nsteps*(oend_estimate-ostart)/j,' [s]'
-      end if
-   end if
+    if (j .EQ. 150) then
+       oend_estimate = OMP_GET_WTIME()
+       WRITE(*,*) 'Estimated compute time: ', in%Nsteps*(oend_estimate-ostart)/j,' [s]'
+    end if
 
 end do AllTime
 
