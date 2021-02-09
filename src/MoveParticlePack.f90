@@ -15,7 +15,7 @@ TYPE(splTYP), INTENT(IN) :: spline_B, spline_dB, spline_dV
 
 ! Local variables:
 REAL(r8) :: zpnew, Xipnew, uparnew, upernew, munew  ! Position, kinetic energy and pitch of the ith particle
-REAL(r8) :: m_t, dt
+REAL(r8) :: Ma, dt
 
 ! Storage for the MoverParticle and RHS subroutines:
 REAL(r8) :: zp1, zp2, zp3
@@ -32,19 +32,19 @@ REAL(r8) :: B
 dt = in0%dt
 
 ! Test particle mass:
-m_t = in0%m_t
+Ma = in0%Ma
 
 ! Calculate initial parallel particle speed:
-upar0 = xip0*sqrt(2.*e_c*kep0/m_t)
+upar0 = xip0*sqrt(2.*e_c*kep0/Ma)
 
 ! Calculate initial particle speed squared:
-u2 = 2.*e_c*kep0/m_t
+u2 = 2.*e_c*kep0/Ma
 
 ! Calculate initial magnetic moment:
 CALL Interp1(zp0,B,spline_B)
 !B = curv2(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
 
-mu0 = 0.5*m_t*u2*(1 - xip0*xip0)/B
+mu0 = 0.5*Ma*u2*(1 - xip0*xip0)/B
 
 ! Begin assembling RK4 solution:
 call RightHandSide(zp0,upar0,mu0,K1,L1,M1,in0,spline_dB,spline_dV)             ! Update values of fK, fL and fM
@@ -72,7 +72,7 @@ CALL Interp1(zpnew,B,spline_B)
 !B = curv2(zpnew,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
 
 ! Based on new B and new mu, calculate new uper:
-upernew = sqrt(2.*munew*B/m_t)
+upernew = sqrt(2.*munew*B/Ma)
 
 ! New u due to new upar and new uper:
 u2 = uparnew**2. + upernew**2.
@@ -83,7 +83,7 @@ Xipnew = uparnew/sqrt(u2)
 ! Output data:
 zp0  = zpnew
 xip0 = Xipnew
-kep0 = 0.5*m_t*u2/e_c
+kep0 = 0.5*Ma*u2/e_c
 
 RETURN
 END SUBROUTINE MoveParticle
@@ -106,14 +106,14 @@ TYPE(splTYP), INTENT(IN) :: spline_dB, spline_dV
 
 ! Local variables:
 REAL(r8) :: dB, dV
-REAL(r8) :: m_t, q_t
+REAL(r8) :: Ma, qa
 !REAL(r8) :: curv2
 
 ! Test particle mass:
-m_t = in0%m_t
+Ma = in0%Ma
 
 ! Test particle charge:
-q_t = in0%q_t
+qa = in0%qa
 
 ! Calculate the magnetic field gradient at zp0:
 CALL Interp1(zp0,dB,spline_dB)
@@ -125,7 +125,7 @@ CALL Interp1(zp0,dV,spline_dV)
 
 ! Assign values to output variables:
 K = upar0
-L = -(1/m_t)*(mu0*dB + q_t*dV)
+L = -(1/Ma)*(mu0*dB + qa*dV)
 M = 0
 
 RETURN
@@ -144,7 +144,7 @@ TYPE(inTYP)  :: in0
 REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
 !REAL(r8) :: uper, upar, u, sigma_u0
 REAL(r8), DIMENSION(6) :: Rm6
-REAL(r8) :: m_t, T0, T, vT, sigma_v, E, U, Ux, Uy, Uz
+REAL(r8) :: Ma, T0, T, vT, sigma_v, E, U, Ux, Uy, Uz
 REAL(r8) :: R_1, R_3, t_2, t_4
 REAL(r8) :: wx, wy, wz, vx, vy, vz, v
 
@@ -167,9 +167,9 @@ if (in0%particleBC .EQ. 1 .OR. in0%particleBC .EQ. 2) then
   end if
 
   ! Velocity distribution:
-  m_t = in0%m_t
-  vT = sqrt(2.*e_c*T/m_t)
-  U  = sqrt(2.*e_c*E/m_t)
+  Ma = in0%Ma
+  vT = sqrt(2.*e_c*T/Ma)
+  U  = sqrt(2.*e_c*E/Ma)
   Ux = 0
   Uy = U*sqrt(1. - in0%xip_init**2.)
   Uz = U*in0%xip_init
@@ -192,7 +192,7 @@ if (in0%particleBC .EQ. 1 .OR. in0%particleBC .EQ. 2) then
   v = sqrt( vx**2. + vy**2. + vz**2. )
 
   ! Populate output variables:
-  kep0 = 0.5*(m_t/e_c)*v**2
+  kep0 = 0.5*(Ma/e_c)*v**2
   xip0 = vz/v
 
   ! Position distribution:
@@ -222,22 +222,22 @@ IMPLICIT NONE
 ! Define local variables
 REAL(r8) :: zp0, kep0, xip0, f0     ! Input variables
 REAL(r8) :: upar, Bf, Omega, Omega_RF
-REAL(r8) :: m_t, q_t
+REAL(r8) :: Ma, qa
 TYPE(inTYP)  :: in0
 TYPE(splTYP) :: spline_B
 
 ! Test particle mass:
-m_t = in0%m_t
+Ma = in0%Ma
 ! Test particle charge:
-q_t = in0%q_t
+qa = in0%qa
 ! Parallel velocity of test particle:
-upar = sqrt(2.*e_c*kep0/m_t)*xip0
+upar = sqrt(2.*e_c*kep0/Ma)*xip0
 ! Magnetic field at location zp0 of test particle:
 CALL Interp1(zp0,Bf,spline_B)
 !Bf = Interp1(zp0,spline_B)
 
 ! Cyclotron frequency of test particle:
-Omega = abs(q_t)*Bf/m_t
+Omega = abs(qa)*Bf/Ma
 ! RF frequency in rad/s:
 Omega_RF = 2*pi*in0%f_RF
 ! Cyclotron resonance number:
@@ -269,16 +269,16 @@ REAL(r8) :: mean_dkep_per, dkep_per, Rm1
 REAL(r8) :: dkep_par, dkep, kep1
 REAL(r8) :: kep_per1, kep_par1
 REAL(r8) :: upar1, u1
-REAL(r8) :: m_t, q_t
+REAL(r8) :: Ma, qa
 
 ! Test particle mass:
-m_t = in0%m_t
+Ma = in0%Ma
 
 ! Test particle charge:
-q_t = in0%q_t
+qa = in0%qa
 
 ! Calculate derived quantities
-u0       = sqrt(2.*e_c*kep0/m_t)
+u0       = sqrt(2.*e_c*kep0/Ma)
 upar0    = u0*xip0
 uper0    = u0*(1. - xip0**2)**0.5
 kep_par0 = kep0*xip0**2.
@@ -291,13 +291,13 @@ CALL Interp1(zp0,dV ,spline_dV )
 
 ! Spatial derivatives of the magnetic field:
 CALL Interp1(zp0,Bf,spline_B)
-Omega     = in0%n_harmonic*e_c*Bf/m_t
-dOmega    = in0%n_harmonic*e_c*dB/m_t
-ddOmega   = in0%n_harmonic*e_c*ddB/m_t
+Omega     = in0%n_harmonic*e_c*Bf/Ma
+dOmega    = in0%n_harmonic*e_c*dB/Ma
+ddOmega   = in0%n_harmonic*e_c*ddB/Ma
 
 ! Calculate the first and second time derivative of Omega:
 Omega_dot = upar0*dOmega
-Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - q_t*dV*dOmega/m_t
+Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - qa*dV*dOmega/Ma
 
 ! Calculate the interaction time (tau_RF):
 if ( (Omega_ddot**2.) .GT. 4.8175*ABS(Omega_dot**3.) )  then
@@ -310,14 +310,14 @@ else
 end if
 
 ! Calculate Bessel term:
-rl       = uper0/(abs(q_t)*Bf/m_t)
+rl       = uper0/(abs(qa)*Bf/Ma)
 flr      = in0%kper*rl
 besselterm = BESSEL_JN(in0%n_harmonic-1,flr)
 
 ! Calculate the cyclotron interaction:
 ! Using method based on VS. Chan PoP 9,2 (2002)
 ! Consistent with J. Carlsson'd PhD thesis (1998)
-mean_dkep_per = 0.5*(e_c/m_t)*(in0%Ew*besselterm*tau_rf)**2.
+mean_dkep_per = 0.5*(e_c/Ma)*(in0%Ew*besselterm*tau_rf)**2.
 
 ! Calculate the change in perp, parallel and total energy:
 CALL RANDOM_NUMBER(Rm1)
@@ -358,8 +358,8 @@ end if
 kep0 = kep1
 
 ! Calculate the new pitch angle:
-upar1 = sqrt( (2.*e_c/m_t)*abs(kep_par1) )*dsign(1.d0,xip0)*dsign(1.d0,kep_par1)
-u1    = sqrt( (2.*e_c/m_t)*kep1 )
+upar1 = sqrt( (2.*e_c/Ma)*abs(kep_par1) )*dsign(1.d0,xip0)*dsign(1.d0,kep_par1)
+u1    = sqrt( (2.*e_c/Ma)*kep1 )
 !WRITE(*,*) "zp0", zp0
 !WRITE(*,*) "xip0", xip0
 xip0 = upar1/u1
@@ -387,7 +387,7 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
   REAL(r8) :: X1, X2, X3, X4
   REAL(r8) :: R_1, R_2, R_3, R_4, t_2, t_4
   REAL(r8) :: wx, wy, wz, vx, vy, vz, v
-  REAL(r8) :: zmin, zmax, sigma_v, m_t
+  REAL(r8) :: zmin, zmax, sigma_v, Ma
   REAL(r8) :: Ux, Uy, Uz, vT, U, T, E
 
   ! Particle position:
@@ -412,11 +412,11 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
   call random_number(X4)
 
   ! Derived quantities:
-  m_t = in0%m_t
+  Ma = in0%Ma
   T = in0%Tp_init
   E = in0%Ep_init
-  vT = sqrt(2.*e_c*T/m_t)
-  U  = sqrt(2.*e_c*E/m_t)
+  vT = sqrt(2.*e_c*T/Ma)
+  U  = sqrt(2.*e_c*E/Ma)
   Ux = 0
   Uy = U*sqrt(1. - in0%xip_init**2.)
   Uz = U*in0%xip_init
@@ -438,8 +438,8 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
   v = sqrt( vx**2. + vy**2. + vz**2. )
 
   ! Populate output variables:
-  kep0 = 0.5*(m_t/e_c)*v**2
+  kep0 = 0.5*(Ma/e_c)*v**2
   xip0 = vz/v
 
-return
+RETURN
 END SUBROUTINE loadParticles

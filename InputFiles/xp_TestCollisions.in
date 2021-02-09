@@ -1,41 +1,41 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_02_01a',
+in%fileDescriptor = '2021_02_09b',
 
 ! Magnetic field input data:
 ! =========================
-in%rootDir ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
+in%repoDir ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
 in%BFieldFileDir = "/BfieldData",
 in%BFieldFile = "/Bfield_b.txt",
-in%nz = 501,			                                                              ! Number of points in BFieldFile
+in%nz = 501,			                                                ! Number of points in BFieldFile
 
 ! Simulation conditions:
 ! =====================
-in%Nparts = 100,                                                              ! Total number of particles
-in%Nsteps = 600,                                                               ! Total number of time steps
+in%Nparts = 100000,                                                               ! Total number of particles
+in%Nsteps = 5000,                                                               ! Total number of time steps
 in%dt     = 0.5E-7,                                                             ! Time step in [s]
-in%zmax = +5.0,
-in%zmin = -5.0,
+in%zmax   = +5.0,
+in%zmin   = -5.0,
 
-in%iSave = .true.,
-in%iPush = .true.,                                                             ! Enable RK4 particle pusher
-in%iColl = .true.,                                                             ! Collisions or no collisions
-in%iHeat = .false.,                                                            ! Enable RF heating operator
+in%iSave      = .true.,
+in%iPush      = .false.,                                                       ! Enable RK4 particle pusher
+in%iColl      = .true.,                                                        ! Collisions or no collisions
+in%iHeat      = .false.,                                                       ! Enable RF heating operator
 in%iPotential = .false.,                                                       ! Enable electric potential
-in%iDrag = .false.,                                                            ! Enable plasma drag
+in%iDrag      = .false.,                                                       ! Enable plasma drag
 
 ! Time steps to record:
 ! ==============
-in%jstart = 1,                                                                  ! start frame
-in%jend   = 600,                                                               ! end frame
-in%jincr  = 10,                                                                 ! increment
+in%jstart = 1,                                                                 ! start frame
+in%jend   = 5000,                                                              ! end frame
+in%jincr  = 50,                                                                ! increment
 
 ! Collision operator conditions:
 ! ==============================
-in%Te0 = 100.,	                                                                 ! eV
-in%Ti0 = 100.,                                                                  ! eV
-in%ne0 = 5.0E+19,	                                                             ! m**-3
+in%Te0 = 10.,	                                                               ! eV
+in%Ti0 = 10.,                                                                  ! eV
+in%ne0 = 1.0E+19,	                                                             ! m**-3
 in%Aion = 1.,                                                                  ! Ion mass
 in%Zion = 1.,                                                                  ! Charge number for main ion species
 in%species_a = 2,                                                              ! =1 for electrons, =2 for ions
@@ -44,7 +44,7 @@ in%CollOperType = 2,                                                           !
 
 ! Particle boundary conditions:
 ! ============================
-in%particleBC = 2,                                                             ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
+in%particleBC = 1,                                                             ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
 
 ! Initial conditions:
 !===================
@@ -52,8 +52,8 @@ in%zp_InitType = 2,                                                            !
 in%zp_init = 0.0,                                                              ! Mean particle injection
 in%zp_init_std = 0.3,                                                          ! STD of particle injection
 in%Ep_init = 1000.,                                                            ! Drift kinetic energy
-in%Tp_init = 10.;                                                               ! Thermal kinetic energy
-in%xip_init = 0.707,                                                           ! Mean pitch angle where xip = cos(theta) = vpar/v
+in%Tp_init = 0.1,                                                              ! Thermal kinetic energy
+in%xip_init = 0.9240,                                                          ! Mean pitch angle where xip = cos(theta) = vpar/v
 
 ! RF heating operator conditions:
 ! ===============================

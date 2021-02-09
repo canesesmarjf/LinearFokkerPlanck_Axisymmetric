@@ -2,7 +2,8 @@
 
 # Select input file:
 # ===================================================
-INPUT_FILE="xp_IonSlowingDown.in"
+INPUT_FILE="xp_TestCollisions.in"
+#INPUT_FILE="xp_IonSlowingDown.in"
 #INPUT_FILE="xp_Test.in"
 
 # Set number of threads:

@@ -80,11 +80,11 @@ CLOSE(unit=4)
 ! Select the test species:
 ! ==============================================================================
 if (in%species_a .eq. 1) then
-    in%q_t = -e_c
-    in%m_t = m_e
+    in%qa = -e_c
+    in%Ma = m_e
 else
-    in%q_t = +in%Zion*e_c
-    in%m_t = in%Aion*m_p
+    in%qa = +in%Zion*e_c
+    in%Ma = in%Aion*m_p
 end if
 
 ! Print to the terminal:
@@ -252,14 +252,7 @@ AllTime: do j = 1,in%Nsteps
 
         ! Apply Coulomb collision operator:
         ! ------------------------------------------------------------------------
-        if (in%iColl) then
-           ! "in" needs to be private to avoid race condition. This can be
-           ! fixed by looping over species inside the subroutine "collisionOperator"
-           in%species_b = 1
-           CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
-           in%species_b = 2
-           CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
-        end if
+        if (in%iColl) CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
 
         ! Apply RF heating operator:
         ! ------------------------------------------------------------------------
@@ -453,4 +446,4 @@ if (in%iSave) then
 
 end if
 
-End PROGRAM
+END PROGRAM
