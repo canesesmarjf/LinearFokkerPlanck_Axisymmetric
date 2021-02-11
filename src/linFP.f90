@@ -260,6 +260,7 @@ AllTime: do j = 1,in%Nsteps
            CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),f1,in,spline_B)
            df = dsign(1.d0,f0*f1)
            if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
+              !WRITE(*,*) 'Resonance at zp: ', zp(i)
               CALL RFHeatingOperator(zp(i),kep(i),xip(i),ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
            end if
         end if

@@ -1,7 +1,7 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_02_11b',
+in%fileDescriptor = '2021_02_11d',
 
 ! Magnetic field input data:
 ! =========================
@@ -21,7 +21,7 @@ in%zmin = -5.0,
 in%iSave = .true.,
 in%iPush = .true.,                                                             ! Enable RK4 particle pusher
 in%iColl = .true.,                                                             ! Collisions or no collisions
-in%iHeat = .false.,                                                            ! Enable RF heating operator
+in%iHeat = .true.,                                                            ! Enable RF heating operator
 in%iPotential = .false.,                                                       ! Enable electric potential
 in%iDrag = .true.,                                                            ! Enable plasma drag
 
@@ -62,13 +62,13 @@ in%IC_xip     = 0.707,                                                         !
 
 ! RF heating operator conditions:
 ! ===============================
-in%f_RF = 28.0E+9                                                              ! RF frequency
-in%zRes1 = 2.4                                                                 ! Defines interval where RF is present
-in%zRes2 = 3.0                                                                 ! Defines interval where RF is present
-in%kper = 29920.                                                               ! Perpendicular wave number of EBW
-in%kpar = 5864.                                                                ! Parallel wave number of EBW
-in%Ew   = 10000                                                                ! EBW E-minus wave electric field magnitude
-in%n_harmonic = 4                                                              ! Cyclotron harmonic
+in%f_RF  = 12.195E+6                                                              ! RF frequency
+in%zRes1 = 0.                                                                 ! Defines interval where RF is present
+in%zRes2 = +1.5                                                                 ! Defines interval where RF is present
+in%kper  = 125.                                                               ! Perpendicular wave number of EBW
+in%kpar  = 30.                                                                ! Parallel wave number of EBW
+in%Ew    = 4000                                                                ! EBW E-minus wave electric field magnitude
+in%n_harmonic = 2                                                              ! Cyclotron harmonic
 
 ! Electric potential conditions:
 ! =============================
