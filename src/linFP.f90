@@ -95,7 +95,7 @@ WRITE(*,*) 'Input file:         ', TRIM(inputFile)
 WRITE(*,*) 'fileDescriptor:     ', TRIM(in%fileDescriptor)
 WRITE(*,*) 'Number of particles:', in%Nparts
 WRITE(*,*) 'Number of steps:    ', in%Nsteps
-WRITE(*,*) 'Particle BC:        ', in%particleBC
+WRITE(*,*) 'Particle BC:        ', in%BC_Type
 WRITE(*,*) 'dt [ns]:            ', in%dt*1E+9
 WRITE(*,*) 'iPush:              ', in%iPush
 WRITE(*,*) 'iDrag:              ', in%iDrag
@@ -105,7 +105,7 @@ WRITE(*,*) 'iSave:              ', in%iSave
 WRITE(*,*) 'elevel:             ', in%elevel
 WRITE(*,*) 'zTarget [m]:        ', in%zmax
 WRITE(*,*) 'zDump [m]:          ', in%zmin
-WRITE(*,*) 'zp_init [m]:        ', in%zp_init
+WRITE(*,*) 'IC_zp_mean [m]:     ', in%IC_zp_mean
 WRITE(*,*) 'B field file:       ', TRIM(in%BFieldFile)
 WRITE(*,*) 'Ew:                 ', in%Ew
 WRITE(*,*) 'Te0:                ', in%Te0

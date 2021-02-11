@@ -40,10 +40,10 @@ TYPE inTYP
   REAL(r8) :: Aion, Zion
   INTEGER(i4) :: Nparts, Nsteps, nz, species_a, species_b
   INTEGER(i4) :: jstart, jend, jincr
-  INTEGER(i4) :: threads_given, particleBC
+  INTEGER(i4) :: threads_given
   LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
-  INTEGER(i4) :: zp_InitType
-  REAL(r8) :: zp_init, Ep_init, xip_init, zp_init_std, Tp_init
+  INTEGER(i4) :: IC_Type, BC_Type
+  REAL(r8) :: IC_zp_mean, IC_Ep, IC_xip, IC_zp_std, IC_Tp
   REAL(r8) :: zmin, zmax
   INTEGER(i4) :: CollOperType
   REAL(r8) :: elevel

@@ -74,10 +74,10 @@ vper = sqrt(1 - (xip0**2.) )*v
 
 ! Plasma drift in the lab frame:
 if (in0%iDrag) then
-   if (zp0 .GE. in0%zp_init) then
-      u = +1.*sqrt(e_c*(in0%Te0 + in0%Ti0)/Mb)
+   if (zp0 .GE. in0%IC_zp_mean) then
+      u = +1.*sqrt( e_c*(in0%Te0 + in0%Ti0)/(in0%Aion*m_p) )
    else
-      u = -1.*sqrt(e_c*(in0%Te0 + in0%Ti0)/Mb)
+      u = -1.*sqrt( e_c*(in0%Te0 + in0%Ti0)/(in0%Aion*m_p) )
    end if
 else
    u = 0.

@@ -156,14 +156,14 @@ pcnt = pcnt + 1
 ! 1: Isotropic plasma source
 ! 2: NBI
 ! 3: Periodic boundary
-if (in0%particleBC .EQ. 1 .OR. in0%particleBC .EQ. 2) then
+if (in0%BC_Type .EQ. 1 .OR. in0%BC_Type .EQ. 2) then
 
-  if (in0%particleBC .EQ. 1) then
+  if (in0%BC_Type .EQ. 1) then
     T = in0%Te0
     E = 0
-  else if (in0%particleBC .EQ. 2) then
-    T = in0%Tp_init
-    E = in0%Ep_init
+  else if (in0%BC_Type .EQ. 2) then
+    T = in0%IC_Tp
+    E = in0%IC_Ep
   end if
 
   ! Velocity distribution:
@@ -171,8 +171,8 @@ if (in0%particleBC .EQ. 1 .OR. in0%particleBC .EQ. 2) then
   vT = sqrt(2.*e_c*T/Ma)
   U  = sqrt(2.*e_c*E/Ma)
   Ux = 0
-  Uy = U*sqrt(1. - in0%xip_init**2.)
-  Uz = U*in0%xip_init
+  Uy = U*sqrt(1. - in0%IC_xip**2.)
+  Uz = U*in0%IC_xip
   sigma_v = vT/sqrt(2.)
 
   ! Box-muller terms:
@@ -196,9 +196,9 @@ if (in0%particleBC .EQ. 1 .OR. in0%particleBC .EQ. 2) then
   xip0 = vz/v
 
   ! Position distribution:
-  zp0 = in0%zp_init_std*sqrt(-2.*log(Rm6(5)))*cos(2.*pi*Rm6(6)) + in0%zp_init
+  zp0 = in0%IC_zp_std*sqrt(-2.*log(Rm6(5)))*cos(2.*pi*Rm6(6)) + in0%IC_zp_mean
 
-else if (in0%particleBC .EQ. 3) then
+else if (in0%BC_Type .EQ. 3) then
   if (zp0 .GE. in0%zmax) then
     zp0 = in0%zmin
   else
@@ -206,7 +206,7 @@ else if (in0%particleBC .EQ. 3) then
   end if
 end if
 
-return
+RETURN
 END SUBROUTINE ReinjectParticles
 
 ! =======================================================================================================
@@ -393,15 +393,15 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
   ! Particle position:
   zmin = in0%zmin + .01*(in0%zmax-in0%zmin)
   zmax = in0%zmax - .01*(in0%zmax-in0%zmin)
-  if (in0%zp_InitType .EQ. 1) then
+  if (in0%IC_Type .EQ. 1) then
       ! Uniform load
       call random_number(X1)
       zp0 = zmin + (zmax - zmin)*X1
-  elseif (in0%zp_InitType .EQ. 2) then
+  elseif (in0%IC_Type .EQ. 2) then
       ! Gaussian load
       call random_number(X1)
       call random_number(X2)
-      zp0 = in0%zp_init_std*sqrt(-2.*log(X1))*cos(2.*pi*X2)  +  in0%zp_init
+      zp0 = in0%IC_zp_std*sqrt(-2.*log(X1))*cos(2.*pi*X2)  +  in0%IC_zp_mean
   end if
 
   ! Particle kinetic energy and pitch angle:
@@ -413,13 +413,13 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
 
   ! Derived quantities:
   Ma = in0%Ma
-  T = in0%Tp_init
-  E = in0%Ep_init
+  T = in0%IC_Tp
+  E = in0%IC_Ep
   vT = sqrt(2.*e_c*T/Ma)
   U  = sqrt(2.*e_c*E/Ma)
   Ux = 0
-  Uy = U*sqrt(1. - in0%xip_init**2.)
-  Uz = U*in0%xip_init
+  Uy = U*sqrt(1. - in0%IC_xip**2.)
+  Uz = U*in0%IC_xip
   sigma_v = vT/sqrt(2.)
 
   ! Box-muller:
