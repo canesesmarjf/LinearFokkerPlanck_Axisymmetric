@@ -105,7 +105,7 @@ WRITE(*,*) 'iSave:              ', in%iSave
 WRITE(*,*) 'elevel:             ', in%elevel
 WRITE(*,*) 'zTarget [m]:        ', in%zmax
 WRITE(*,*) 'zDump [m]:          ', in%zmin
-WRITE(*,*) 'IC_zp_mean [m]:     ', in%IC_zp_mean
+WRITE(*,*) 'BC_zp_mean [m]:     ', in%BC_zp_mean
 WRITE(*,*) 'B field file:       ', TRIM(in%BFieldFile)
 WRITE(*,*) 'Ew:                 ', in%Ew
 WRITE(*,*) 'Te0:                ', in%Te0
@@ -222,8 +222,8 @@ ostart = OMP_GET_WTIME()
 ! Loop over time:
 ! ==============================================================================
 AllTime: do j = 1,in%Nsteps
-    
-    !$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,df,f0,f1) 
+
+    !$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,df,f0,f1)
 
     ! Initialize private particle counters:
     pcnt1 = 0; pcnt2 = 0; pcnt3 = 0; pcnt4 = 0
@@ -240,7 +240,7 @@ AllTime: do j = 1,in%Nsteps
         ! Calculate Cyclotron resonance number:
         ! ------------------------------------------------------------------------
         if (in%iHeat) CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),f0,in,spline_B)
- 
+
         ! Push particles adiabatically:
         ! ------------------------------------------------------------------------
         if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_B,spline_dB,spline_dV)
@@ -263,7 +263,7 @@ AllTime: do j = 1,in%Nsteps
               CALL RFHeatingOperator(zp(i),kep(i),xip(i),ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
            end if
         end if
-   
+
     end do AllParticles
     !$OMP END DO
 

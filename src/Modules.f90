@@ -44,6 +44,7 @@ TYPE inTYP
   LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
   INTEGER(i4) :: IC_Type, BC_Type
   REAL(r8) :: IC_zp_mean, IC_Ep, IC_xip, IC_zp_std, IC_Tp
+  REAL(r8) :: BC_zp_mean, BC_Ep, BC_xip, BC_zp_std, BC_Tp
   REAL(r8) :: zmin, zmax
   INTEGER(i4) :: CollOperType
   REAL(r8) :: elevel
@@ -127,7 +128,7 @@ CONTAINS
 
 ! ----------------------------------------------------------------------------
  SUBROUTINE diff(x,y,n,dy)
- USE local 
+ USE local
  IMPLICIT NONE
  REAL(r8), DIMENSION(n) :: x, y, dy
  INTEGER(i4) :: n, i
@@ -136,7 +137,7 @@ CONTAINS
   dy(i) = (y(i+1) - y(i))/(x(i+1) - x(i))
  end do
 
- dy(n) = dy(n-1)  
+ dy(n) = dy(n-1)
 
  RETURN
  END SUBROUTINE diff

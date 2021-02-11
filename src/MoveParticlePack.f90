@@ -8,7 +8,7 @@ USE dataTYP
 
 IMPLICIT NONE
 
-! Define type for interface arguments 
+! Define type for interface arguments
 REAL(r8), INTENT(INOUT) :: zp0, kep0, xip0
 TYPE(inTYP), INTENT(IN)  :: in0
 TYPE(splTYP), INTENT(IN) :: spline_B, spline_dB, spline_dV
@@ -162,8 +162,8 @@ if (in0%BC_Type .EQ. 1 .OR. in0%BC_Type .EQ. 2) then
     T = in0%Te0
     E = 0
   else if (in0%BC_Type .EQ. 2) then
-    T = in0%IC_Tp
-    E = in0%IC_Ep
+    T = in0%BC_Tp
+    E = in0%BC_Ep
   end if
 
   ! Velocity distribution:
@@ -171,8 +171,8 @@ if (in0%BC_Type .EQ. 1 .OR. in0%BC_Type .EQ. 2) then
   vT = sqrt(2.*e_c*T/Ma)
   U  = sqrt(2.*e_c*E/Ma)
   Ux = 0
-  Uy = U*sqrt(1. - in0%IC_xip**2.)
-  Uz = U*in0%IC_xip
+  Uy = U*sqrt(1. - in0%BC_xip**2.)
+  Uz = U*in0%BC_xip
   sigma_v = vT/sqrt(2.)
 
   ! Box-muller terms:
@@ -196,7 +196,7 @@ if (in0%BC_Type .EQ. 1 .OR. in0%BC_Type .EQ. 2) then
   xip0 = vz/v
 
   ! Position distribution:
-  zp0 = in0%IC_zp_std*sqrt(-2.*log(Rm6(5)))*cos(2.*pi*Rm6(6)) + in0%IC_zp_mean
+  zp0 = in0%BC_zp_std*sqrt(-2.*log(Rm6(5)))*cos(2.*pi*Rm6(6)) + in0%BC_zp_mean
 
 else if (in0%BC_Type .EQ. 3) then
   if (zp0 .GE. in0%zmax) then
@@ -391,8 +391,8 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
   REAL(r8) :: Ux, Uy, Uz, vT, U, T, E
 
   ! Particle position:
-  zmin = in0%zmin + .01*(in0%zmax-in0%zmin)
-  zmax = in0%zmax - .01*(in0%zmax-in0%zmin)
+  zmin = in0%zmin !+ .01*(in0%zmax-in0%zmin)
+  zmax = in0%zmax !- .01*(in0%zmax-in0%zmin)
   if (in0%IC_Type .EQ. 1) then
       ! Uniform load
       call random_number(X1)

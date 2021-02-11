@@ -66,7 +66,7 @@ end if
 ! Where u_vec is the mean drift velocit vector and w_vec is the thermal motion relative
 ! to the mean drift
 
-! Lab frame: 
+! Lab frame:
 ! -----------------------------------------------------------------------------------------------------------------
 v = sqrt(2.*e_c*kep0/Ma)
 vpar = xip0*v
@@ -74,7 +74,7 @@ vper = sqrt(1 - (xip0**2.) )*v
 
 ! Plasma drift in the lab frame:
 if (in0%iDrag) then
-   if (zp0 .GE. in0%IC_zp_mean) then
+   if (zp0 .GE. in0%BC_zp_mean) then
       u = +1.*sqrt( e_c*(in0%Te0 + in0%Ti0)/(in0%Aion*m_p) )
    else
       u = -1.*sqrt( e_c*(in0%Te0 + in0%Ti0)/(in0%Aion*m_p) )
@@ -164,7 +164,7 @@ v     = sqrt( (vpar**2.) + (vper**2.) )
 xip0 = vpar/v
 kep0 = 0.5*(Ma/e_c)*v**2.
 
-end do species_b_loop 
+end do species_b_loop
 
 RETURN
 END SUBROUTINE collisionOperator
@@ -315,5 +315,3 @@ else
 end if
 
 END FUNCTION nu_E
-
-

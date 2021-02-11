@@ -45,12 +45,17 @@ in%CollOperType = 2,                                                           !
 ! Particle Boundary Conditions:
 ! ============================
 in%BC_Type    = 1,                                                             ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
+in%BC_zp_mean = 0.0,                                                           ! Mean particle injection
+in%BC_zp_std  = 0.3,                                                           ! STD of particle injection
+in%BC_Ep      = 20000.,                                                        ! Drift kinetic energy
+in%BC_Tp      = 10,                                                            ! Thermal kinetic energy
+in%BC_xip     = 0.707,                                                         ! Mean pitch angle where xip = cos(theta) = vpar/v
 
 ! Particle Initial Conditions:
 !===================
 in%IC_Type    = 1,                                                             ! 1: uniform load, 2: gaussian load
 in%IC_zp_mean = 0.0,                                                           ! Mean particle injection
-in%IC_zp_std  = 0.3,                                                            ! STD of particle injection
+in%IC_zp_std  = 0.3,                                                           ! STD of particle injection
 in%IC_Ep      = 0.,                                                            ! Drift kinetic energy
 in%IC_Tp      = 10,                                                            ! Thermal kinetic energy
 in%IC_xip     = 0.707,                                                         ! Mean pitch angle where xip = cos(theta) = vpar/v
