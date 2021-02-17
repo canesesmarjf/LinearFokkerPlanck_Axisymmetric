@@ -18,13 +18,9 @@ USE OMP_LIB
 ! ==============================================================================
 IMPLICIT NONE
 ! User-defined structures:
-TYPE(inTYP)  :: in
-TYPE(splTYP) :: spline_B
-TYPE(splTYP) :: spline_dB
-TYPE(splTYP) :: spline_ddB
-TYPE(splTYP) :: spline_V
-TYPE(splTYP) :: spline_dV
-TYPE(plasmaTYP) :: plasma
+TYPE(inTYP)          :: in
+TYPE(plasmaTYP)      :: plasma
+TYPE(fieldSplineTYP) :: fieldspline
 ! DO loop indices:
 INTEGER(i4) :: i,j,k
 ! Size of time interval:
@@ -41,7 +37,7 @@ REAL(r8) :: dresNum, resNum0, resNum1
 ! simulation time:
 REAl(r8) :: tp
 ! subset of zp, kep and xip to save:
-REAL(r8), DIMENSION(:,:), ALLOCATABLE :: zp_hist, kep_hist, xip_hist
+REAL(r8), DIMENSION(:,:), ALLOCATABLE :: zp_hist, kep_hist, xip_hist, a_hist
 ! Subset of tp:
 REAl(r8), DIMENSION(:)  , ALLOCATABLE :: t_hist
 ! Simulation diagnotics:
@@ -116,18 +112,11 @@ WRITE(*,*) ''
 
 ! Allocate memory to splines:
 ! ===========================================================================
-! InitSpline takes in a variable of splType and performs the following:
-! - Populates it scalar fields
-! - Allocates memory for the profile data "y", indepedent coordinate "x", etc
-CALL InitSpline(spline_B  ,in%nz,0._8,0._8)
-CALL InitSpline(spline_dB ,in%nz,0._8,0._8)
-CALL InitSpline(spline_ddB,in%nz,0._8,0._8)
-CALL InitSpline(spline_V  ,in%nz,0._8,0._8)
-CALL InitSpline(spline_dV ,in%nz,0._8,0._8)
+CALL InitFieldSpline(fieldspline,in)
 
 ! Allocate memory to main simulation variables:
 ! ==============================================================================
-ALLOCATE(plasma%zp(in%Nparts),plasma%kep(in%Nparts),plasma%xip(in%Nparts))
+CALL InitPlasma(plasma,in)
 ALLOCATE(pcount1(in%Nsteps)  ,pcount2(in%Nsteps)   ,pcount3(in%Nsteps)  ,pcount4(in%Nsteps))
 ALLOCATE(ecount1(in%Nsteps)  ,ecount2(in%Nsteps)   ,ecount3(in%Nsteps)  ,ecount4(in%Nsteps))
 
@@ -135,8 +124,12 @@ ALLOCATE(ecount1(in%Nsteps)  ,ecount2(in%Nsteps)   ,ecount3(in%Nsteps)  ,ecount4
 ! ==============================================================================
 ! Determine size of temporal snapshots to record:
 jsize = (in%jend-in%jstart+1)/in%jincr
-ALLOCATE(jrng(jsize))
-ALLOCATE(zp_hist(in%Nparts,jsize),kep_hist(in%Nparts,jsize),xip_hist(in%Nparts,jsize),t_hist(jsize))
+ALLOCATE(jrng(jsize)              )
+ALLOCATE(zp_hist(in%Nparts,jsize) )
+ALLOCATE(kep_hist(in%Nparts,jsize))
+ALLOCATE(xip_hist(in%Nparts,jsize))
+ALLOCATE(a_hist(in%Nparts,jsize)  )
+ALLOCATE(t_hist(jsize)            )
 
 ! Create array with the indices of the time steps to save:
 jrng = (/ (j, j=in%jstart, in%jend, in%jincr) /)
@@ -149,33 +142,28 @@ fileName = trim(adjustl(in%BFieldFileDir))//fileName
 fileName = trim(adjustl(in%repoDir))//fileName
 
 ! Populate spline profile data using external file:
-! B:
-CALL ReadSpline(spline_B,fileName)
+! Magnetic field B:
+CALL ReadSpline(fieldspline%B,fileName)
 ! dB and ddB:
-CALL diffSpline(spline_B ,spline_dB )
-CALL diffSpline(spline_dB,spline_ddB)
-
+CALL diffSpline(fieldspline%B ,fieldspline%dB )
+CALL diffSpline(fieldspline%dB,fieldspline%ddB)
 ! Electric potential V:
-spline_V%x = spline_B%x
-spline_V%y = 0
+fieldspline%V%x = fieldspline%B%x
+fieldspline%V%y = 0
 if (in%iPotential) then
-  CALL PotentialProfile(spline_V,in)
+  CALL PotentialProfile(fieldspline%V,in)
 end if
-CALL ComputeSpline(spline_V)
-
+CALL ComputeSpline(fieldspline%V)
 ! dV:
-CALL diffSpline(spline_V,spline_dV)
-
+CALL diffSpline(fieldspline%V,fieldspline%dV)
+! Plasma flow U:
+fieldspline%U%x = fieldspline%B%x
+fieldspline%U%y = 0
 ! Complete setting up the spline data :
-CALL ComputeSpline(spline_B  )
-CALL ComputeSpline(spline_dB )
-CALL ComputeSpline(spline_ddB)
-CALL ComputeSpline(spline_V  )
-CALL ComputeSpline(spline_dV )
+CALL ComputeFieldSpline(fieldspline)
 
 ! Inititalize zp, kep, xip
 ! ==============================================================================
-plasma%kep = 0.; plasma%xip = 0.; plasma%zp = 0.;
 WRITE(*,*) "Initializing PDF..."
 !$OMP PARALLEL
 if (OMP_GET_THREAD_NUM() .EQ. 0) then
@@ -238,11 +226,11 @@ AllTime: do j = 1,in%Nsteps
 
         ! Calculate Cyclotron resonance number:
         ! ------------------------------------------------------------------------
-        if (in%iHeat) CALL CyclotronResonanceNumber(i,plasma,resNum0,in,spline_B)
+        if (in%iHeat) CALL CyclotronResonanceNumber(i,plasma,resNum0,fieldspline,in)
 
         ! Push particles adiabatically:
         ! ------------------------------------------------------------------------
-        if (in%iPush) CALL MoveParticle(i,plasma,in,spline_B,spline_dB,spline_dV)
+        if (in%iPush) CALL MoveParticle(i,plasma,fieldspline,in)
 
         ! Re-inject particles:
         ! ------------------------------------------------------------------------
@@ -256,10 +244,10 @@ AllTime: do j = 1,in%Nsteps
         ! Apply RF heating operator:
         ! ------------------------------------------------------------------------
         if (in%iHeat) then
-           CALL CyclotronResonanceNumber(i,plasma,resNum1,in,spline_B)
+           CALL CyclotronResonanceNumber(i,plasma,resNum1,fieldspline,in)
            dresNum = dsign(1.d0,resNum0*resNum1)
            if (dresNum .LT. 0 .AND. plasma%zp(i) .GT. in%zRes1 .AND. plasma%zp(i) .LT. in%zRes2)  then
-              CALL RFHeatingOperator(i,plasma,ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
+              CALL RFHeatingOperator(i,plasma,ecnt3,pcnt3,fieldspline,in)
            end if
         end if
 

@@ -1,7 +1,7 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_02_16d',
+in%fileDescriptor = '2021_02_17a',
 
 ! Magnetic field input data:
 ! =========================

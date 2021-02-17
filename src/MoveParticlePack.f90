@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE MoveParticle(i,plasma,in0,spline_B,spline_dB,spline_dV)
+SUBROUTINE MoveParticle(i,plasma,fieldspline,in)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -9,10 +9,10 @@ USE dataTYP
 IMPLICIT NONE
 
 ! Define type for interface arguments
-INTEGER(i4) :: i
-TYPE(plasmaTYP), INTENT(INOUT) :: plasma
-TYPE(inTYP), INTENT(IN)  :: in0
-TYPE(splTYP), INTENT(IN) :: spline_B, spline_dB, spline_dV
+INTEGER(i4)         , INTENT(IN)    :: i
+TYPE(plasmaTYP)     , INTENT(INOUT) :: plasma
+TYPE(inTYP)         , INTENT(IN)    :: in
+TYPE(fieldSplineTYP), INTENT(IN)    :: fieldspline
 
 ! Local variables:
 REAL(r8) :: zpnew, Xipnew, uparnew, upernew, munew  ! Position, kinetic energy and pitch of the ith particle
@@ -36,10 +36,10 @@ kep0 = plasma%kep(i)
 xip0 = plasma%xip(i)
 
 ! Time step:
-dt = in0%dt
+dt = in%dt
 
 ! Test particle mass:
-Ma = in0%Ma
+Ma = in%Ma
 
 ! Calculate initial parallel particle speed:
 upar0 = xip0*sqrt(2.*e_c*kep0/Ma)
@@ -48,33 +48,33 @@ upar0 = xip0*sqrt(2.*e_c*kep0/Ma)
 u2 = 2.*e_c*kep0/Ma
 
 ! Calculate initial magnetic moment:
-CALL Interp1(zp0,B,spline_B)
+CALL Interp1(zp0,B,fieldspline%B)
 
 mu0 = 0.5*Ma*u2*(1 - xip0*xip0)/B
 
 ! Begin assembling RK4 solution:
-call RightHandSide(zp0,upar0,mu0,K1,L1,M1,in0,spline_dB,spline_dV)             ! Update values of fK, fL and fM
+call RightHandSide(zp0,upar0,mu0,K1,L1,M1,in,fieldspline%dB,fieldspline%dV)             ! Update values of fK, fL and fM
 zp1   = zp0   + (K1*dt/2.)
 upar1 = upar0 + (L1*dt/2.)
 mu1   = mu0   + (M1*dt/2.)
 
-call RightHandSide(zp1,upar1,mu1,K2,L2,M2,in0,spline_dB,spline_dV)             ! Update values of fK, fL and fM
+call RightHandSide(zp1,upar1,mu1,K2,L2,M2,in,fieldspline%dB,fieldspline%dV)             ! Update values of fK, fL and fM
 zp2   = zp0   + (K2*dt/2.)
 upar2 = upar0 + (L2*dt/2.)
 mu2   = mu0   + (M2*dt/2.)
 
-call RightHandSide(zp2,upar2,mu2,K3,L3,M3,in0,spline_dB,spline_dV)             ! Update values of fK, fL and fM
+call RightHandSide(zp2,upar2,mu2,K3,L3,M3,in,fieldspline%dB,fieldspline%dV)             ! Update values of fK, fL and fM
 zp3   = zp0   + K3*dt
 upar3 = upar0 + L3*dt
 mu3   = mu0   + M3*dt
 
-call RightHandSide(zp3,upar3,mu3,K4,L4,M4,in0,spline_dB,spline_dV)             ! Update values of fK, fL and fM
+call RightHandSide(zp3,upar3,mu3,K4,L4,M4,in,fieldspline%dB,fieldspline%dV)             ! Update values of fK, fL and fM
 zpnew   = zp0   + ( (K1 + (2.*K2) + (2.*K3) + K4)/6. )*dt
 uparnew = upar0 + ( (L1 + (2.*L2) + (2.*L3) + L4)/6. )*dt
 munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*dt
 
 ! Calculate the magnetic field at zpnew:
-CALL Interp1(zpnew,B,spline_B)
+CALL Interp1(zpnew,B,fieldspline%B)
 
 ! Based on new B and new mu, calculate new uper:
 upernew = sqrt(2.*munew*B/Ma)
@@ -223,7 +223,7 @@ RETURN
 END SUBROUTINE ReinjectParticles
 
 ! =======================================================================================================
-SUBROUTINE CyclotronResonanceNumber(i,plasma,resNum0,in0,spline_B)
+SUBROUTINE CyclotronResonanceNumber(i,plasma,resNum0,fieldspline,in)
 ! =======================================================================================================
 
 USE local
@@ -233,11 +233,11 @@ USE dataTYP
 
 IMPLICIT NONE
 ! Define interface variables:
-INTEGER(i4)    , INTENT(IN)    :: i
-TYPE(plasmaTYP), INTENT(IN)    :: plasma
-REAL(r8)       , INTENT(INOUT) :: resNum0
-TYPE(inTYP)    , INTENT(IN)    :: in0
-TYPE(splTYP)   , INTENT(IN)    :: spline_B
+INTEGER(i4)            , INTENT(IN)    :: i
+TYPE(plasmaTYP)        , INTENT(IN)    :: plasma
+REAL(r8)               , INTENT(INOUT) :: resNum0
+TYPE(inTYP)            , INTENT(IN)    :: in
+TYPE(fieldSplineTYP)   , INTENT(IN)    :: fieldspline
 
 ! Define local variables
 REAL(r8) :: zp0, kep0, xip0
@@ -249,25 +249,25 @@ zp0  = plasma%zp(i)
 kep0 = plasma%kep(i)
 xip0 = plasma%xip(i) 
 ! Test particle mass:
-Ma = in0%Ma
+Ma = in%Ma
 ! Test particle charge:
-qa = in0%qa
+qa = in%qa
 ! Parallel velocity of test particle:
 upar = sqrt(2.*e_c*kep0/Ma)*xip0
 ! Magnetic field at location zp0 of test particle:
-CALL Interp1(zp0,Bf,spline_B)
+CALL Interp1(zp0,Bf,fieldspline%B)
 ! Cyclotron frequency of test particle:
 Omega = abs(qa)*Bf/Ma
 ! RF frequency in rad/s:
-Omega_RF = 2*pi*in0%f_RF
+Omega_RF = 2*pi*in%f_RF
 ! Cyclotron resonance number:
-resNum0 = Omega_RF - in0%kpar*upar - in0%n_harmonic*Omega
+resNum0 = Omega_RF - in%kpar*upar - in%n_harmonic*Omega
 
 RETURN
 END SUBROUTINE CyclotronResonanceNumber
 
 ! =======================================================================================================
-SUBROUTINE RFHeatingOperator(i,plasma,ecnt,pcnt,in0,spline_B,spline_dB,spline_ddB,spline_dV)
+SUBROUTINE RFHeatingOperator(i,plasma,ecnt,pcnt,fieldspline,in)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -276,11 +276,11 @@ USE dataTYP
 
 IMPLICIT NONE
 ! Define interface variables:
-INTEGER(i4)    , INTENT(IN)    :: i
-TYPE(plasmaTYP), INTENT(INOUT) :: plasma
-REAL(r8)       , INTENT(INOUT) :: ecnt, pcnt
-TYPE(inTYP)    , INTENT(IN)    :: in0
-TYPE(splTYP)   , INTENT(IN)    :: spline_B, spline_dB, spline_ddB, spline_dV
+INTEGER(i4)            , INTENT(IN)    :: i
+TYPE(plasmaTYP)        , INTENT(INOUT) :: plasma
+REAL(r8)               , INTENT(INOUT) :: ecnt, pcnt
+TYPE(inTYP)            , INTENT(IN)    :: in
+TYPE(fieldSplineTYP)   , INTENT(IN)    :: fieldspline
 
 ! Define local variables:
 REAL(r8) :: zp0, kep0, xip0
@@ -302,10 +302,10 @@ kep0 = plasma%kep(i)
 xip0 = plasma%xip(i)
 
 ! Test particle mass:
-Ma = in0%Ma
+Ma = in%Ma
 
 ! Test particle charge:
-qa = in0%qa
+qa = in%qa
 
 ! Calculate derived quantities
 u0       = sqrt(2.*e_c*kep0/Ma)
@@ -315,15 +315,15 @@ kep_par0 = kep0*xip0**2.
 kep_per0 = kep0*(1. - xip0**2.)
 
 ! Gradients:
-CALL Interp1(zp0,dB ,spline_dB )
-CALL Interp1(zp0,ddB,spline_ddB)
-CALL Interp1(zp0,dV ,spline_dV )
+CALL Interp1(zp0,dB ,fieldspline%dB)
+CALL Interp1(zp0,ddB,fieldspline%ddB)
+CALL Interp1(zp0,dV ,fieldspline%dV )
 
 ! Spatial derivatives of the magnetic field:
-CALL Interp1(zp0,Bf,spline_B)
-Omega     = in0%n_harmonic*e_c*Bf/Ma
-dOmega    = in0%n_harmonic*e_c*dB/Ma
-ddOmega   = in0%n_harmonic*e_c*ddB/Ma
+CALL Interp1(zp0,Bf,fieldspline%B)
+Omega     = in%n_harmonic*e_c*Bf/Ma
+dOmega    = in%n_harmonic*e_c*dB/Ma
+ddOmega   = in%n_harmonic*e_c*ddB/Ma
 
 ! Calculate the first and second time derivative of Omega:
 Omega_dot = upar0*dOmega
@@ -341,13 +341,13 @@ end if
 
 ! Calculate Bessel term:
 rl       = uper0/(abs(qa)*Bf/Ma)
-flr      = in0%kper*rl
-besselterm = BESSEL_JN(in0%n_harmonic-1,flr)
+flr      = in%kper*rl
+besselterm = BESSEL_JN(in%n_harmonic-1,flr)
 
 ! Calculate the cyclotron interaction:
 ! Using method based on VS. Chan PoP 9,2 (2002)
 ! Consistent with J. Carlsson'd PhD thesis (1998)
-mean_dkep_per = 0.5*(e_c/Ma)*(in0%Ew*besselterm*tau_rf)**2.
+mean_dkep_per = 0.5*(e_c/Ma)*(in%Ew*besselterm*tau_rf)**2.
 
 ! Calculate the change in perp, parallel and total energy:
 CALL RANDOM_NUMBER(Rm1)
@@ -359,8 +359,8 @@ dkep_per = mean_dkep_per + Rm1*sqrt(2.*kep_per0*mean_dkep_per)
 ! Given the perp kick in energy, apply the parallel energy kick
 ! This arises from the non-linear effect of the perturbed magnetic field
 ! See Stix section 10.3 "Trapped electromagnetic modes"
-!dkep_par = (in0%kpar*abs(upar0)/Omega)*dkep_per
-dkep_par = (in0%kpar*(upar0)/Omega)*dkep_per
+!dkep_par = (in%kpar*abs(upar0)/Omega)*dkep_per
+dkep_par = (in%kpar*(upar0)/Omega)*dkep_per
 
 ! total change in energy kick
 dkep = dkep_par + dkep_per
