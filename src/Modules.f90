@@ -215,7 +215,7 @@ USE local
 USE spline_fits
 
 IMPLICIT NONE
-TYPE inTYP
+TYPE paramsTYP
   CHARACTER*150 :: fileDescriptor, repoDir
   CHARACTER*150 :: BFieldFile, BFieldFileDir
   REAL(r8) :: Ti0, Te0, ne0, dt
@@ -235,10 +235,9 @@ TYPE inTYP
   INTEGER(i4) :: n_harmonic
   REAL(r8) :: tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
   REAL(r8) :: Ma, qa
-END TYPE inTYP
+END TYPE paramsTYP
   
 TYPE plasmaTYP
- TYPE(inTYP) :: in
  REAL(r8) :: NC, Nsteps, dt
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep, xip, a
  INTEGER(i4), DIMENSION(:), ALLOCATABLE :: f1 , f2 , f3 , f4
@@ -256,17 +255,17 @@ END TYPE fieldSplineTYP
 
 CONTAINS
 ! ----------------------------------------------------------------------------
-SUBROUTINE InitPlasma(plasma,in)
+SUBROUTINE InitPlasma(plasma,params)
    IMPLICIT NONE
    ! Declare interface variables:
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
-   TYPE(inTYP)    , INTENT(IN)    :: in
+   TYPE(paramsTYP), INTENT(IN)    :: params
 
    ! Declare local variables:
    INTEGER(i4) :: NC, NS
 
-   NC = in%Nparts
-   NS = in%Nsteps
+   NC = params%Nparts
+   NS = params%Nsteps
    
    ! Allocate memory: 
    ALLOCATE(plasma%zp(NC) ,plasma%kep(NC),plasma%xip(NC),plasma%a(NC)      )
@@ -284,19 +283,19 @@ SUBROUTINE InitPlasma(plasma,in)
 END SUBROUTINE InitPlasma
 
 ! --------------------------------------------------------------------------
-SUBROUTINE InitFieldSpline(fieldspline,in)
+SUBROUTINE InitFieldSpline(fieldspline,params)
    USE spline_fits   
 
    IMPLICIT NONE
    ! Declare interface variables:
    TYPE(fieldSplineTYP), INTENT(INOUT) :: fieldspline
-   TYPE(inTYP)         , INTENT(IN)    :: in
+   TYPE(paramsTYP)     , INTENT(IN)    :: params
 
    ! Declare local variables:
    INTEGER(i4) :: NZ
    
    ! Size of spline data:
-   NZ = in%nz
+   NZ = params%nz
    
    ! Allocate memory: 
    CALL InitSpline(fieldspline%B  ,NZ,0._8,0._8)

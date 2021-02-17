@@ -18,7 +18,7 @@ USE OMP_LIB
 ! ==============================================================================
 IMPLICIT NONE
 ! User-defined structures:
-TYPE(inTYP)          :: in
+TYPE(paramsTYP)      :: params
 TYPE(plasmaTYP)      :: plasma
 TYPE(fieldSplineTYP) :: fieldspline
 ! DO loop indices:
@@ -55,7 +55,7 @@ CHARACTER*300 :: inputFileDir, inputFile, fileName, xpSelector, repoDir, dir0, d
 
 ! Create input namelist from the user-defined structures:
 ! ==============================================================================
-namelist/in_nml/in
+namelist/params_nml/params
 
 ! Get root directory:
 ! ==============================================================================
@@ -69,17 +69,17 @@ CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE_DIR',inputFileDir)
 ! Read input data into "in" structure:
 ! ==============================================================================
 OPEN(unit=4,file=inputFileDir,status='old',form='formatted')
-read(4,in_nml)
+read(4,params_nml)
 CLOSE(unit=4)
 
 ! Select the test species:
 ! ==============================================================================
-if (in%species_a .eq. 1) then
-    in%qa = -e_c
-    in%Ma = m_e
+if (params%species_a .eq. 1) then
+    params%qa = -e_c
+    params%Ma = m_e
 else
-    in%qa = +in%Zion*e_c
-    in%Ma = in%Aion*m_p
+    params%qa = +params%Zion*e_c
+    params%Ma = params%Aion*m_p
 end if
 
 ! Print to the terminal:
@@ -87,59 +87,59 @@ end if
 WRITE(*,*) ''
 WRITE(*,*) '*********************************************************************'
 WRITE(*,*) 'Input file:         ', TRIM(inputFile)
-WRITE(*,*) 'fileDescriptor:     ', TRIM(in%fileDescriptor)
-WRITE(*,*) 'Number of particles:', in%Nparts
-WRITE(*,*) 'Number of steps:    ', in%Nsteps
-WRITE(*,*) 'Particle BC:        ', in%BC_Type
-WRITE(*,*) 'dt [ns]:            ', in%dt*1E+9
-WRITE(*,*) 'iPush:              ', in%iPush
-WRITE(*,*) 'iDrag:              ', in%iDrag
-WRITE(*,*) 'iColl:              ', in%iColl
-WRITE(*,*) 'iHeat:              ', in%iHeat
-WRITE(*,*) 'iSave:              ', in%iSave
-WRITE(*,*) 'elevel:             ', in%elevel
-WRITE(*,*) 'zTarget [m]:        ', in%zmax
-WRITE(*,*) 'zDump [m]:          ', in%zmin
-WRITE(*,*) 'BC_zp_mean [m]:     ', in%BC_zp_mean
-WRITE(*,*) 'B field file:       ', TRIM(in%BFieldFile)
-WRITE(*,*) 'Ew:                 ', in%Ew
-WRITE(*,*) 'Te0:                ', in%Te0
-WRITE(*,*) 'ne0:                ', in%ne0
-if (in%CollOperType .EQ. 1) WRITE(*,*) 'Boozer-Only collision operator'
-if (in%CollOperType .EQ. 2) WRITE(*,*) 'Boozer-Kim collision operator'
+WRITE(*,*) 'fileDescriptor:     ', TRIM(params%fileDescriptor)
+WRITE(*,*) 'Number of particles:', params%Nparts
+WRITE(*,*) 'Number of steps:    ', params%Nsteps
+WRITE(*,*) 'Particle BC:        ', params%BC_Type
+WRITE(*,*) 'dt [ns]:            ', params%dt*1E+9
+WRITE(*,*) 'iPush:              ', params%iPush
+WRITE(*,*) 'iDrag:              ', params%iDrag
+WRITE(*,*) 'iColl:              ', params%iColl
+WRITE(*,*) 'iHeat:              ', params%iHeat
+WRITE(*,*) 'iSave:              ', params%iSave
+WRITE(*,*) 'elevel:             ', params%elevel
+WRITE(*,*) 'zTarget [m]:        ', params%zmax
+WRITE(*,*) 'zDump [m]:          ', params%zmin
+WRITE(*,*) 'BC_zp_mean [m]:     ', params%BC_zp_mean
+WRITE(*,*) 'B field file:       ', TRIM(params%BFieldFile)
+WRITE(*,*) 'Ew:                 ', params%Ew
+WRITE(*,*) 'Te0:                ', params%Te0
+WRITE(*,*) 'ne0:                ', params%ne0
+if (params%CollOperType .EQ. 1) WRITE(*,*) 'Boozer-Only collision operator'
+if (params%CollOperType .EQ. 2) WRITE(*,*) 'Boozer-Kim collision operator'
 WRITE(*,*) '*********************************************************************'
 WRITE(*,*) ''
 
 ! Allocate memory to splines:
 ! ===========================================================================
-CALL InitFieldSpline(fieldspline,in)
+CALL InitFieldSpline(fieldspline,params)
 
 ! Allocate memory to main simulation variables:
 ! ==============================================================================
-CALL InitPlasma(plasma,in)
-ALLOCATE(pcount1(in%Nsteps)  ,pcount2(in%Nsteps)   ,pcount3(in%Nsteps)  ,pcount4(in%Nsteps))
-ALLOCATE(ecount1(in%Nsteps)  ,ecount2(in%Nsteps)   ,ecount3(in%Nsteps)  ,ecount4(in%Nsteps))
+CALL InitPlasma(plasma,params)
+ALLOCATE(pcount1(params%Nsteps)  ,pcount2(params%Nsteps)   ,pcount3(params%Nsteps)  ,pcount4(params%Nsteps))
+ALLOCATE(ecount1(params%Nsteps)  ,ecount2(params%Nsteps)   ,ecount3(params%Nsteps)  ,ecount4(params%Nsteps))
 
 ! Allocate memory to output variables:
 ! ==============================================================================
 ! Determine size of temporal snapshots to record:
-jsize = (in%jend-in%jstart+1)/in%jincr
+jsize = (params%jend-params%jstart+1)/params%jincr
 ALLOCATE(jrng(jsize)              )
-ALLOCATE(zp_hist(in%Nparts,jsize) )
-ALLOCATE(kep_hist(in%Nparts,jsize))
-ALLOCATE(xip_hist(in%Nparts,jsize))
-ALLOCATE(a_hist(in%Nparts,jsize)  )
+ALLOCATE(zp_hist(params%Nparts,jsize) )
+ALLOCATE(kep_hist(params%Nparts,jsize))
+ALLOCATE(xip_hist(params%Nparts,jsize))
+ALLOCATE(a_hist(params%Nparts,jsize)  )
 ALLOCATE(t_hist(jsize)            )
 
 ! Create array with the indices of the time steps to save:
-jrng = (/ (j, j=in%jstart, in%jend, in%jincr) /)
+jrng = (/ (j, j=params%jstart, params%jend, params%jincr) /)
 
 ! Create splines of electromagnetic fields:
 ! ===========================================================================
 ! Magnetic field data:
-fileName = trim(adjustl(in%BFieldFile))
-fileName = trim(adjustl(in%BFieldFileDir))//fileName
-fileName = trim(adjustl(in%repoDir))//fileName
+fileName = trim(adjustl(params%BFieldFile))
+fileName = trim(adjustl(params%BFieldFileDir))//fileName
+fileName = trim(adjustl(params%repoDir))//fileName
 
 ! Populate spline profile data using external file:
 ! Magnetic field B:
@@ -150,8 +150,8 @@ CALL diffSpline(fieldspline%dB,fieldspline%ddB)
 ! Electric potential V:
 fieldspline%V%x = fieldspline%B%x
 fieldspline%V%y = 0
-if (in%iPotential) then
-  CALL PotentialProfile(fieldspline%V,in)
+if (params%iPotential) then
+  CALL PotentialProfile(fieldspline,params)
 end if
 CALL ComputeSpline(fieldspline%V)
 ! dV:
@@ -167,16 +167,16 @@ CALL ComputeFieldSpline(fieldspline)
 WRITE(*,*) "Initializing PDF..."
 !$OMP PARALLEL
 if (OMP_GET_THREAD_NUM() .EQ. 0) then
-    in%threads_given = OMP_GET_NUM_THREADS()
+    params%threads_given = OMP_GET_NUM_THREADS()
     WRITE(*,*) ''
     WRITE(*,*) '*********************************************************************'
-    WRITE(*,*) "Number of threads given: ", in%threads_given
+    WRITE(*,*) "Number of threads given: ", params%threads_given
     WRITE(*,*) '*********************************************************************'
     WRITE(*,*) ''
 end if
 !$OMP DO
-DO i = 1,in%Nparts
-  CALL loadParticles(i,plasma,in)
+DO i = 1,params%Nparts
+  CALL loadParticles(i,plasma,params)
 END DO
 !$OMP END DO
 !$OMP END PARALLEL
@@ -186,7 +186,7 @@ WRITE(*,*) "Initialization complete"
 ! ==========================================================================
 fileName = "LoadParticles.dat"
 OPEN(unit=8,file=fileName,form="formatted",status="unknown")
-do i = 1,in%Nparts
+do i = 1,params%Nparts
     WRITE(8,*) plasma%zp(i), plasma%kep(i), plasma%xip(i)
 end do
 CLOSE(unit=8)
@@ -208,7 +208,7 @@ ostart = OMP_GET_WTIME()
 
 ! Loop over time:
 ! ==============================================================================
-AllTime: do j = 1,in%Nsteps
+AllTime: do j = 1,params%Nsteps
 
     !$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,dresNum,resNum0,resNum1)
 
@@ -222,32 +222,32 @@ AllTime: do j = 1,in%Nsteps
     ! Loop over particles:
     ! ==============================================================================
     !$OMP DO SCHEDULE(STATIC)
-    AllParticles: do i = 1,in%Nparts
+    AllParticles: do i = 1,params%Nparts
 
         ! Calculate Cyclotron resonance number:
         ! ------------------------------------------------------------------------
-        if (in%iHeat) CALL CyclotronResonanceNumber(i,plasma,resNum0,fieldspline,in)
+        if (params%iHeat) CALL CyclotronResonanceNumber(i,plasma,resNum0,fieldspline,params)
 
         ! Push particles adiabatically:
         ! ------------------------------------------------------------------------
-        if (in%iPush) CALL MoveParticle(i,plasma,fieldspline,in)
+        if (params%iPush) CALL MoveParticle(i,plasma,fieldspline,params)
 
         ! Re-inject particles:
         ! ------------------------------------------------------------------------
-        if (plasma%zp(i) .GE. in%zmax) CALL ReinjectParticles(i,plasma,in,ecnt2,pcnt2)
-        if (plasma%zp(i) .LE. in%zmin) CALL ReinjectParticles(i,plasma,in,ecnt1,pcnt1)
+        if (plasma%zp(i) .GE. params%zmax) CALL ReinjectParticles(i,plasma,params,ecnt2,pcnt2)
+        if (plasma%zp(i) .LE. params%zmin) CALL ReinjectParticles(i,plasma,params,ecnt1,pcnt1)
 
         ! Apply Coulomb collision operator:
         ! ------------------------------------------------------------------------
-        if (in%iColl) CALL collisionOperator(i,plasma,ecnt4,pcnt4,in)
+        if (params%iColl) CALL collisionOperator(i,plasma,ecnt4,pcnt4,params)
 
         ! Apply RF heating operator:
         ! ------------------------------------------------------------------------
-        if (in%iHeat) then
-           CALL CyclotronResonanceNumber(i,plasma,resNum1,fieldspline,in)
+        if (params%iHeat) then
+           CALL CyclotronResonanceNumber(i,plasma,resNum1,fieldspline,params)
            dresNum = dsign(1.d0,resNum0*resNum1)
-           if (dresNum .LT. 0 .AND. plasma%zp(i) .GT. in%zRes1 .AND. plasma%zp(i) .LT. in%zRes2)  then
-              CALL RFHeatingOperator(i,plasma,ecnt3,pcnt3,fieldspline,in)
+           if (dresNum .LT. 0 .AND. plasma%zp(i) .GT. params%zRes1 .AND. plasma%zp(i) .LT. params%zRes2)  then
+              CALL RFHeatingOperator(i,plasma,ecnt3,pcnt3,fieldspline,params)
            end if
         end if
 
@@ -270,11 +270,11 @@ AllTime: do j = 1,in%Nsteps
     ! Select data to save:
     ! =====================================================================
     ! Check if data is to be saved
-    if (in%iSave) then
+    if (params%iSave) then
        if (j .EQ. jrng(k)) then
           t_hist(k) = tp
           !$OMP PARALLEL DO
-          do i = 1,in%Nparts
+          do i = 1,params%Nparts
              ! Record "ith" particle at "kth" time
              zp_hist(i,k)  = plasma%zp(i)
              kep_hist(i,k) = plasma%kep(i)
@@ -287,35 +287,35 @@ AllTime: do j = 1,in%Nsteps
 
     ! Update time array:
     ! =========================================================================
-    tp = tp + in%dt
+    tp = tp + params%dt
 
     ! Estimate computational time:
     ! =====================================================================
     if (j .EQ. 150) then
        oend_estimate = OMP_GET_WTIME()
-       WRITE(*,*) 'Estimated compute time: ', in%Nsteps*(oend_estimate-ostart)/j,' [s]'
+       WRITE(*,*) 'Estimated compute time: ', params%Nsteps*(oend_estimate-ostart)/j,' [s]'
     end if
 
 end do AllTime
 
 ! Record end time:
 ! =========================================================================
-in%tSimTime = tp
+params%tSimTime = tp
 oend = OMP_GET_WTIME()
 
-in%tComputeTime = oend-ostart
+params%tComputeTime = oend-ostart
 WRITE(*,*) ''
 WRITE(*,*) '*********************************************************************'
-WRITE(*,*) 'Reached End of Program, Computational time [s] = ', in%tComputeTime
+WRITE(*,*) 'Reached End of Program, Computational time [s] = ', params%tComputeTime
 WRITE(*,*) '*********************************************************************'
 WRITE(*,*) ''
 
 ! Save data:
 ! ==============================================================================
-if (in%iSave) then
+if (params%iSave) then
     ! Create new directory to save output data:
     ! --------------------------------------------------------------------------
-    dir1 = trim(in%repoDir)//'/OutputFiles'
+    dir1 = trim(params%repoDir)//'/OutputFiles'
     command = 'mkdir '//dir1
     CALL system(command,STATUS)
     WRITE(*,*) 'Status: ', STATUS
@@ -325,13 +325,13 @@ if (in%iSave) then
     n_mpwd = lEN_TRIM(inputFile)-3
     dir0 = inputFile
     dir0 = dir0(1:n_mpwd)
-    dir1 = trim(in%repoDir)//'/OutputFiles/'//trim(dir0)
+    dir1 = trim(params%repoDir)//'/OutputFiles/'//trim(dir0)
     command = 'mkdir '//dir1
     CALL system(command,STATUS)
 
     ! Create subdirectory based on "fileDescriptor" inside the input file:
     ! -------------------------------------------------------------------------
-    dir1 = trim(dir1)//'/'//trim(in%fileDescriptor)
+    dir1 = trim(dir1)//'/'//trim(params%fileDescriptor)
     command = 'mkdir '// dir1
     CALL system(command,STATUS)
     CALL getcwd(mpwd)
@@ -406,18 +406,18 @@ if (in%iSave) then
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'metadata.txt')
     OPEN(unit=8,file=fileName,form="formatted",status="unknown")
-    WRITE(8,NML = in_nml)
+    WRITE(8,NML = params_nml)
     CLOSE(unit=8)
 
     ! Copy input file to output directory:
     ! --------------------------------------------------------------------------
-    dir0 = trim(in%repoDir)//'/InputFiles/'//trim(inputFile)
+    dir0 = trim(params%repoDir)//'/InputFiles/'//trim(inputFile)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))
     CALL system(command)
 
     ! Copy magnetic field data:
     ! --------------------------------------------------------------------------
-    dir0 = trim(in%repoDir)//'/BfieldData'//trim(in%BFieldFile)
+    dir0 = trim(params%repoDir)//'/BfieldData'//trim(params%BFieldFile)
     command = 'cp '//trim(trim(dir0)//' '//trim(dir1))//'/Bfield.txt'
     CALL system(command)
 
@@ -426,7 +426,7 @@ if (in%iSave) then
     n_mpwd = lEN_TRIM(inputFile)-3
     dir0 = inputFile
     dir0 = dir0(1:n_mpwd)
-    dir0 = trim(in%repoDir)//'/OutputFiles/'//trim(dir0)//'/'//trim(in%fileDescriptor)
+    dir0 = trim(params%repoDir)//'/OutputFiles/'//trim(dir0)//'/'//trim(params%fileDescriptor)
     fileName = trim(dir0)//'/commitHash.txt'
     command = 'git log --oneline -1 > '//trim(fileName)
     CALL system(command)

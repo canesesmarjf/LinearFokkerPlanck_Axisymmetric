@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE collisionOperator(i,plasma,ecnt,pcnt,in0)
+SUBROUTINE collisionOperator(i,plasma,ecnt,pcnt,params)
 ! =======================================================================================================
 
 USE local
@@ -11,7 +11,7 @@ IMPLICIT NONE
 ! Define interface variables:
 INTEGER(i4)    , INTENT(IN)    :: i
 TYPE(plasmaTYP), INTENT(INOUT) :: plasma
-TYPE(inTYP)    , INTENT(IN)    :: in0
+TYPE(paramsTYP), INTENT(IN)    :: params
 REAL(r8)       , INTENT(INOUT) :: ecnt, pcnt
 
 ! Define local variables:
@@ -38,13 +38,13 @@ xip0 = plasma%xip(i)
 
 ! Test particle properties:
 ! -----------------------------------------------------------------------------------------------------------------
-Ma = in0%Ma
-qa = in0%qa
-species_a = in0%species_a
+Ma = params%Ma
+qa = params%qa
+species_a = params%species_a
 if (species_a .EQ. 1) then      ! Test electrons
    Za = -1.
 else if (species_a .EQ. 1) then ! Test ions
-   Za = in0%Zion
+   Za = params%Zion
 end if
 
 species_b_loop: do ss = 1,2
@@ -55,14 +55,14 @@ if (ss .EQ. 2) species_b = 2
 
 if(species_b .EQ. 1) then       ! Background electron
   Mb = m_e
-  Tb = in0%Te0
+  Tb = params%Te0
   Zb = -1.
-  nb = in0%ne0
+  nb = params%ne0
 else if(species_b .EQ. 2) then  ! Background ion
-  Mb = in0%Aion*m_p
-  Tb = in0%Ti0
-  Zb = in0%Zion
-  nb = in0%ne0
+  Mb = params%Aion*m_p
+  Tb = params%Ti0
+  Zb = params%Zion
+  nb = params%ne0
 end if
 
 ! Coordinate systems:
@@ -80,11 +80,11 @@ vpar = xip0*v
 vper = sqrt(1 - (xip0**2.) )*v
 
 ! Plasma drift in the lab frame:
-if (in0%iDrag) then
-   if (zp0 .GE. in0%BC_zp_mean) then
-      u = +1.*sqrt( e_c*(in0%Te0 + in0%Ti0)/(in0%Aion*m_p) )
+if (params%iDrag) then
+   if (zp0 .GE. params%BC_zp_mean) then
+      u = +1.*sqrt( e_c*(params%Te0 + params%Ti0)/(params%Aion*m_p) )
    else
-      u = -1.*sqrt( e_c*(in0%Te0 + in0%Ti0)/(in0%Aion*m_p) )
+      u = -1.*sqrt( e_c*(params%Te0 + params%Ti0)/(params%Aion*m_p) )
    end if
 else
    u = 0.
@@ -118,7 +118,7 @@ xsi2 = sign(1._r8, ran_num - 0.5_r8)
 
 ! Apply pitch angle scattering in plasma frame:
 ! ---------------------------------------------
-d1 = nu_D(xab,nb,Tb,Mb,Zb,Za,Ma)*in0%dt
+d1 = nu_D(xab,nb,Tb,Mb,Zb,Za,Ma)*params%dt
 S1 = xip_pf_0*(1. - d1)
 S2 = ( 1. - xip_pf_0*xip_pf_0 )*d1
 S3 = xsi1*sqrt(S2)
@@ -127,10 +127,10 @@ xip_pf_1 = S1 + S3
 ! Apply energy scattering in plasma frame:
 ! ----------------------------------------
 ! Select mass term
-if (in0%CollOperType .EQ. 1) mass_term = 1.                 ! Boozer-Only term
-if (in0%CollOperType .EQ. 2) mass_term = 1. + (Mb/Ma)   ! Boozer-Kim term
+if (params%CollOperType .EQ. 1) mass_term = 1.                 ! Boozer-Only term
+if (params%CollOperType .EQ. 2) mass_term = 1. + (Mb/Ma)   ! Boozer-Kim term
 
-d2 = nu_E(xab,nb,Tb,Mb,Zb,Za,Ma)*in0%dt/mass_term
+d2 = nu_E(xab,nb,Tb,Mb,Zb,Za,Ma)*params%dt/mass_term
 E0 = (1.5 + E_nuE_d_nu_E_dE(xab))*Tb
 E1 = d2*(kep_pf_0 - E0)
 E2 = sqrt(Tb*kep_pf_0*d2)
@@ -146,7 +146,7 @@ end if
 if (kep_pf_1 .le. 0.) kep_pf_1 = kep_pf_0
 
 ! Record energy loss due to collisions in the plasma frame:
-if (kep_pf_1 .GT. in0%elevel*Tb) then
+if (kep_pf_1 .GT. params%elevel*Tb) then
 	! Record slowing down energy during time step dt
 	ecnt = ecnt + dE_pf
 	! Count how many particles are involved in the slowing down power calculation
