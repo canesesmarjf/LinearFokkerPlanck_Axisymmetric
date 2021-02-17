@@ -188,7 +188,7 @@ if (OMP_GET_THREAD_NUM() .EQ. 0) then
 end if
 !$OMP DO
 DO i = 1,in%Nparts
-  CALL loadParticles(plasma%zp(i),plasma%kep(i),plasma%xip(i),in)
+  CALL loadParticles(i,plasma,in)
 END DO
 !$OMP END DO
 !$OMP END PARALLEL
@@ -259,8 +259,7 @@ AllTime: do j = 1,in%Nsteps
            CALL CyclotronResonanceNumber(i,plasma,resNum1,in,spline_B)
            dresNum = dsign(1.d0,resNum0*resNum1)
            if (dresNum .LT. 0 .AND. plasma%zp(i) .GT. in%zRes1 .AND. plasma%zp(i) .LT. in%zRes2)  then
-              !WRITE(*,*) 'Resonance at zp: ', zp(i)
-        CALL RFHeatingOperator(plasma%zp(i),plasma%kep(i),plasma%xip(i),ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
+              CALL RFHeatingOperator(i,plasma,ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
            end if
         end if
 

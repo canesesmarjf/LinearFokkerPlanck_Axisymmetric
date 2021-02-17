@@ -267,7 +267,7 @@ RETURN
 END SUBROUTINE CyclotronResonanceNumber
 
 ! =======================================================================================================
-SUBROUTINE RFHeatingOperator(zp0,kep0,xip0,ecnt,pcnt,in0,spline_B,spline_dB,spline_ddB,spline_dV)
+SUBROUTINE RFHeatingOperator(i,plasma,ecnt,pcnt,in0,spline_B,spline_dB,spline_ddB,spline_dV)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -275,10 +275,15 @@ USE PhysicalConstants
 USE dataTYP
 
 IMPLICIT NONE
+! Define interface variables:
+INTEGER(i4)    , INTENT(IN)    :: i
+TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+REAL(r8)       , INTENT(INOUT) :: ecnt, pcnt
+TYPE(inTYP)    , INTENT(IN)    :: in0
+TYPE(splTYP)   , INTENT(IN)    :: spline_B, spline_dB, spline_ddB, spline_dV
+
 ! Define local variables:
-TYPE(inTYP)  :: in0
-TYPE(splTYP) :: spline_B, spline_dB, spline_ddB, spline_dV
-REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
+REAL(r8) :: zp0, kep0, xip0
 REAL(r8) :: u0, upar0, uper0
 REAL(r8) :: kep_par0, kep_per0
 REAL(r8) :: dB, ddB, dV
@@ -290,6 +295,11 @@ REAL(r8) :: dkep_par, dkep, kep1
 REAL(r8) :: kep_per1, kep_par1
 REAL(r8) :: upar1, u1
 REAL(r8) :: Ma, qa
+
+! Input variables:
+zp0  = plasma%zp(i)
+kep0 = plasma%kep(i)
+xip0 = plasma%xip(i)
 
 ! Test particle mass:
 Ma = in0%Ma
@@ -375,14 +385,14 @@ if (kep1 .LT. 0) then
 end if
 
 ! Assign value of the new energy:
-kep0 = kep1
+plasma%kep(i) = kep1
 
 ! Calculate the new pitch angle:
 upar1 = sqrt( (2.*e_c/Ma)*abs(kep_par1) )*dsign(1.d0,xip0)*dsign(1.d0,kep_par1)
 u1    = sqrt( (2.*e_c/Ma)*kep1 )
 !WRITE(*,*) "zp0", zp0
 !WRITE(*,*) "xip0", xip0
-xip0 = upar1/u1
+plasma%xip(i) = upar1/u1
 !WRITE(*,*) "xip1", xip0
 
 ! Record resonance event:
@@ -394,21 +404,30 @@ RETURN
 END SUBROUTINE RFHeatingOperator
 
 ! =======================================================================================================
-SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
+SUBROUTINE loadParticles(i,plasma,in0)
 ! =======================================================================================================
   USE local
   use PhysicalConstants
   USE dataTYP
 
   IMPLICIT NONE
+  ! Define interface variables:
+  INTEGER(i4)    , INTENT(IN)    :: i
+  TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+  TYPE(inTYP)    , INTENT(IN)    :: in0
+
   ! Declare internal variables:
-  TYPE(inTYP) :: in0
   REAL(r8) :: zp0, kep0, xip0
   REAL(r8) :: X1, X2, X3, X4
   REAL(r8) :: R_1, R_2, R_3, R_4, t_2, t_4
   REAL(r8) :: wx, wy, wz, vx, vy, vz, v
   REAL(r8) :: zmin, zmax, sigma_v, Ma
   REAL(r8) :: Ux, Uy, Uz, vT, U, T, E
+  
+  ! Input variables:
+  zp0  = plasma%zp(i)
+  kep0 = plasma%kep(i)
+  xip0 = plasma%xip(i)
 
   ! Particle position:
   zmin = in0%zmin !+ .01*(in0%zmax-in0%zmin)
@@ -416,12 +435,12 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
   if (in0%IC_Type .EQ. 1) then
       ! Uniform load
       call random_number(X1)
-      zp0 = zmin + (zmax - zmin)*X1
+      plasma%zp(i) = zmin + (zmax - zmin)*X1
   elseif (in0%IC_Type .EQ. 2) then
       ! Gaussian load
       call random_number(X1)
       call random_number(X2)
-      zp0 = in0%IC_zp_std*sqrt(-2.*log(X1))*cos(2.*pi*X2)  +  in0%IC_zp_mean
+      plasma%zp(i) = in0%IC_zp_std*sqrt(-2.*log(X1))*cos(2.*pi*X2)  +  in0%IC_zp_mean
   end if
 
   ! Particle kinetic energy and pitch angle:
@@ -458,8 +477,8 @@ SUBROUTINE loadParticles(zp0,kep0,xip0,in0)
   v = sqrt( vx**2. + vy**2. + vz**2. )
 
   ! Populate output variables:
-  kep0 = 0.5*(Ma/e_c)*v**2
-  xip0 = vz/v
+  plasma%kep(i) = 0.5*(Ma/e_c)*v**2
+  plasma%xip(i) = vz/v
 
 RETURN
 END SUBROUTINE loadParticles
