@@ -54,6 +54,19 @@ TYPE inTYP
   REAL(r8) :: tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
   REAL(r8) :: Ma, qa
 END TYPE inTYP
+  
+TYPE plasmaTYP
+ TYPE(inTYP) :: in
+ REAL(r8) :: NC, Nsteps, dt
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep, xip, a
+ INTEGER(i4), DIMENSION(:), ALLOCATABLE :: f1 , f2 , f3 , f4
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dE1, dE2, dE3, dE4, dE3_hat
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: tau, Jm, rL, doppler
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: NR , NSP
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Eplus, Eminus
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Ndot1, Ndot2, Ndot3, Ndot4
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Edot1, Edot2, Edot3, Edot4, Edot3_hat
+END TYPE plasmaTYP
 
 END MODULE dataTYP
 
@@ -64,7 +77,7 @@ MODULE spline_fits
 USE local
 
 IMPLICIT NONE
-! ----------------------------------------------------------------------------
+!----------------------------------------------------------------------------
 TYPE splTYP
   INTEGER(i4) :: n
   REAL(r8), DIMENSION(:), ALLOCATABLE :: x, y, y2

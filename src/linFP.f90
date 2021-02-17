@@ -24,6 +24,7 @@ TYPE(splTYP) :: spline_dB
 TYPE(splTYP) :: spline_ddB
 TYPE(splTYP) :: spline_V
 TYPE(splTYP) :: spline_dV
+TYPE(plasmaTYP) :: plasma
 ! DO loop indices:
 INTEGER(i4) :: i,j,k
 ! Size of time interval:
@@ -35,12 +36,10 @@ INTEGER(i4) :: id
 ! OPENMP computational time:
 DOUBLE PRECISION :: ostart, oend, oend_estimate
 ! Cyclotron resonance numbers:
-REAL(r8) :: df, f0, f1
+REAL(r8) :: dresNum, resNum0, resNum1
 ! Main simulation variables:
 ! simulation time:
 REAl(r8) :: tp
-! Particle position (zp), kinetic energy (kep), pitch angle (xip):
-REAL(r8), DIMENSION(:)  , ALLOCATABLE :: xip, zp, kep
 ! subset of zp, kep and xip to save:
 REAL(r8), DIMENSION(:,:), ALLOCATABLE :: zp_hist, kep_hist, xip_hist
 ! Subset of tp:
@@ -128,9 +127,9 @@ CALL InitSpline(spline_dV ,in%nz,0._8,0._8)
 
 ! Allocate memory to main simulation variables:
 ! ==============================================================================
-ALLOCATE(zp(in%Nparts),kep(in%Nparts),xip(in%Nparts))
-ALLOCATE(pcount1(in%Nsteps),pcount2(in%Nsteps),pcount3(in%Nsteps),pcount4(in%Nsteps))
-ALLOCATE(ecount1(in%Nsteps),ecount2(in%Nsteps),ecount3(in%Nsteps),ecount4(in%Nsteps))
+ALLOCATE(plasma%zp(in%Nparts),plasma%kep(in%Nparts),plasma%xip(in%Nparts))
+ALLOCATE(pcount1(in%Nsteps)  ,pcount2(in%Nsteps)   ,pcount3(in%Nsteps)  ,pcount4(in%Nsteps))
+ALLOCATE(ecount1(in%Nsteps)  ,ecount2(in%Nsteps)   ,ecount3(in%Nsteps)  ,ecount4(in%Nsteps))
 
 ! Allocate memory to output variables:
 ! ==============================================================================
@@ -176,7 +175,7 @@ CALL ComputeSpline(spline_dV )
 
 ! Inititalize zp, kep, xip
 ! ==============================================================================
-kep = 0.; xip = 0.; zp = 0.;
+plasma%kep = 0.; plasma%xip = 0.; plasma%zp = 0.;
 WRITE(*,*) "Initializing PDF..."
 !$OMP PARALLEL
 if (OMP_GET_THREAD_NUM() .EQ. 0) then
@@ -189,7 +188,7 @@ if (OMP_GET_THREAD_NUM() .EQ. 0) then
 end if
 !$OMP DO
 DO i = 1,in%Nparts
-  CALL loadParticles(zp(i),kep(i),xip(i),in)
+  CALL loadParticles(plasma%zp(i),plasma%kep(i),plasma%xip(i),in)
 END DO
 !$OMP END DO
 !$OMP END PARALLEL
@@ -200,7 +199,7 @@ WRITE(*,*) "Initialization complete"
 fileName = "LoadParticles.dat"
 OPEN(unit=8,file=fileName,form="formatted",status="unknown")
 do i = 1,in%Nparts
-    WRITE(8,*) zp(i), kep(i), xip(i)
+    WRITE(8,*) plasma%zp(i), plasma%kep(i), plasma%xip(i)
 end do
 CLOSE(unit=8)
 
@@ -223,14 +222,14 @@ ostart = OMP_GET_WTIME()
 ! ==============================================================================
 AllTime: do j = 1,in%Nsteps
 
-    !$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,df,f0,f1)
+    !$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,dresNum,resNum0,resNum1)
 
     ! Initialize private particle counters:
     pcnt1 = 0; pcnt2 = 0; pcnt3 = 0; pcnt4 = 0
     ! Initialize private energy counters:
     ecnt1 = 0; ecnt2 = 0; ecnt3 = 0; ecnt4 = 0
     ! Initialize resonance number difference:
-    df = 0
+    dresNum = 0
 
     ! Loop over particles:
     ! ==============================================================================
@@ -239,29 +238,29 @@ AllTime: do j = 1,in%Nsteps
 
         ! Calculate Cyclotron resonance number:
         ! ------------------------------------------------------------------------
-        if (in%iHeat) CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),f0,in,spline_B)
+        if (in%iHeat) CALL CyclotronResonanceNumber(i,plasma,resNum0,in,spline_B)
 
         ! Push particles adiabatically:
         ! ------------------------------------------------------------------------
-        if (in%iPush) CALL MoveParticle(zp(i),kep(i),xip(i),in,spline_B,spline_dB,spline_dV)
+        if (in%iPush) CALL MoveParticle(i,plasma,in,spline_B,spline_dB,spline_dV)
 
         ! Re-inject particles:
         ! ------------------------------------------------------------------------
-        if (zp(i) .GE. in%zmax) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt2,pcnt2)
-        if (zp(i) .LE. in%zmin) CALL ReinjectParticles(zp(i),kep(i),xip(i),in,ecnt1,pcnt1)
+        if (plasma%zp(i) .GE. in%zmax) CALL ReinjectParticles(i,plasma,in,ecnt2,pcnt2)
+        if (plasma%zp(i) .LE. in%zmin) CALL ReinjectParticles(i,plasma,in,ecnt1,pcnt1)
 
         ! Apply Coulomb collision operator:
         ! ------------------------------------------------------------------------
-        if (in%iColl) CALL collisionOperator(zp(i),kep(i),xip(i),ecnt4,pcnt4,in)
+        if (in%iColl) CALL collisionOperator(i,plasma,ecnt4,pcnt4,in)
 
         ! Apply RF heating operator:
         ! ------------------------------------------------------------------------
         if (in%iHeat) then
-           CALL CyclotronResonanceNumber(zp(i),kep(i),xip(i),f1,in,spline_B)
-           df = dsign(1.d0,f0*f1)
-           if (df .LT. 0 .AND. zp(i) .GT. in%zRes1 .AND. zp(i) .LT. in%zRes2)  then
+           CALL CyclotronResonanceNumber(i,plasma,resNum1,in,spline_B)
+           dresNum = dsign(1.d0,resNum0*resNum1)
+           if (dresNum .LT. 0 .AND. plasma%zp(i) .GT. in%zRes1 .AND. plasma%zp(i) .LT. in%zRes2)  then
               !WRITE(*,*) 'Resonance at zp: ', zp(i)
-              CALL RFHeatingOperator(zp(i),kep(i),xip(i),ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
+        CALL RFHeatingOperator(plasma%zp(i),plasma%kep(i),plasma%xip(i),ecnt3,pcnt3,in,spline_B,spline_dB,spline_ddB,spline_dV)
            end if
         end if
 
@@ -290,9 +289,9 @@ AllTime: do j = 1,in%Nsteps
           !$OMP PARALLEL DO
           do i = 1,in%Nparts
              ! Record "ith" particle at "kth" time
-             zp_hist(i,k) = zp(i)
-             kep_hist(i,k) = kep(i)
-             xip_hist(i,k) = xip(i)
+             zp_hist(i,k)  = plasma%zp(i)
+             kep_hist(i,k) = plasma%kep(i)
+             xip_hist(i,k) = plasma%xip(i)
           end do
          !$OMP END PARALLEL DO
          k = k + 1
@@ -445,6 +444,6 @@ if (in%iSave) then
     command = 'git log --oneline -1 > '//trim(fileName)
     CALL system(command)
 
-end if
+END if
 
 END PROGRAM

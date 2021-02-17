@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE MoveParticle(zp0,kep0,xip0,in0,spline_B,spline_dB,spline_dV)
+SUBROUTINE MoveParticle(i,plasma,in0,spline_B,spline_dB,spline_dV)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -9,7 +9,8 @@ USE dataTYP
 IMPLICIT NONE
 
 ! Define type for interface arguments
-REAL(r8), INTENT(INOUT) :: zp0, kep0, xip0
+INTEGER(i4) :: i
+TYPE(plasmaTYP), INTENT(INOUT) :: plasma
 TYPE(inTYP), INTENT(IN)  :: in0
 TYPE(splTYP), INTENT(IN) :: spline_B, spline_dB, spline_dV
 
@@ -18,15 +19,21 @@ REAL(r8) :: zpnew, Xipnew, uparnew, upernew, munew  ! Position, kinetic energy a
 REAL(r8) :: Ma, dt
 
 ! Storage for the MoverParticle and RHS subroutines:
-REAL(r8) :: zp1, zp2, zp3
+REAL(r8) :: xip0, xip1
+REAL(r8) :: kep0, kep1
 REAL(r8) :: K1, K2, K3, K4
-REAL(r8) :: upar0, upar1, upar2, upar3
 REAL(r8) :: L1, L2, L3, L4
-REAL(r8) :: mu0, mu1, mu2, mu3
-REAL(r8) :: M1, M2, M3, M4
+REAL(r8) :: zp0  , zp1  , zp2  , zp3
+REAL(r8) :: upar0, upar1, upar2, upar3
+REAL(r8) :: mu0  , mu1  , mu2  , mu3
+REAL(r8) :: M1   , M2   , M3   , M4
 REAL(r8) :: u2
 REAL(r8) :: B
-!REAL(r8) :: curv2
+
+! Input data:
+zp0  = plasma%zp(i)
+kep0 = plasma%kep(i)
+xip0 = plasma%xip(i)
 
 ! Time step:
 dt = in0%dt
@@ -42,7 +49,6 @@ u2 = 2.*e_c*kep0/Ma
 
 ! Calculate initial magnetic moment:
 CALL Interp1(zp0,B,spline_B)
-!B = curv2(zp0,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
 
 mu0 = 0.5*Ma*u2*(1 - xip0*xip0)/B
 
@@ -69,7 +75,6 @@ munew   = mu0 +   ( (M1 + (2.*M2) + (2.*M3) + M4)/6. )*dt
 
 ! Calculate the magnetic field at zpnew:
 CALL Interp1(zpnew,B,spline_B)
-!B = curv2(zpnew,spline0%n,spline0%x,spline0%y,spline0%yp,spline0%sigma)
 
 ! Based on new B and new mu, calculate new uper:
 upernew = sqrt(2.*munew*B/Ma)
@@ -81,9 +86,9 @@ u2 = uparnew**2. + upernew**2.
 Xipnew = uparnew/sqrt(u2)
 
 ! Output data:
-zp0  = zpnew
-xip0 = Xipnew
-kep0 = 0.5*Ma*u2/e_c
+plasma%zp(i)  = zpnew
+plasma%xip(i) = Xipnew
+plasma%kep(i) = 0.5*Ma*u2/e_c
 
 RETURN
 END SUBROUTINE MoveParticle
@@ -132,21 +137,29 @@ RETURN
 END SUBROUTINE RightHandSide
 
 ! =======================================================================================================
-SUBROUTINE ReinjectParticles(zp0,kep0,xip0,in0,ecnt,pcnt)
+SUBROUTINE ReinjectParticles(i,plasma,in0,ecnt,pcnt)
 ! =======================================================================================================
 USE local
 USE PhysicalConstants
 USE dataTYP
 
 IMPLICIT NONE
+! Define interface variables:
+INTEGER(i4)    , INTENT(IN)    :: i
+TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+TYPE(inTYP)    , INTENT(IN)    :: in0
+
 ! Define local variables:
-TYPE(inTYP)  :: in0
 REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
-!REAL(r8) :: uper, upar, u, sigma_u0
 REAL(r8), DIMENSION(6) :: Rm6
 REAL(r8) :: Ma, T0, T, vT, sigma_v, E, U, Ux, Uy, Uz
 REAL(r8) :: R_1, R_3, t_2, t_4
 REAL(r8) :: wx, wy, wz, vx, vy, vz, v
+
+! Input variables:
+zp0  = plasma%zp(i)
+kep0 = plasma%kep(i)
+xip0 = plasma%xip(i)
 
 ! Record event:
 ecnt = ecnt + kep0
@@ -192,17 +205,17 @@ if (in0%BC_Type .EQ. 1 .OR. in0%BC_Type .EQ. 2) then
   v = sqrt( vx**2. + vy**2. + vz**2. )
 
   ! Populate output variables:
-  kep0 = 0.5*(Ma/e_c)*v**2
-  xip0 = vz/v
+  plasma%kep(i) = 0.5*(Ma/e_c)*v**2
+  plasma%xip(i) = vz/v
 
   ! Position distribution:
-  zp0 = in0%BC_zp_std*sqrt(-2.*log(Rm6(5)))*cos(2.*pi*Rm6(6)) + in0%BC_zp_mean
+  plasma%zp(i) = in0%BC_zp_std*sqrt(-2.*log(Rm6(5)))*cos(2.*pi*Rm6(6)) + in0%BC_zp_mean
 
 else if (in0%BC_Type .EQ. 3) then
   if (zp0 .GE. in0%zmax) then
-    zp0 = in0%zmin
+    plasma%zp(i) = in0%zmin
   else
-    zp0 = in0%zmax
+    plasma%zp(i) = in0%zmax
   end if
 end if
 
@@ -210,7 +223,7 @@ RETURN
 END SUBROUTINE ReinjectParticles
 
 ! =======================================================================================================
-SUBROUTINE CyclotronResonanceNumber(zp0,kep0,xip0,f0,in0,spline_B)
+SUBROUTINE CyclotronResonanceNumber(i,plasma,resNum0,in0,spline_B)
 ! =======================================================================================================
 
 USE local
@@ -219,13 +232,22 @@ USE PhysicalConstants
 USE dataTYP
 
 IMPLICIT NONE
+! Define interface variables:
+INTEGER(i4)    , INTENT(IN)    :: i
+TYPE(plasmaTYP), INTENT(IN)    :: plasma
+REAL(r8)       , INTENT(INOUT) :: resNum0
+TYPE(inTYP)    , INTENT(IN)    :: in0
+TYPE(splTYP)   , INTENT(IN)    :: spline_B
+
 ! Define local variables
-REAL(r8) :: zp0, kep0, xip0, f0     ! Input variables
+REAL(r8) :: zp0, kep0, xip0
 REAL(r8) :: upar, Bf, Omega, Omega_RF
 REAL(r8) :: Ma, qa
-TYPE(inTYP)  :: in0
-TYPE(splTYP) :: spline_B
 
+! Input:
+zp0  = plasma%zp(i)
+kep0 = plasma%kep(i)
+xip0 = plasma%xip(i) 
 ! Test particle mass:
 Ma = in0%Ma
 ! Test particle charge:
@@ -234,16 +256,14 @@ qa = in0%qa
 upar = sqrt(2.*e_c*kep0/Ma)*xip0
 ! Magnetic field at location zp0 of test particle:
 CALL Interp1(zp0,Bf,spline_B)
-!Bf = Interp1(zp0,spline_B)
-
 ! Cyclotron frequency of test particle:
 Omega = abs(qa)*Bf/Ma
 ! RF frequency in rad/s:
 Omega_RF = 2*pi*in0%f_RF
 ! Cyclotron resonance number:
-f0 = Omega_RF - in0%kpar*upar - in0%n_harmonic*Omega
+resNum0 = Omega_RF - in0%kpar*upar - in0%n_harmonic*Omega
 
-return
+RETURN
 END SUBROUTINE CyclotronResonanceNumber
 
 ! =======================================================================================================

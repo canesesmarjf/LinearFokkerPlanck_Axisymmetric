@@ -1,7 +1,7 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_02_11d',
+in%fileDescriptor = '2021_02_16b',
 
 ! Magnetic field input data:
 ! =========================
@@ -13,10 +13,10 @@ in%nz = 501,			                                                              ! N
 ! Simulation conditions:
 ! =====================
 in%Nparts = 70000,                                                              ! Total number of particles
-in%Nsteps = 20000,                                                               ! Total number of time steps
+in%Nsteps = 10000,                                                               ! Total number of time steps
 in%dt     = 0.5E-7,                                                             ! Time step in [s]
-in%zmax = +5.0,
-in%zmin = -5.0,
+in%zmax   = +5.0,
+in%zmin   = -5.0,
 
 in%iSave = .true.,
 in%iPush = .true.,                                                             ! Enable RK4 particle pusher
@@ -28,8 +28,8 @@ in%iDrag = .true.,                                                            ! 
 ! Time steps to record:
 ! ==============
 in%jstart = 1,                                                                  ! start frame
-in%jend   = 20000,                                                               ! end frame
-in%jincr  = 200,                                                                 ! increment
+in%jend   = 10000,                                                               ! end frame
+in%jincr  = 250,                                                                 ! increment
 
 ! Collision operator conditions:
 ! ==============================
@@ -67,7 +67,7 @@ in%zRes1 = 0.                                                                 ! 
 in%zRes2 = +1.5                                                                 ! Defines interval where RF is present
 in%kper  = 125.                                                               ! Perpendicular wave number of EBW
 in%kpar  = 30.                                                                ! Parallel wave number of EBW
-in%Ew    = 4000                                                                ! EBW E-minus wave electric field magnitude
+in%Ew    = 5000                                                                ! EBW E-minus wave electric field magnitude
 in%n_harmonic = 2                                                              ! Cyclotron harmonic
 
 ! Electric potential conditions:

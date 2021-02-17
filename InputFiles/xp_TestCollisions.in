@@ -1,7 +1,7 @@
 &in_nml
 ! Simulation name:
 ! ===============
-in%fileDescriptor = '2021_02_09b',
+in%fileDescriptor = '2021_02_16c',
 
 ! Magnetic field input data:
 ! =========================
@@ -44,7 +44,7 @@ in%CollOperType = 2,                                                           !
 
 ! Particle boundary conditions:
 ! ============================
-in%BC_Type = 1,                                                                ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
+in%BC_Type    = 1,                                                             ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
 in%BC_zp_mean = 0.0,                                                           ! Mean particle injection
 in%BC_zp_std  = 0.3,                                                           ! STD of particle injection
 in%BC_Ep      = 20000.,                                                        ! Drift kinetic energy

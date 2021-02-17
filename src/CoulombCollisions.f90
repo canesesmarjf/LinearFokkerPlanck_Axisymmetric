@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE collisionOperator(zp0,kep0,xip0,ecnt,pcnt,in0)
+SUBROUTINE collisionOperator(i,plasma,ecnt,pcnt,in0)
 ! =======================================================================================================
 
 USE local
@@ -9,11 +9,13 @@ USE dataTYP
 IMPLICIT NONE
 
 ! Define interface variables:
-TYPE(inTYP), INTENT(IN) :: in0
-REAL(r8), INTENT(IN) :: zp0
-REAL(r8), INTENT(INOUT) :: xip0, kep0, ecnt, pcnt
+INTEGER(i4)    , INTENT(IN)    :: i
+TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+TYPE(inTYP)    , INTENT(IN)    :: in0
+REAL(r8)       , INTENT(INOUT) :: ecnt, pcnt
 
 ! Define local variables:
+REAL(r8) :: zp0, xip0, kep0
 INTEGER(i4) :: species_a, species_b, ss
 REAL(r8) :: Za, Ma, qa
 REAL(r8) :: Zb, Mb, Tb, nb
@@ -28,6 +30,11 @@ REAL(r8) :: dE_pf, dE_lf
 
 ! Define functions:
 REAL(r8) :: lnA, phi, phip, phi2p, Gb, E_nuE_d_nu_E_dE
+
+! Input variables:
+zp0  = plasma%zp(i)
+kep0 = plasma%kep(i)
+xip0 = plasma%xip(i)
 
 ! Test particle properties:
 ! -----------------------------------------------------------------------------------------------------------------
@@ -165,6 +172,10 @@ xip0 = vpar/v
 kep0 = 0.5*(Ma/e_c)*v**2.
 
 end do species_b_loop
+
+! Output data from calculation:
+plasma%xip(i) = vpar/v
+plasma%kep(i) = 0.5*(Ma/e_c)*v**2.
 
 RETURN
 END SUBROUTINE collisionOperator
