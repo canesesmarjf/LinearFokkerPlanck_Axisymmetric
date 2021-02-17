@@ -12,8 +12,8 @@ params%nz = 501,			                                                             
 
 ! Simulation conditions:
 ! =====================
-params%Nparts = 70000,                                                              ! Total number of particles
-params%Nsteps = 10000,                                                               ! Total number of time steps
+params%NC     = 70000,                                                              ! Total number of particles
+params%NS     = 10000,                                                               ! Total number of time steps
 params%dt     = 0.5E-7,                                                             ! Time step in [s]
 params%zmax   = +5.0,
 params%zmin   = -5.0,

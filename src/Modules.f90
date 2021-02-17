@@ -220,7 +220,7 @@ TYPE paramsTYP
   CHARACTER*150 :: BFieldFile, BFieldFileDir
   REAL(r8) :: Ti0, Te0, ne0, dt
   REAL(r8) :: Aion, Zion
-  INTEGER(i4) :: Nparts, Nsteps, nz, species_a, species_b
+  INTEGER(i4) :: NC, NS, nz, species_a, species_b
   INTEGER(i4) :: jstart, jend, jincr
   INTEGER(i4) :: threads_given
   LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
@@ -236,9 +236,8 @@ TYPE paramsTYP
   REAL(r8) :: tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
   REAL(r8) :: Ma, qa
 END TYPE paramsTYP
-  
+
 TYPE plasmaTYP
- REAL(r8) :: NC, Nsteps, dt
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep, xip, a
  INTEGER(i4), DIMENSION(:), ALLOCATABLE :: f1 , f2 , f3 , f4
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dE1, dE2, dE3, dE4, dE3_hat
@@ -264,10 +263,10 @@ SUBROUTINE InitPlasma(plasma,params)
    ! Declare local variables:
    INTEGER(i4) :: NC, NS
 
-   NC = params%Nparts
-   NS = params%Nsteps
-   
-   ! Allocate memory: 
+   NC = params%NC
+   NS = params%NS
+
+   ! Allocate memory:
    ALLOCATE(plasma%zp(NC) ,plasma%kep(NC),plasma%xip(NC),plasma%a(NC)      )
    ALLOCATE(plasma%f1(NC) ,plasma%f2(NC) ,plasma%f3(NC) ,plasma%f4(NC)     )
    ALLOCATE(plasma%dE1(NC),plasma%dE2(NC),plasma%dE3(NC),plasma%dE4(NC)    )
@@ -277,14 +276,14 @@ SUBROUTINE InitPlasma(plasma,params)
    ALLOCATE(plasma%Eplus(NS),plasma%Eminus(NS) )
    ALLOCATE(plasma%Ndot1(NS),plasma%Ndot2(NS) ,plasma%Ndot3(NS),plasma%Ndot4(NS))
    ALLOCATE(plasma%Edot1(NS),plasma%Edot2(NS) ,plasma%Edot3(NS),plasma%Edot4(NS))
-   
+
    ALLOCATE(plasma%dE3_hat(NC),plasma%Edot3_hat(NS))
 
 END SUBROUTINE InitPlasma
 
 ! --------------------------------------------------------------------------
 SUBROUTINE InitFieldSpline(fieldspline,params)
-   USE spline_fits   
+   USE spline_fits
 
    IMPLICIT NONE
    ! Declare interface variables:
@@ -293,11 +292,11 @@ SUBROUTINE InitFieldSpline(fieldspline,params)
 
    ! Declare local variables:
    INTEGER(i4) :: NZ
-   
+
    ! Size of spline data:
    NZ = params%nz
-   
-   ! Allocate memory: 
+
+   ! Allocate memory:
    CALL InitSpline(fieldspline%B  ,NZ,0._8,0._8)
    CALL InitSpline(fieldspline%dB ,NZ,0._8,0._8)
    CALL InitSpline(fieldspline%ddB,NZ,0._8,0._8)
@@ -308,13 +307,13 @@ SUBROUTINE InitFieldSpline(fieldspline,params)
 END SUBROUTINE InitFieldSpline
 
 SUBROUTINE ComputeFieldSpline(fieldspline)
-   USE spline_fits   
+   USE spline_fits
 
    IMPLICIT NONE
    ! Declare interface variables:
    TYPE(fieldSplineTYP), INTENT(INOUT) :: fieldspline
 
-   ! Complete setting up the spline data: 
+   ! Complete setting up the spline data:
    CALL ComputeSpline(fieldspline%B)
    CALL ComputeSpline(fieldspline%dB)
    CALL ComputeSpline(fieldspline%ddB)

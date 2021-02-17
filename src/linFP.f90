@@ -88,8 +88,8 @@ WRITE(*,*) ''
 WRITE(*,*) '*********************************************************************'
 WRITE(*,*) 'Input file:         ', TRIM(inputFile)
 WRITE(*,*) 'fileDescriptor:     ', TRIM(params%fileDescriptor)
-WRITE(*,*) 'Number of particles:', params%Nparts
-WRITE(*,*) 'Number of steps:    ', params%Nsteps
+WRITE(*,*) 'Number of particles:', params%NC
+WRITE(*,*) 'Number of steps:    ', params%NS
 WRITE(*,*) 'Particle BC:        ', params%BC_Type
 WRITE(*,*) 'dt [ns]:            ', params%dt*1E+9
 WRITE(*,*) 'iPush:              ', params%iPush
@@ -117,18 +117,18 @@ CALL InitFieldSpline(fieldspline,params)
 ! Allocate memory to main simulation variables:
 ! ==============================================================================
 CALL InitPlasma(plasma,params)
-ALLOCATE(pcount1(params%Nsteps)  ,pcount2(params%Nsteps)   ,pcount3(params%Nsteps)  ,pcount4(params%Nsteps))
-ALLOCATE(ecount1(params%Nsteps)  ,ecount2(params%Nsteps)   ,ecount3(params%Nsteps)  ,ecount4(params%Nsteps))
+ALLOCATE(pcount1(params%NS)  ,pcount2(params%NS)   ,pcount3(params%NS)  ,pcount4(params%NS))
+ALLOCATE(ecount1(params%NS)  ,ecount2(params%NS)   ,ecount3(params%NS)  ,ecount4(params%NS))
 
 ! Allocate memory to output variables:
 ! ==============================================================================
 ! Determine size of temporal snapshots to record:
 jsize = (params%jend-params%jstart+1)/params%jincr
 ALLOCATE(jrng(jsize)              )
-ALLOCATE(zp_hist(params%Nparts,jsize) )
-ALLOCATE(kep_hist(params%Nparts,jsize))
-ALLOCATE(xip_hist(params%Nparts,jsize))
-ALLOCATE(a_hist(params%Nparts,jsize)  )
+ALLOCATE(zp_hist(params%NC,jsize) )
+ALLOCATE(kep_hist(params%NC,jsize))
+ALLOCATE(xip_hist(params%NC,jsize))
+ALLOCATE(a_hist(params%NC,jsize)  )
 ALLOCATE(t_hist(jsize)            )
 
 ! Create array with the indices of the time steps to save:
@@ -175,7 +175,7 @@ if (OMP_GET_THREAD_NUM() .EQ. 0) then
     WRITE(*,*) ''
 end if
 !$OMP DO
-DO i = 1,params%Nparts
+DO i = 1,params%NC
   CALL loadParticles(i,plasma,params)
 END DO
 !$OMP END DO
@@ -186,7 +186,7 @@ WRITE(*,*) "Initialization complete"
 ! ==========================================================================
 fileName = "LoadParticles.dat"
 OPEN(unit=8,file=fileName,form="formatted",status="unknown")
-do i = 1,params%Nparts
+do i = 1,params%NC
     WRITE(8,*) plasma%zp(i), plasma%kep(i), plasma%xip(i)
 end do
 CLOSE(unit=8)
@@ -208,7 +208,7 @@ ostart = OMP_GET_WTIME()
 
 ! Loop over time:
 ! ==============================================================================
-AllTime: do j = 1,params%Nsteps
+AllTime: do j = 1,params%NS
 
     !$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,dresNum,resNum0,resNum1)
 
@@ -222,7 +222,7 @@ AllTime: do j = 1,params%Nsteps
     ! Loop over particles:
     ! ==============================================================================
     !$OMP DO SCHEDULE(STATIC)
-    AllParticles: do i = 1,params%Nparts
+    AllParticles: do i = 1,params%NC
 
         ! Calculate Cyclotron resonance number:
         ! ------------------------------------------------------------------------
@@ -274,7 +274,7 @@ AllTime: do j = 1,params%Nsteps
        if (j .EQ. jrng(k)) then
           t_hist(k) = tp
           !$OMP PARALLEL DO
-          do i = 1,params%Nparts
+          do i = 1,params%NC
              ! Record "ith" particle at "kth" time
              zp_hist(i,k)  = plasma%zp(i)
              kep_hist(i,k) = plasma%kep(i)
@@ -293,7 +293,7 @@ AllTime: do j = 1,params%Nsteps
     ! =====================================================================
     if (j .EQ. 150) then
        oend_estimate = OMP_GET_WTIME()
-       WRITE(*,*) 'Estimated compute time: ', params%Nsteps*(oend_estimate-ostart)/j,' [s]'
+       WRITE(*,*) 'Estimated compute time: ', params%NS*(oend_estimate-ostart)/j,' [s]'
     end if
 
 end do AllTime
