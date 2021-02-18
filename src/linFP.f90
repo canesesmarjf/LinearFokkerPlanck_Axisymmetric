@@ -66,11 +66,15 @@ CALL GET_ENVIRONMENT_VARIABLE('REPO_DIR',repoDir)
 CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE',inputFile)
 CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE_DIR',inputFileDir)
 
-! Read input data into "in" structure:
+! Read input data into "params" structure:
 ! ==============================================================================
 OPEN(unit=4,file=inputFileDir,status='old',form='formatted')
 read(4,params_nml)
 CLOSE(unit=4)
+
+! Calculate cross sectional area of plasma at reference location:
+! ==============================================================================
+params%Area0 = 0.5*params%dtheta( params%r2**2. -  params%r1**1.)
 
 ! Select the test species:
 ! ==============================================================================
@@ -177,6 +181,7 @@ end if
 !$OMP DO
 DO i = 1,params%NC
   CALL loadParticles(i,plasma,params)
+  ! Need to initialize "a"
 END DO
 !$OMP END DO
 !$OMP END PARALLEL
@@ -201,6 +206,9 @@ tp = 0
 pcount1 = 0; pcount2 = 0; pcount3 = 0; pcount4 = 0
 ! Energy leak diagnotics:
 ecount1 = 0; ecount2 = 0; ecount3 = 0; ecount4 = 0
+! NR and NSP:
+plasma%NR(1) = params%ne0*params*Area0*(params%zmax - params%zmin)
+plasma%NC(1) = params%NC
 
 ! Record start time:
 ! ==============================================================================

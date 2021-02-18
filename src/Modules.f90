@@ -216,32 +216,46 @@ USE spline_fits
 
 IMPLICIT NONE
 TYPE paramsTYP
-  CHARACTER*150 :: fileDescriptor, repoDir
-  CHARACTER*150 :: BFieldFile, BFieldFileDir
-  REAL(r8) :: Ti0, Te0, ne0, dt
-  REAL(r8) :: Aion, Zion
-  INTEGER(i4) :: NC, NS, nz, species_a, species_b
+  ! Simulation name:
+  CHARACTER*150 :: fileDescriptor
+  ! Magnetic field input data:
+  CHARACTER*150 :: repoDir, BFieldFile, BFieldFileDir
+  INTEGER(i4)   :: nz
+  ! Simulation conditions:
+  INTEGER(i4) :: NC, NS
+  REAL(r8)    :: dt
+  ! Time steps to record:
   INTEGER(i4) :: jstart, jend, jincr
-  INTEGER(i4) :: threads_given
-  LOGICAL:: iDrag, iPotential, iSave, iPush, iHeat, iColl
-  INTEGER(i4) :: IC_Type, BC_Type
-  REAL(r8) :: IC_zp_mean, IC_Ep, IC_xip, IC_zp_std, IC_Tp
-  REAL(r8) :: BC_zp_mean, BC_Ep, BC_xip, BC_zp_std, BC_Tp
-  REAL(r8) :: zmin, zmax
-  INTEGER(i4) :: CollOperType
-  REAL(r8) :: elevel
-  REAL(r8) :: s1, s2, s3, phi1, phi2, phi3
-  REAL(r8) :: f_RF, kpar, kper, Ew, zRes1, zRes2
+  ! Domain geometry:
+  REAL(r8) :: zmin, zmax, dtheta, r1, r2, Area0
+  ! Physics:
+  LOGICAL :: iDrag, iPotential, iSave, iPush, iHeat, iColl
+  ! Collision operator conditions:
+  REAL(r8)    :: Ti0, Te0, ne0, elevel
+  REAL(r8)    :: Aion, Zion, Ma, qa
+  INTEGER(i4) :: species_a, species_b, CollOperType
+  ! Particle boundary conditions:
+  INTEGER(i4) :: BC_Type
+  REAL(r8)    :: BC_zp_mean, BC_Ep, BC_xip, BC_zp_std, BC_Tp
+  ! Initial conditions:
+  INTEGER(i4) :: IC_Type
+  REAL(r8)    :: IC_zp_mean, IC_Ep, IC_xip, IC_zp_std, IC_Tp
+  ! RF heating operator conditions:
+  REAL(r8)    :: f_RF, kpar, kper, Ew, zRes1, zRes2
   INTEGER(i4) :: n_harmonic
-  REAL(r8) :: tComputeTime, tSimTime                              ! Variables to hold cpu time at start and end of computation
-  REAL(r8) :: Ma, qa
+  ! Electric potential conditions:
+  REAL(r8) :: s1, s2, s3, phi1, phi2, phi3
+  ! Compute time data:
+  INTEGER(i4) :: threads_given
+  REAL(r8)    :: tComputeTime, tSimTime
+
 END TYPE paramsTYP
 
 TYPE plasmaTYP
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep, xip, a
  INTEGER(i4), DIMENSION(:), ALLOCATABLE :: f1 , f2 , f3 , f4
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dE1, dE2, dE3, dE4, dE3_hat
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: tau, Jm, rL, doppler
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dErf_hat, doppler
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: NR , NSP
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Eplus, Eminus
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Ndot1, Ndot2, Ndot3, Ndot4
@@ -267,10 +281,10 @@ SUBROUTINE InitPlasma(plasma,params)
    NS = params%NS
 
    ! Allocate memory:
-   ALLOCATE(plasma%zp(NC) ,plasma%kep(NC),plasma%xip(NC),plasma%a(NC)      )
-   ALLOCATE(plasma%f1(NC) ,plasma%f2(NC) ,plasma%f3(NC) ,plasma%f4(NC)     )
-   ALLOCATE(plasma%dE1(NC),plasma%dE2(NC),plasma%dE3(NC),plasma%dE4(NC)    )
-   ALLOCATE(plasma%tau(NC),plasma%Jm(NC) ,plasma%rL(NC) ,plasma%doppler(NC))
+   ALLOCATE(plasma%zp(NC)      ,plasma%kep(NC)    ,plasma%xip(NC),plasma%a(NC)  )
+   ALLOCATE(plasma%f1(NC)      ,plasma%f2(NC)     ,plasma%f3(NC) ,plasma%f4(NC) )
+   ALLOCATE(plasma%dE1(NC)     ,plasma%dE2(NC)    ,plasma%dE3(NC),plasma%dE4(NC))
+   ALLOCATE(plasma%dErf_hat(NC),plasma%doppler(NC))
 
    ALLOCATE(plasma%NR(NS)   ,plasma%NSP(NS)    )
    ALLOCATE(plasma%Eplus(NS),plasma%Eminus(NS) )
@@ -278,6 +292,11 @@ SUBROUTINE InitPlasma(plasma,params)
    ALLOCATE(plasma%Edot1(NS),plasma%Edot2(NS) ,plasma%Edot3(NS),plasma%Edot4(NS))
 
    ALLOCATE(plasma%dE3_hat(NC),plasma%Edot3_hat(NS))
+
+   ! Initialize variables:
+   plasma%f1  = 0.; plasma%f2  = 0.; plasma%f3  = 0.; plasma%f4  = 0.
+   plasma%dE1 = 0.; plasma%dE2 = 0.; plasma%dE3 = 0.; plasma%dE4 = 0.
+   plasma%dErf_hat = 0.; plasma%doppler = 0.;
 
 END SUBROUTINE InitPlasma
 
