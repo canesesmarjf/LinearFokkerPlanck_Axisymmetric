@@ -134,7 +134,7 @@ RETURN
 END SUBROUTINE RightHandSide
 
 ! =======================================================================================================
-SUBROUTINE ReinjectParticles(i,plasma,params,ecnt,pcnt)
+SUBROUTINE ReinjectParticles(i,plasma,params)
 ! =======================================================================================================
 USE local
 USE PhysicalConstants
@@ -147,7 +147,7 @@ TYPE(plasmaTYP), INTENT(INOUT) :: plasma
 TYPE(paramsTYP), INTENT(IN)    :: params
 
 ! Define local variables:
-REAL(r8) :: zp0, kep0, xip0, ecnt, pcnt
+REAL(r8) :: zp0, kep0, xip0
 REAL(r8), DIMENSION(6) :: Rm6
 REAL(r8) :: Ma, T0, T, vT, sigma_v, E, U, Ux, Uy, Uz
 REAL(r8) :: R_1, R_3, t_2, t_4
@@ -159,8 +159,8 @@ kep0 = plasma%kep(i)
 xip0 = plasma%xip(i)
 
 ! Record event:
-ecnt = ecnt + kep0
-pcnt = pcnt + 1
+!ecnt = ecnt + kep0
+!pcnt = pcnt + 1
 
 ! Choose particle BC:
 ! 1: Isotropic plasma source
@@ -264,7 +264,7 @@ RETURN
 END SUBROUTINE CyclotronResonanceNumber
 
 ! =======================================================================================================
-SUBROUTINE RFHeatingOperator(i,plasma,ecnt,pcnt,fieldspline,params)
+SUBROUTINE RFHeatingOperator(i,plasma,fieldspline,params)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -275,7 +275,7 @@ IMPLICIT NONE
 ! Define interface variables:
 INTEGER(i4)            , INTENT(IN)    :: i
 TYPE(plasmaTYP)        , INTENT(INOUT) :: plasma
-REAL(r8)               , INTENT(INOUT) :: ecnt, pcnt
+!REAL(r8)               , INTENT(INOUT) :: ecnt, pcnt
 TYPE(paramsTYP)        , INTENT(IN)    :: params
 TYPE(fieldSplineTYP)   , INTENT(IN)    :: fieldspline
 
@@ -393,10 +393,10 @@ plasma%xip(i) = upar1/u1
 !WRITE(*,*) "xip1", xip0
 
 ! Record resonance event:
-pcnt = pcnt + 1
+!pcnt = pcnt + 1
 plasma%f3(i) = 1
 ! Record energy kick:
-ecnt = ecnt + dkep
+!ecnt = ecnt + dkep
 plasma%E3(i) = dkep
 
 RETURN

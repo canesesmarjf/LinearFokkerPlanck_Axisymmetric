@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE collisionOperator(i,plasma,ecnt,pcnt,params)
+SUBROUTINE collisionOperator(i,plasma,params)
 ! =======================================================================================================
 
 USE local
@@ -12,7 +12,7 @@ IMPLICIT NONE
 INTEGER(i4)    , INTENT(IN)    :: i
 TYPE(plasmaTYP), INTENT(INOUT) :: plasma
 TYPE(paramsTYP), INTENT(IN)    :: params
-REAL(r8)       , INTENT(INOUT) :: ecnt, pcnt
+!REAL(r8)       , INTENT(INOUT) :: ecnt, pcnt
 
 ! Define local variables:
 REAL(r8) :: zp0, xip0, kep0
@@ -148,11 +148,11 @@ if (kep_pf_1 .le. 0.) kep_pf_1 = kep_pf_0
 ! Record energy loss due to collisions in the plasma frame:
 if (kep_pf_1 .GT. params%elevel*Tb) then
 	! Record slowing down energy during time step dt
-	ecnt = ecnt + dE_pf
+	!ecnt = ecnt + dE_pf
         plasma%E4(i) = plasma%E4(i) +  dE_pf
 	! Count how many particles are involved in the slowing down power calculation
 	if(species_a .EQ. species_b) then
-		pcnt = pcnt + 1
+		!pcnt = pcnt + 1
                 plasma%f4(i) = 1
 	end if
 end if
