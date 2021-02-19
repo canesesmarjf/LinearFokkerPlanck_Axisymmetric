@@ -1,7 +1,7 @@
 &params_nml
 ! Simulation name:
 ! ===============
-params%fileDescriptor = '2021_02_19a',
+params%fileDescriptor = '2021_02_19d',
 
 ! Magnetic field input data:
 ! =========================
@@ -75,7 +75,7 @@ params%zRes1      = 0.                                                          
 params%zRes2      = +1.5                                                        ! Defines interval where RF is present
 params%kper       = 125.                                                        ! Perpendicular wave number of EBW
 params%kpar       = 30.                                                         ! Parallel wave number of EBW
-params%Ew         = 5000                                                        ! EBW E-minus wave electric field magnitude
+params%Ew         = 15000                                                        ! EBW E-minus wave electric field magnitude
 params%n_harmonic = 2                                                           ! Cyclotron harmonic
 
 ! Electric potential conditions:
