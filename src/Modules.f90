@@ -209,7 +209,7 @@ END MODULE spline_fits
 ! MODULE dataTYP
 ! =============================================================================
 ! The following types are prototyped:
-! paramsTYP: Contain simulation basic and derived parameters 
+! paramsTYP: Contain simulation basic and derived parameters
 ! plasmaTYP: Contain arrays of simulation data
 ! fieldSplineTYP: Contain splines for fields
 MODULE dataTYP
@@ -244,7 +244,7 @@ TYPE paramsTYP
   INTEGER(i4) :: IC_Type
   REAL(r8)    :: IC_zp_mean, IC_Ep, IC_xip, IC_zp_std, IC_Tp
   ! RF heating operator conditions:
-  REAL(r8)    :: f_RF, kpar, kper, Ew, zRes1, zRes2
+  REAL(r8)    :: f_RF, kpar, kper, Ew, zRes1, zRes2, Prf
   INTEGER(i4) :: n_harmonic
   ! Electric potential conditions:
   REAL(r8) :: s1, s2, s3, phi1, phi2, phi3
@@ -273,7 +273,7 @@ END TYPE fieldSplineTYP
 
 ! -----------------------------------------------------------------------------
 TYPE outputTYP
- REAL(r8) , DIMENSION(:,:), ALLOCATABLE :: zp, kep, xip, a 
+ REAL(r8) , DIMENSION(:,:), ALLOCATABLE :: zp, kep, xip, a
  REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: tp, jrng
  INTEGER(i4) :: jsize
 END TYPE outputTYP
@@ -288,7 +288,7 @@ SUBROUTINE AllocatePlasma(plasma,params)
 
    ! Declare local variables:
    INTEGER(i4) :: NC, NS
-   
+
    ! NC: Number of computational particles
    NC = params%NC
    ! NS: Number of time steps
@@ -314,7 +314,7 @@ END SUBROUTINE AllocatePlasma
 ! --------------------------------------------------------------------------
 SUBROUTINE InitializePlasma(plasma,params)
    USE PhysicalConstants
-   USE OMP_LIB 
+   USE OMP_LIB
    IMPLICIT NONE
    ! Declare interface variables:
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
@@ -323,7 +323,7 @@ SUBROUTINE InitializePlasma(plasma,params)
 
    ! Derived parameters: Reference cross sectional area
     params%Area0 = 0.5*params%dtheta*( params%r2**2. - params%r1**2.)
-	
+
    ! Derived parameters: Select test species
    if (params%species_a .EQ. 1) then
        params%qa = -e_c
@@ -332,7 +332,7 @@ SUBROUTINE InitializePlasma(plasma,params)
        params%qa = +params%Zion*e_c
        params%Ma = params%Aion*m_p
    end if
-    
+
    !$OMP PARALLEL
    !$OMP DO
    ! Initialize plasma: time dependent quantities:
@@ -342,7 +342,7 @@ SUBROUTINE InitializePlasma(plasma,params)
      ! can be time depedent
      plasma%NR(j)         = params%ne0*params%Area0*(params%zmax - params%zmin)
      plasma%NSP(j)        = params%NC
-     plasma%Eplus(j)      = 0. 
+     plasma%Eplus(j)      = 0.
      plasma%Eminus(j)     = 0.
      plasma%Ndot1(j)      = 0.
      plasma%Ndot2(j)      = 0.
@@ -358,12 +358,12 @@ SUBROUTINE InitializePlasma(plasma,params)
 
    !$OMP DO
    ! Initialize plasma: For all computational particles
-   DO i = 1,params%NC  
+   DO i = 1,params%NC
      plasma%a(i)  = 1.
      CALL loadParticles(i,plasma,params)
    END DO
    !$OMP END DO
-   !$OMP END PARALLEL 
+   !$OMP END PARALLEL
 
 END SUBROUTINE InitializePlasma
 
@@ -374,7 +374,7 @@ SUBROUTINE ResetFlags(i,plasma)
    ! Declare interface variables:
    INTEGER(i4)    , INTENT(IN)    :: i
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
-   
+
    plasma%f1(i) = 0. ; plasma%f2(i) = 0. ; plasma%f3(i) = 0. ; plasma%f4(i) = 0.
    plasma%E1(i) = 0. ; plasma%E2(i) = 0. ; plasma%E3(i) = 0. ; plasma%E4(i) = 0.
    plasma%Erf_hat(i) = 0.
@@ -434,8 +434,8 @@ SUBROUTINE AllocateOutput(output,params)
 
    ! Determine size of temporal snapshots to record:
    output%jsize = (params%jend-params%jstart+1)/params%jincr
-   
-   ! Allocate memory:  
+
+   ! Allocate memory:
    ALLOCATE(output%jrng(output%jsize))
    ALLOCATE(output%zp(params%NC ,output%jsize))
    ALLOCATE(output%kep(params%NC,output%jsize))

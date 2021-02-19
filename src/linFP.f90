@@ -17,7 +17,7 @@ TYPE(fieldSplineTYP) :: fieldspline
 TYPE(outputTYP)      :: output
 ! Accumulators:
 REAL(i4) :: p1,p2,p3,p4,SP2RP
-REAL(i4) :: q1,q2,q3,q4,q3hat
+REAL(i4) :: q1,q2,q3,q4,Edot3_hat
 ! DO loop indices:
 INTEGER(i4) :: i,j,k
 ! Thread ID:
@@ -137,9 +137,9 @@ tp = 0
 ! ==============================================================================
 NS_loop: DO j = 1,params%NS
     ! Reset all accumulators:
-    p1 = 0. ; p2 = 0. ; p3 = 0. ; p4 = 0.; 
+    p1 = 0. ; p2 = 0. ; p3 = 0. ; p4 = 0.;
     q1 = 0. ; q2 = 0. ; q3 = 0. ; q4 = 0.;
- 
+
     ! Reset resonance number:
     dresNum = 0.; resNum0 = 0.; resNum1 = 0.
 
@@ -181,19 +181,19 @@ NS_loop: DO j = 1,params%NS
            dresNum = dsign(1.d0,resNum0*resNum1)
            IF (dresNum .LT. 0 .AND. plasma%zp(i) .GT. params%zRes1 .AND. plasma%zp(i) .LT. params%zRes2)  THEN
               plasma%f3(i) = 1
-              ! CALL RFoperatorTerms(i,plasma,params,fieldspline)
+              CALL RFoperatorTerms(i,plasma,params,fieldspline)
            END IF
         END IF
 
     END DO NC_loop1
     !$OMP END DO
-    
-    ! Calculate RF electric field:
-    !!$OMP DO REDUCTION(+:q3hat)
+
+    ! Calculate RF power per unit electric field:
+    !$OMP DO REDUCTION(+:Edot3_hat)
     NC_loop2: DO i = 1,params%NC
-       q3hat = q3hat + plasma%a(i)*plasma%f3(i)*plasma%E3_hat(i)
+       Edot3_hat = Edot3_hat + (SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)*plasma%Erf_hat(i)*(1 + plasma%doppler(i))
     END DO NC_loop2
-    !!$OMP END DO
+    !$OMP END DO
 
     ! Apply RF operator and particle re-injection:
     !$OMP DO
@@ -202,7 +202,7 @@ NS_loop: DO j = 1,params%NS
            CALL ReinjectParticles(i,plasma,params)
        END IF
        IF (plasma%f3(i) .EQ. 1) THEN
-           CALL RFHeatingOperator(i,plasma,fieldspline,params)
+           CALL RFOperator(i,Edot3_hat,plasma,fieldspline,params)
        END IF
     END DO NC_loop3
     !$OMP END DO
@@ -221,7 +221,7 @@ NS_loop: DO j = 1,params%NS
     !$OMP END DO
 
     !$OMP END PARALLEL
-    
+
     ! Calculate particle and energy rates in physical units [P/s] and [J/s]
     ! ==============================================================================
     plasma%Ndot1(j) = SP2RP*p1/params%dt
@@ -232,7 +232,7 @@ NS_loop: DO j = 1,params%NS
     plasma%Edot2(j) = e_c*SP2RP*q2/params%dt
     plasma%Edot3(j) = e_c*SP2RP*q3/params%dt
     plasma%Edot4(j) = e_c*SP2RP*q4/params%dt
-    
+
     ! Select data to save:
     ! =====================================================================
     ! Check if data is to be saved

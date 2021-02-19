@@ -28,7 +28,7 @@ params%dtheta = 6.2832                                                          
 params%r1     = 0.03                                                            ! Inner radius at reference location [m]
 params%r2     = 0.05                                                            ! Outer radius at reference location [m]
 params%zmax   = +5.0,                                                           ! Boundary 2 (right)
-params%zmin   = -5.0,                                                           ! Boundary 1 (left) 
+params%zmin   = -5.0,                                                           ! Boundary 1 (left)
 
 ! Physics:
 ! ======================
@@ -75,7 +75,8 @@ params%zRes1      = 2.4                                                         
 params%zRes2      = 3.0                                                         ! Defines interval where RF is present
 params%kper       = 29920.                                                      ! Perpendicular wave number of EBW
 params%kpar       = 5864.                                                       ! Parallel wave number of EBW
-params%Ew         = 10000                                                       ! EBW E-minus wave electric field magnitude
+params%Ew         = 10000                                                       ! Wave electric field magnitude [V/m]
+params%Prf        = 300000                                                      ! Mean RF power absorbed via cyclotron interaction
 params%n_harmonic = 4                                                           ! Cyclotron harmonic
 
 ! Electric potential conditions:

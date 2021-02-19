@@ -244,7 +244,7 @@ REAL(r8) :: Ma, qa
 ! Input:
 zp0  = plasma%zp(i)
 kep0 = plasma%kep(i)
-xip0 = plasma%xip(i) 
+xip0 = plasma%xip(i)
 ! Test particle mass:
 Ma = params%Ma
 ! Test particle charge:
@@ -264,7 +264,7 @@ RETURN
 END SUBROUTINE CyclotronResonanceNumber
 
 ! =======================================================================================================
-SUBROUTINE RFHeatingOperator(i,plasma,fieldspline,params)
+SUBROUTINE RFoperatorTerms(i,plasma,fieldspline,params)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -275,7 +275,6 @@ IMPLICIT NONE
 ! Define interface variables:
 INTEGER(i4)            , INTENT(IN)    :: i
 TYPE(plasmaTYP)        , INTENT(INOUT) :: plasma
-!REAL(r8)               , INTENT(INOUT) :: ecnt, pcnt
 TYPE(paramsTYP)        , INTENT(IN)    :: params
 TYPE(fieldSplineTYP)   , INTENT(IN)    :: fieldspline
 
@@ -287,10 +286,10 @@ REAL(r8) :: dB, ddB, dV
 REAL(r8) :: Bf, Omega, dOmega, ddOmega
 REAL(r8) :: Omega_dot, Omega_ddot, tau_rf
 REAL(r8) :: rl, flr, besselterm
-REAL(r8) :: mean_dkep_per, dkep_per, Rm1
-REAL(r8) :: dkep_par, dkep, kep1
-REAL(r8) :: kep_per1, kep_par1
-REAL(r8) :: upar1, u1
+REAL(r8) :: mean_dkep_per
+!REAL(r8) :: dkep_par, dkep, kep1
+!REAL(r8) :: kep_per1, kep_par1
+!REAL(r8) :: upar1, u1
 REAL(r8) :: Ma, qa
 
 ! Input variables:
@@ -330,8 +329,6 @@ Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - qa*dV
 if ( (Omega_ddot**2.) .GT. 4.8175*ABS(Omega_dot**3.) )  then
         ! Approximate Ai(x) ~ 0.3833
         tau_rf = (2.*pi)*(ABS(2./Omega_ddot)**(1/3.))*0.3833
-        !WRITE(*,*) 'Airy function, tau_rf', tau_rf
-        !WRITE(*,*) 'zp at res', zp0
 else
         tau_rf = sqrt(2.*pi/ABS(Omega_dot))
 end if
@@ -341,23 +338,70 @@ rl       = uper0/(abs(qa)*Bf/Ma)
 flr      = params%kper*rl
 besselterm = BESSEL_JN(params%n_harmonic-1,flr)
 
-! Calculate the cyclotron interaction:
-! Using method based on VS. Chan PoP 9,2 (2002)
-! Consistent with J. Carlsson'd PhD thesis (1998)
-mean_dkep_per = 0.5*(e_c/Ma)*(params%Ew*besselterm*tau_rf)**2.
+!Calculate the mean RF kick per unit electric field:
+mean_dkep_per = 0.5*(e_c/Ma)*(besselterm*tau_rf)**2.
+
+! Populate plasma structure:
+plasma%Erf_hat(i) = mean_dkep_per
+plasma%doppler(i) = params%kpar*(upar0)/Omega
+
+RETURN
+END SUBROUTINE RFoperatorTerms
+
+! =======================================================================================================
+SUBROUTINE RFOperator(i,Edot3_hat,plasma,fieldspline,params)
+! =======================================================================================================
+USE local
+USE spline_fits
+USE PhysicalConstants
+USE dataTYP
+
+IMPLICIT NONE
+! Define interface variables:
+REAL(r8)               , INTENT(IN)    :: Edot3_hat
+INTEGER(i4)            , INTENT(IN)    :: i
+TYPE(plasmaTYP)        , INTENT(INOUT) :: plasma
+TYPE(paramsTYP)        , INTENT(IN)    :: params
+TYPE(fieldSplineTYP)   , INTENT(IN)    :: fieldspline
+
+! Define local variables:
+REAL(r8) :: kep0, xip0, Ew2
+!REAL(r8) :: u0, upar0, uper0
+REAL(r8) :: kep_par0, kep_per0
+!REAL(r8) :: dB, ddB, dV
+!REAL(r8) :: Bf, Omega, dOmega, ddOmega
+!REAL(r8) :: Omega_dot, Omega_ddot, tau_rf
+!REAL(r8) :: rl, flr, besselterm
+REAL(r8) :: mean_dkep_per, dkep_per, Rm1
+REAL(r8) :: dkep_par, dkep, kep1
+REAL(r8) :: kep_per1, kep_par1
+REAL(r8) :: upar1, u1
+REAL(r8) :: Ma
+
+! Input variables:
+kep0 = plasma%kep(i)
+xip0 = plasma%xip(i)
+
+! Test particle mass:
+Ma = params%Ma
+
+! Initial energy state:
+kep_par0 = kep0*xip0**2.
+kep_per0 = kep0*(1. - xip0**2.)
+
+! Calculate the mean RF kick:
+Ew2 = params%Ew**2.
+mean_dkep_per = plasma%Erf_hat(i)*Ew2
 
 ! Calculate the change in perp, parallel and total energy:
 CALL RANDOM_NUMBER(Rm1)
 Rm1 = 2.*Rm1 - 1.
 dkep_per = mean_dkep_per + Rm1*sqrt(2.*kep_per0*mean_dkep_per)
 
-!WRITE(*,*) "dkep_per", dkep_per
-
 ! Given the perp kick in energy, apply the parallel energy kick
 ! This arises from the non-linear effect of the perturbed magnetic field
 ! See Stix section 10.3 "Trapped electromagnetic modes"
-!dkep_par = (in%kpar*abs(upar0)/Omega)*dkep_per
-dkep_par = (params%kpar*(upar0)/Omega)*dkep_per
+dkep_par = (plasma%doppler(i))*dkep_per
 
 ! total change in energy kick
 dkep = dkep_par + dkep_per
@@ -367,11 +411,6 @@ dkep = dkep_par + dkep_per
 kep_per1 = kep_per0 + dkep_per
 ! Parallel degree of freedom:
 kep_par1 = kep_par0 + dkep_par
-
-!if (kep_par1 .LT. 0) then
-  !WRITE(*,*) "kep_par1", kep_par1
-!end if
-
 ! Total final energy:
 kep1     = kep_per1 + kep_par1
 
@@ -387,20 +426,15 @@ plasma%kep(i) = kep1
 ! Calculate the new pitch angle:
 upar1 = sqrt( (2.*e_c/Ma)*abs(kep_par1) )*dsign(1.d0,xip0)*dsign(1.d0,kep_par1)
 u1    = sqrt( (2.*e_c/Ma)*kep1 )
-!WRITE(*,*) "zp0", zp0
-!WRITE(*,*) "xip0", xip0
 plasma%xip(i) = upar1/u1
-!WRITE(*,*) "xip1", xip0
 
 ! Record resonance event:
-!pcnt = pcnt + 1
 plasma%f3(i) = 1
 ! Record energy kick:
-!ecnt = ecnt + dkep
 plasma%E3(i) = dkep
 
 RETURN
-END SUBROUTINE RFHeatingOperator
+END SUBROUTINE RFOperator
 
 ! =======================================================================================================
 SUBROUTINE loadParticles(i,plasma,params)
@@ -422,7 +456,7 @@ SUBROUTINE loadParticles(i,plasma,params)
   REAL(r8) :: wx, wy, wz, vx, vy, vz, v
   REAL(r8) :: zmin, zmax, sigma_v, Ma
   REAL(r8) :: Ux, Uy, Uz, vT, U, T, E
-  
+
   ! Input variables:
   zp0  = plasma%zp(i)
   kep0 = plasma%kep(i)
