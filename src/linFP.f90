@@ -21,12 +21,9 @@ IMPLICIT NONE
 TYPE(paramsTYP)      :: params
 TYPE(plasmaTYP)      :: plasma
 TYPE(fieldSplineTYP) :: fieldspline
+TYPE(outputTYP)      :: output
 ! DO loop indices:
 INTEGER(i4) :: i,j,k
-! Size of time interval:
-INTEGER(i4) :: jsize
-! Indices of time steps to save:
-INTEGER(i4), DIMENSION(:), ALLOCATABLE :: jrng
 ! Thread ID:
 INTEGER(i4) :: id
 ! OPENMP computational time:
@@ -36,10 +33,6 @@ REAL(r8) :: dresNum, resNum0, resNum1
 ! Main simulation variables:
 ! simulation time:
 REAl(r8) :: tp
-! subset of zp, kep and xip to save:
-REAL(r8), DIMENSION(:,:), ALLOCATABLE :: zp_hist, kep_hist, xip_hist, a_hist
-! Subset of tp:
-REAl(r8), DIMENSION(:)  , ALLOCATABLE :: t_hist
 ! Simulation diagnotics:
 ! Count the number of particles incident on (1) dump, (2) target, (3) cyclotron resonance, (4) slowing down
 REAL(r8), DIMENSION(:)  , ALLOCATABLE :: pcount1, pcount2, pcount3, pcount4
@@ -52,39 +45,20 @@ REAL(r8) :: pcnt1, pcnt2, pcnt3, pcnt4
 CHARACTER*300 :: command, mpwd
 INTEGER(i4) :: n_mpwd, STATUS
 CHARACTER*300 :: inputFileDir, inputFile, fileName, xpSelector, repoDir, dir0, dir1
-
-! Create input namelist from the user-defined structures:
-! ==============================================================================
+! Namelists:
 namelist/params_nml/params
 
-! Get root directory:
+! Environment:
 ! ==============================================================================
 CALL GET_ENVIRONMENT_VARIABLE('REPO_DIR',repoDir)
-
-! Get input file name and directory:
-! =============================================================================
 CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE',inputFile)
 CALL GET_ENVIRONMENT_VARIABLE('INPUT_FILE_DIR',inputFileDir)
 
-! Read input data into "params" structure:
+! Read input parameters into "params" structure:
 ! ==============================================================================
 OPEN(unit=4,file=inputFileDir,status='old',form='formatted')
 read(4,params_nml)
 CLOSE(unit=4)
-
-! Calculate cross sectional area of plasma at reference location:
-! ==============================================================================
-params%Area0 = 0.5*params%dtheta( params%r2**2. -  params%r1**1.)
-
-! Select the test species:
-! ==============================================================================
-if (params%species_a .eq. 1) then
-    params%qa = -e_c
-    params%Ma = m_e
-else
-    params%qa = +params%Zion*e_c
-    params%Ma = params%Aion*m_p
-end if
 
 ! Print to the terminal:
 ! ==============================================================================
@@ -116,27 +90,17 @@ WRITE(*,*) ''
 
 ! Allocate memory to splines:
 ! ===========================================================================
-CALL InitFieldSpline(fieldspline,params)
+CALL AllocateFieldSpline(fieldspline,params)
 
 ! Allocate memory to main simulation variables:
 ! ==============================================================================
-CALL InitPlasma(plasma,params)
+CALL AllocatePlasma(plasma,params)
 ALLOCATE(pcount1(params%NS)  ,pcount2(params%NS)   ,pcount3(params%NS)  ,pcount4(params%NS))
 ALLOCATE(ecount1(params%NS)  ,ecount2(params%NS)   ,ecount3(params%NS)  ,ecount4(params%NS))
 
 ! Allocate memory to output variables:
 ! ==============================================================================
-! Determine size of temporal snapshots to record:
-jsize = (params%jend-params%jstart+1)/params%jincr
-ALLOCATE(jrng(jsize)              )
-ALLOCATE(zp_hist(params%NC,jsize) )
-ALLOCATE(kep_hist(params%NC,jsize))
-ALLOCATE(xip_hist(params%NC,jsize))
-ALLOCATE(a_hist(params%NC,jsize)  )
-ALLOCATE(t_hist(jsize)            )
-
-! Create array with the indices of the time steps to save:
-jrng = (/ (j, j=params%jstart, params%jend, params%jincr) /)
+CALL AllocateOutput(output,params)
 
 ! Create splines of electromagnetic fields:
 ! ===========================================================================
@@ -145,56 +109,39 @@ fileName = trim(adjustl(params%BFieldFile))
 fileName = trim(adjustl(params%BFieldFileDir))//fileName
 fileName = trim(adjustl(params%repoDir))//fileName
 
-! Populate spline profile data using external file:
-! Magnetic field B:
+! Magnetic field B, dB and ddB:
 CALL ReadSpline(fieldspline%B,fileName)
-! dB and ddB:
 CALL diffSpline(fieldspline%B ,fieldspline%dB )
 CALL diffSpline(fieldspline%dB,fieldspline%ddB)
-! Electric potential V:
+
+! Electric potential V, dV:
 fieldspline%V%x = fieldspline%B%x
 fieldspline%V%y = 0
 if (params%iPotential) then
   CALL PotentialProfile(fieldspline,params)
 end if
 CALL ComputeSpline(fieldspline%V)
-! dV:
 CALL diffSpline(fieldspline%V,fieldspline%dV)
+
 ! Plasma flow U:
 fieldspline%U%x = fieldspline%B%x
-fieldspline%U%y = 0
+fieldspline%U%y = 0.
+
 ! Complete setting up the spline data :
 CALL ComputeFieldSpline(fieldspline)
 
-! Inititalize zp, kep, xip
+! Initialize simulation variables:
 ! ==============================================================================
-WRITE(*,*) "Initializing PDF..."
-!$OMP PARALLEL
-if (OMP_GET_THREAD_NUM() .EQ. 0) then
-    params%threads_given = OMP_GET_NUM_THREADS()
-    WRITE(*,*) ''
-    WRITE(*,*) '*********************************************************************'
-    WRITE(*,*) "Number of threads given: ", params%threads_given
-    WRITE(*,*) '*********************************************************************'
-    WRITE(*,*) ''
-end if
-!$OMP DO
-DO i = 1,params%NC
-  CALL loadParticles(i,plasma,params)
-  ! Need to initialize "a"
-END DO
-!$OMP END DO
-!$OMP END PARALLEL
-WRITE(*,*) "Initialization complete"
+CALL InitializePlasma(plasma,params)
 
-! Test initial distribution:
-! ==========================================================================
-fileName = "LoadParticles.dat"
-OPEN(unit=8,file=fileName,form="formatted",status="unknown")
-do i = 1,params%NC
-    WRITE(8,*) plasma%zp(i), plasma%kep(i), plasma%xip(i)
-end do
-CLOSE(unit=8)
+!$OMP PARALLEL
+if (OMP_GET_THREAD_NUM() .EQ. 0) params%threads_given = OMP_GET_NUM_THREADS()
+!$OMP END PARALLEL
+WRITE(*,*) ''
+WRITE(*,*) '*********************************************************************'
+WRITE(*,*) "Number of threads given: ", params%threads_given
+WRITE(*,*) '*********************************************************************'
+WRITE(*,*) ''
 
 ! Initialize simulation diagnostics:
 ! ==============================================================================
@@ -206,9 +153,6 @@ tp = 0
 pcount1 = 0; pcount2 = 0; pcount3 = 0; pcount4 = 0
 ! Energy leak diagnotics:
 ecount1 = 0; ecount2 = 0; ecount3 = 0; ecount4 = 0
-! NR and NSP:
-plasma%NR(1) = params%ne0*params*Area0*(params%zmax - params%zmin)
-plasma%NC(1) = params%NC
 
 ! Record start time:
 ! ==============================================================================
@@ -230,36 +174,44 @@ AllTime: do j = 1,params%NS
     ! Loop over particles:
     ! ==============================================================================
     !$OMP DO SCHEDULE(STATIC)
-    AllParticles: do i = 1,params%NC
+    AllParticles: DO i = 1,params%NC
 
         ! Calculate Cyclotron resonance number:
         ! ------------------------------------------------------------------------
-        if (params%iHeat) CALL CyclotronResonanceNumber(i,plasma,resNum0,fieldspline,params)
+        IF (params%iHeat) CALL CyclotronResonanceNumber(i,plasma,resNum0,fieldspline,params)
 
         ! Push particles adiabatically:
         ! ------------------------------------------------------------------------
-        if (params%iPush) CALL MoveParticle(i,plasma,fieldspline,params)
+        IF (params%iPush) CALL MoveParticle(i,plasma,fieldspline,params)
 
         ! Re-inject particles:
         ! ------------------------------------------------------------------------
-        if (plasma%zp(i) .GE. params%zmax) CALL ReinjectParticles(i,plasma,params,ecnt2,pcnt2)
-        if (plasma%zp(i) .LE. params%zmin) CALL ReinjectParticles(i,plasma,params,ecnt1,pcnt1)
+        IF (plasma%zp(i) .GE. params%zmax) THEN
+           plasma%f2(i)  = 1
+           plasma%dE2(i) = plasma%kep(i)
+           CALL ReinjectParticles(i,plasma,params,ecnt2,pcnt2)
+        ELSE IF (plasma%zp(i) .LE. params%zmin) THEN
+           plasma%f1(i)  = 1
+           plasma%dE1(i) = plasma%kep(i)
+           CALL ReinjectParticles(i,plasma,params,ecnt1,pcnt1)
+        END IF
 
         ! Apply Coulomb collision operator:
         ! ------------------------------------------------------------------------
-        if (params%iColl) CALL collisionOperator(i,plasma,ecnt4,pcnt4,params)
+        IF (params%iColl) CALL collisionOperator(i,plasma,ecnt4,pcnt4,params)
 
         ! Apply RF heating operator:
         ! ------------------------------------------------------------------------
-        if (params%iHeat) then
+        IF (params%iHeat) THEN
            CALL CyclotronResonanceNumber(i,plasma,resNum1,fieldspline,params)
            dresNum = dsign(1.d0,resNum0*resNum1)
-           if (dresNum .LT. 0 .AND. plasma%zp(i) .GT. params%zRes1 .AND. plasma%zp(i) .LT. params%zRes2)  then
+           IF (dresNum .LT. 0 .AND. plasma%zp(i) .GT. params%zRes1 .AND. plasma%zp(i) .LT. params%zRes2)  THEN
+              plasma%f3(i) = 1
               CALL RFHeatingOperator(i,plasma,ecnt3,pcnt3,fieldspline,params)
-           end if
-        end if
+           END IF
+        END IF
 
-    end do AllParticles
+    END DO AllParticles
     !$OMP END DO
 
     !$OMP CRITICAL
@@ -279,14 +231,14 @@ AllTime: do j = 1,params%NS
     ! =====================================================================
     ! Check if data is to be saved
     if (params%iSave) then
-       if (j .EQ. jrng(k)) then
-          t_hist(k) = tp
+       if (j .EQ. output%jrng(k)) then
+          output%tp(k) = tp
           !$OMP PARALLEL DO
           do i = 1,params%NC
              ! Record "ith" particle at "kth" time
-             zp_hist(i,k)  = plasma%zp(i)
-             kep_hist(i,k) = plasma%kep(i)
-             xip_hist(i,k) = plasma%xip(i)
+             output%zp(i,k)  = plasma%zp(i)
+             output%kep(i,k) = plasma%kep(i)
+             output%xip(i,k) = plasma%xip(i)
           end do
          !$OMP END PARALLEL DO
          k = k + 1
@@ -348,28 +300,28 @@ if (params%iSave) then
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'zp.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) zp_hist
+    WRITE(8) output%zp
     CLOSE(unit=8)
 
     ! Saving kep_hist to file:
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'kep.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) kep_hist
+    WRITE(8) output%kep
     CLOSE(unit=8)
 
     ! Saving xip_hist to file:
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'xip.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) xip_hist
+    WRITE(8) output%xip
     CLOSE(unit=8)
 
     ! Saving t_hist to file:
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'tp.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) t_hist
+    WRITE(8) output%tp
     CLOSE(unit=8)
 
     ! Saving pcount to file:

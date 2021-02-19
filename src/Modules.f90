@@ -40,7 +40,7 @@ END TYPE splTYP
 
 CONTAINS
 ! ----------------------------------------------------------------------------
-  SUBROUTINE InitSpline(spline0,n,slp1,slpn)
+  SUBROUTINE AllocateSpline(spline0,n,slp1,slpn)
     IMPLICIT NONE
     TYPE(splTYP) :: spline0
     INTEGER(i4) :: n
@@ -51,7 +51,7 @@ CONTAINS
     spline0%n = n
     spline0%slp1 = slp1
     spline0%slpn = slpn
-  END SUBROUTINE InitSpline
+  END SUBROUTINE AllocateSpline
 
 ! ----------------------------------------------------------------------------
   SUBROUTINE ReadSpline(spline0,fileName)
@@ -208,13 +208,16 @@ END MODULE spline_fits
 
 ! MODULE dataTYP
 ! =============================================================================
-! Module containing definition of an object to contain all data used in
-! computation
+! The following types are prototyped:
+! paramsTYP: Contain simulation basic and derived parameters 
+! plasmaTYP: Contain arrays of simulation data
+! fieldSplineTYP: Contain splines for fields
 MODULE dataTYP
 USE local
 USE spline_fits
 
 IMPLICIT NONE
+! -----------------------------------------------------------------------------
 TYPE paramsTYP
   ! Simulation name:
   CHARACTER*150 :: fileDescriptor
@@ -251,6 +254,7 @@ TYPE paramsTYP
 
 END TYPE paramsTYP
 
+! -----------------------------------------------------------------------------
 TYPE plasmaTYP
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep, xip, a
  INTEGER(i4), DIMENSION(:), ALLOCATABLE :: f1 , f2 , f3 , f4
@@ -262,13 +266,21 @@ TYPE plasmaTYP
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Edot1, Edot2, Edot3, Edot4, Edot3_hat
 END TYPE plasmaTYP
 
+! -----------------------------------------------------------------------------
 TYPE fieldSplineTYP
  TYPE(splTYP) :: B, dB, ddB, V, dV, U
 END TYPE fieldSplineTYP
 
+! -----------------------------------------------------------------------------
+TYPE outputTYP
+ REAL(r8) , DIMENSION(:,:), ALLOCATABLE :: zp, kep, xip, a 
+ REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: tp, jrng
+ INTEGER(i4) :: jsize
+END TYPE outputTYP
+
 CONTAINS
 ! ----------------------------------------------------------------------------
-SUBROUTINE InitPlasma(plasma,params)
+SUBROUTINE AllocatePlasma(plasma,params)
    IMPLICIT NONE
    ! Declare interface variables:
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
@@ -276,32 +288,75 @@ SUBROUTINE InitPlasma(plasma,params)
 
    ! Declare local variables:
    INTEGER(i4) :: NC, NS
-
+   
+   ! NC: Number of computational particles
    NC = params%NC
+   ! NS: Number of time steps
    NS = params%NS
 
-   ! Allocate memory:
-   ALLOCATE(plasma%zp(NC)      ,plasma%kep(NC)    ,plasma%xip(NC),plasma%a(NC)  )
-   ALLOCATE(plasma%f1(NC)      ,plasma%f2(NC)     ,plasma%f3(NC) ,plasma%f4(NC) )
-   ALLOCATE(plasma%dE1(NC)     ,plasma%dE2(NC)    ,plasma%dE3(NC),plasma%dE4(NC))
-   ALLOCATE(plasma%dErf_hat(NC),plasma%doppler(NC))
+   ! Allocate memory: For all computational particles
+   ALLOCATE(plasma%zp(NC)   ,plasma%kep(NC)   ,plasma%xip(NC) ,plasma%a(NC))
+   ALLOCATE(plasma%f1(NC)   ,plasma%f2(NC)    ,plasma%f3(NC)  ,plasma%f4(NC))
+   ALLOCATE(plasma%dE1(NC)  ,plasma%dE2(NC)   ,plasma%dE3(NC) ,plasma%dE4(NC))
 
-   ALLOCATE(plasma%NR(NS)   ,plasma%NSP(NS)    )
-   ALLOCATE(plasma%Eplus(NS),plasma%Eminus(NS) )
+   ! Allocate memory: For all time steps
+   ALLOCATE(plasma%NR(NS)   ,plasma%NSP(NS))
+   ALLOCATE(plasma%Eplus(NS),plasma%Eminus(NS))
    ALLOCATE(plasma%Ndot1(NS),plasma%Ndot2(NS) ,plasma%Ndot3(NS),plasma%Ndot4(NS))
    ALLOCATE(plasma%Edot1(NS),plasma%Edot2(NS) ,plasma%Edot3(NS),plasma%Edot4(NS))
 
+   ! Allocate memory: RF heating operator terms
    ALLOCATE(plasma%dE3_hat(NC),plasma%Edot3_hat(NS))
+   ALLOCATE(plasma%dErf_hat(NC),plasma%doppler(NC))
 
-   ! Initialize variables:
+END SUBROUTINE AllocatePlasma
+
+! --------------------------------------------------------------------------
+SUBROUTINE InitializePlasma(plasma,params)
+   USE PhysicalConstants
+   USE OMP_LIB 
+   IMPLICIT NONE
+   ! Declare interface variables:
+   TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+   TYPE(paramsTYP), INTENT(INOUT) :: params
+   INTEGER(i4) :: i
+
+   ! Derived parameters: Reference cross sectional area
+    params%Area0 = 0.5*params%dtheta*( params%r2**2. - params%r1**2.)
+	
+   ! Derived parameters: Select test species
+   if (params%species_a .EQ. 1) then
+       params%qa = -e_c
+       params%Ma = m_e
+   else
+       params%qa = +params%Zion*e_c
+       params%Ma = params%Aion*m_p
+   end if
+    
+   ! Initialize plasma: NR and NC
+   ! When source contrained fueling is used, these quantities
+   ! can be time depedent
+   plasma%NR  = params%ne0*params%Area0*(params%zmax - params%zmin)
+   plasma%NSP = params%NC
+
+   ! Initialize plasma: particle weights
+   plasma%a  = 1.
+
+   !$OMP PARALLEL DO
+   DO i = 1,params%NC  
+     CALL loadParticles(i,plasma,params)
+   END DO
+   !$OMP END PARALLEL DO
+
+   ! Initialize plasma: flags and Energy increments
    plasma%f1  = 0.; plasma%f2  = 0.; plasma%f3  = 0.; plasma%f4  = 0.
    plasma%dE1 = 0.; plasma%dE2 = 0.; plasma%dE3 = 0.; plasma%dE4 = 0.
    plasma%dErf_hat = 0.; plasma%doppler = 0.;
 
-END SUBROUTINE InitPlasma
+END SUBROUTINE InitializePlasma
 
 ! --------------------------------------------------------------------------
-SUBROUTINE InitFieldSpline(fieldspline,params)
+SUBROUTINE AllocateFieldSpline(fieldspline,params)
    USE spline_fits
 
    IMPLICIT NONE
@@ -316,14 +371,14 @@ SUBROUTINE InitFieldSpline(fieldspline,params)
    NZ = params%nz
 
    ! Allocate memory:
-   CALL InitSpline(fieldspline%B  ,NZ,0._8,0._8)
-   CALL InitSpline(fieldspline%dB ,NZ,0._8,0._8)
-   CALL InitSpline(fieldspline%ddB,NZ,0._8,0._8)
-   CALL InitSpline(fieldspline%V  ,NZ,0._8,0._8)
-   CALL InitSpline(fieldspline%dV ,NZ,0._8,0._8)
-   CALL InitSpline(fieldspline%U  ,NZ,0._8,0._8)
+   CALL AllocateSpline(fieldspline%B  ,NZ,0._8,0._8)
+   CALL AllocateSpline(fieldspline%dB ,NZ,0._8,0._8)
+   CALL AllocateSpline(fieldspline%ddB,NZ,0._8,0._8)
+   CALL AllocateSpline(fieldspline%V  ,NZ,0._8,0._8)
+   CALL AllocateSpline(fieldspline%dV ,NZ,0._8,0._8)
+   CALL AllocateSpline(fieldspline%U  ,NZ,0._8,0._8)
 
-END SUBROUTINE InitFieldSpline
+END SUBROUTINE AllocateFieldSpline
 
 SUBROUTINE ComputeFieldSpline(fieldspline)
    USE spline_fits
@@ -341,5 +396,29 @@ SUBROUTINE ComputeFieldSpline(fieldspline)
    CALL ComputeSpline(fieldspline%U)
 
 END SUBROUTINE ComputeFieldSpline
+
+!------------------------------------------------------------------------
+SUBROUTINE AllocateOutput(output,params)
+   IMPLICIT none
+   ! Declare interface variables:
+   TYPE(outputTYP), INTENT(INOUT) :: output
+   TYPE(paramsTYP), INTENT(IN)    :: params
+   INTEGER(i4) :: j
+
+   ! Determine size of temporal snapshots to record:
+   output%jsize = (params%jend-params%jstart+1)/params%jincr
+   
+   ! Allocate memory:  
+   ALLOCATE(output%jrng(output%jsize))
+   ALLOCATE(output%zp(params%NC ,output%jsize))
+   ALLOCATE(output%kep(params%NC,output%jsize))
+   ALLOCATE(output%xip(params%NC,output%jsize))
+   ALLOCATE(output%a(params%NC  ,output%jsize))
+   ALLOCATE(output%tp(output%jsize))
+
+   ! Create array with the indices of the time steps to save:
+   output%jrng = (/ (j, j=params%jstart, params%jend, params%jincr) /)
+
+END SUBROUTINE AllocateOutput
 
 END MODULE dataTYP
