@@ -149,9 +149,11 @@ if (kep_pf_1 .le. 0.) kep_pf_1 = kep_pf_0
 if (kep_pf_1 .GT. params%elevel*Tb) then
 	! Record slowing down energy during time step dt
 	ecnt = ecnt + dE_pf
+        plasma%E4(i) = plasma%E4(i) +  dE_pf
 	! Count how many particles are involved in the slowing down power calculation
 	if(species_a .EQ. species_b) then
 		pcnt = pcnt + 1
+                plasma%f4(i) = 1
 	end if
 end if
 

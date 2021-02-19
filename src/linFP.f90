@@ -22,6 +22,9 @@ TYPE(paramsTYP)      :: params
 TYPE(plasmaTYP)      :: plasma
 TYPE(fieldSplineTYP) :: fieldspline
 TYPE(outputTYP)      :: output
+! Accumulators:
+REAL(i4) :: p1,p2,p3,p4
+REAL(i4) :: q1,q2,q3,q4
 ! DO loop indices:
 INTEGER(i4) :: i,j,k
 ! Thread ID:
@@ -161,7 +164,10 @@ ostart = OMP_GET_WTIME()
 ! Loop over time:
 ! ==============================================================================
 AllTime: do j = 1,params%NS
-
+    ! Reset all accumulators:
+    p1 = 0. ; p2 = 0. ; p3 = 0. ; p4 = 0.; 
+    q1 = 0. ; q2 = 0. ; q3 = 0. ; q4 = 0.;
+ 
     !$OMP PARALLEL PRIVATE(pcnt1,pcnt2,pcnt3,pcnt4,ecnt1,ecnt2,ecnt3,ecnt4,dresNum,resNum0,resNum1)
 
     ! Initialize private particle counters:
@@ -170,11 +176,15 @@ AllTime: do j = 1,params%NS
     ecnt1 = 0; ecnt2 = 0; ecnt3 = 0; ecnt4 = 0
     ! Initialize resonance number difference:
     dresNum = 0
-
+    
     ! Loop over particles:
     ! ==============================================================================
     !$OMP DO SCHEDULE(STATIC)
-    AllParticles: DO i = 1,params%NC
+    NC_loop1: DO i = 1,params%NC
+
+        ! Initialize plasma: flags and Energy increments
+        ! ------------------------------------------------------------------------
+        CALL ResetFlags(i,plasma)
 
         ! Calculate Cyclotron resonance number:
         ! ------------------------------------------------------------------------
@@ -187,12 +197,12 @@ AllTime: do j = 1,params%NS
         ! Re-inject particles:
         ! ------------------------------------------------------------------------
         IF (plasma%zp(i) .GE. params%zmax) THEN
-           plasma%f2(i)  = 1
-           plasma%dE2(i) = plasma%kep(i)
+           plasma%f2(i) = 1
+           plasma%E2(i) = plasma%kep(i)
            CALL ReinjectParticles(i,plasma,params,ecnt2,pcnt2)
         ELSE IF (plasma%zp(i) .LE. params%zmin) THEN
-           plasma%f1(i)  = 1
-           plasma%dE1(i) = plasma%kep(i)
+           plasma%f1(i) = 1
+           plasma%E1(i) = plasma%kep(i)
            CALL ReinjectParticles(i,plasma,params,ecnt1,pcnt1)
         END IF
 
@@ -211,22 +221,44 @@ AllTime: do j = 1,params%NS
            END IF
         END IF
 
-    END DO AllParticles
+    END DO NC_loop1
     !$OMP END DO
 
-    !$OMP CRITICAL
-     ecount1(j) = ecount1(j) + ecnt1
-     ecount2(j) = ecount2(j) + ecnt2
-     ecount3(j) = ecount3(j) + ecnt3
-     ecount4(j) = ecount4(j) + ecnt4
-     pcount1(j) = pcount1(j) + pcnt1
-     pcount2(j) = pcount2(j) + pcnt2
-     pcount3(j) = pcount3(j) + pcnt3
-     pcount4(j) = pcount4(j) + pcnt4
-    !$OMP END CRITICAL
+    !!$OMP CRITICAL
+     !ecount1(j) = ecount1(j) + ecnt1
+     !ecount2(j) = ecount2(j) + ecnt2
+     !ecount3(j) = ecount3(j) + ecnt3
+     !ecount4(j) = ecount4(j) + ecnt4
+     !pcount1(j) = pcount1(j) + pcnt1
+     !pcount2(j) = pcount2(j) + pcnt2
+     !pcount3(j) = pcount3(j) + pcnt3
+     !pcount4(j) = pcount4(j) + pcnt4
+    !!$OMP END CRITICAL
+
+    !$OMP DO REDUCTION(+:p1,p2,p3,p4,q1,q2,q3,q4)
+    NC_loop2: DO i = 1,params%NC
+       p1 = p1 + plasma%f1(i)
+       p2 = p2 + plasma%f2(i)
+       p3 = p3 + plasma%f3(i)
+       p4 = p4 + plasma%f4(i)
+       q1 = q1 + plasma%f1(i)*plasma%E1(i)
+       q2 = q2 + plasma%f2(i)*plasma%E2(i)
+       q3 = q3 + plasma%f3(i)*plasma%E3(i)
+       q4 = q4 + plasma%f4(i)*plasma%E4(i)
+    END DO NC_loop2
+    !$OMP END DO
 
     !$OMP END PARALLEL
 
+    plasma%Ndot1(j) = p1
+    plasma%Ndot2(j) = p2
+    plasma%Ndot3(j) = p3
+    plasma%Ndot4(j) = p4
+    plasma%Edot1(j) = q1
+    plasma%Edot2(j) = q2
+    plasma%Edot3(j) = q3
+    plasma%Edot4(j) = q4
+    
     ! Select data to save:
     ! =====================================================================
     ! Check if data is to be saved
@@ -328,38 +360,38 @@ if (params%iSave) then
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'pcount1.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) pcount1
+    WRITE(8) plasma%Ndot1
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'pcount2.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) pcount2
+    WRITE(8) plasma%Ndot2
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'pcount3.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) pcount3
+    WRITE(8) plasma%Ndot3
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'pcount4.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) pcount4
+    WRITE(8) plasma%Ndot4
     CLOSE(unit=8)
 
     ! Saving ecount to file:
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'ecount1.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) ecount1
+    WRITE(8) plasma%Edot1
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'ecount2.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) ecount2
+    WRITE(8) plasma%Edot2
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'ecount3.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) ecount3
+    WRITE(8) plasma%Edot3
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'ecount4.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) ecount4
+    WRITE(8) plasma%Edot4
     CLOSE(unit=8)
 
     ! Write output metadata:

@@ -394,8 +394,10 @@ plasma%xip(i) = upar1/u1
 
 ! Record resonance event:
 pcnt = pcnt + 1
+plasma%f3(i) = 1
 ! Record energy kick:
 ecnt = ecnt + dkep
+plasma%E3(i) = dkep
 
 RETURN
 END SUBROUTINE RFHeatingOperator

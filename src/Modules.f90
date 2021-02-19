@@ -257,9 +257,9 @@ END TYPE paramsTYP
 ! -----------------------------------------------------------------------------
 TYPE plasmaTYP
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep, xip, a
- INTEGER(i4), DIMENSION(:), ALLOCATABLE :: f1 , f2 , f3 , f4
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dE1, dE2, dE3, dE4, dE3_hat
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dErf_hat, doppler
+ INTEGER(i4), DIMENSION(:), ALLOCATABLE :: f1, f2, f3, f4
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: E1, E2, E3, E4, E3_hat
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Erf_hat, doppler
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: NR , NSP
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Eplus, Eminus
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Ndot1, Ndot2, Ndot3, Ndot4
@@ -295,19 +295,19 @@ SUBROUTINE AllocatePlasma(plasma,params)
    NS = params%NS
 
    ! Allocate memory: For all computational particles
-   ALLOCATE(plasma%zp(NC)   ,plasma%kep(NC)   ,plasma%xip(NC) ,plasma%a(NC))
-   ALLOCATE(plasma%f1(NC)   ,plasma%f2(NC)    ,plasma%f3(NC)  ,plasma%f4(NC))
-   ALLOCATE(plasma%dE1(NC)  ,plasma%dE2(NC)   ,plasma%dE3(NC) ,plasma%dE4(NC))
+   ALLOCATE(plasma%zp(NC) ,plasma%kep(NC) ,plasma%xip(NC) ,plasma%a(NC))
+   ALLOCATE(plasma%f1(NC) ,plasma%f2(NC)  ,plasma%f3(NC)  ,plasma%f4(NC))
+   ALLOCATE(plasma%E1(NC) ,plasma%E2(NC)  ,plasma%E3(NC)  ,plasma%E4(NC))
+   ALLOCATE(plasma%Erf_hat(NC))
+   ALLOCATE(plasma%doppler(NC))
+   ALLOCATE(plasma%E3_hat(NC))
 
    ! Allocate memory: For all time steps
    ALLOCATE(plasma%NR(NS)   ,plasma%NSP(NS))
    ALLOCATE(plasma%Eplus(NS),plasma%Eminus(NS))
    ALLOCATE(plasma%Ndot1(NS),plasma%Ndot2(NS) ,plasma%Ndot3(NS),plasma%Ndot4(NS))
    ALLOCATE(plasma%Edot1(NS),plasma%Edot2(NS) ,plasma%Edot3(NS),plasma%Edot4(NS))
-
-   ! Allocate memory: RF heating operator terms
-   ALLOCATE(plasma%dE3_hat(NC),plasma%Edot3_hat(NS))
-   ALLOCATE(plasma%dErf_hat(NC),plasma%doppler(NC))
+   ALLOCATE(plasma%Edot3_hat(NS))
 
 END SUBROUTINE AllocatePlasma
 
@@ -319,7 +319,7 @@ SUBROUTINE InitializePlasma(plasma,params)
    ! Declare interface variables:
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
    TYPE(paramsTYP), INTENT(INOUT) :: params
-   INTEGER(i4) :: i
+   INTEGER(i4) :: i, j
 
    ! Derived parameters: Reference cross sectional area
     params%Area0 = 0.5*params%dtheta*( params%r2**2. - params%r1**2.)
@@ -333,27 +333,54 @@ SUBROUTINE InitializePlasma(plasma,params)
        params%Ma = params%Aion*m_p
    end if
     
-   ! Initialize plasma: NR and NC
-   ! When source contrained fueling is used, these quantities
-   ! can be time depedent
-   plasma%NR  = params%ne0*params%Area0*(params%zmax - params%zmin)
-   plasma%NSP = params%NC
+   !$OMP PARALLEL
+   !$OMP DO
+   ! Initialize plasma: time dependent quantities:
+   DO j = 1,params%NS
+     ! Initialize plasma: NR and NC
+     ! When source contrained fueling is used, these quantities
+     ! can be time depedent
+     plasma%NR(j)         = params%ne0*params%Area0*(params%zmax - params%zmin)
+     plasma%NSP(j)        = params%NC
+     plasma%Eplus(j)      = 0. 
+     plasma%Eminus(j)     = 0.
+     plasma%Ndot1(j)      = 0.
+     plasma%Ndot2(j)      = 0.
+     plasma%Ndot3(j)      = 0.
+     plasma%Ndot4(j)      = 0.
+     plasma%Edot1(j)      = 0.
+     plasma%Edot2(j)      = 0.
+     plasma%Edot3(j)      = 0.
+     plasma%Edot4(j)      = 0.
+     plasma%Edot3_hat(j)  = 0.
+   END DO
+   !$OMP DO
 
-   ! Initialize plasma: particle weights
-   plasma%a  = 1.
-
-   !$OMP PARALLEL DO
+   !$OMP DO
+   ! Initialize plasma: For all computational particles
    DO i = 1,params%NC  
+     plasma%a(i)  = 1.
      CALL loadParticles(i,plasma,params)
    END DO
-   !$OMP END PARALLEL DO
-
-   ! Initialize plasma: flags and Energy increments
-   plasma%f1  = 0.; plasma%f2  = 0.; plasma%f3  = 0.; plasma%f4  = 0.
-   plasma%dE1 = 0.; plasma%dE2 = 0.; plasma%dE3 = 0.; plasma%dE4 = 0.
-   plasma%dErf_hat = 0.; plasma%doppler = 0.;
+   !$OMP END DO
+   !$OMP END PARALLEL 
 
 END SUBROUTINE InitializePlasma
+
+! --------------------------------------------------------------------------
+SUBROUTINE ResetFlags(i,plasma)
+   USE LOCAL
+   IMPLICIT NONE
+   ! Declare interface variables:
+   INTEGER(i4)    , INTENT(IN)    :: i
+   TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+   
+   plasma%f1(i) = 0. ; plasma%f2(i) = 0. ; plasma%f3(i) = 0. ; plasma%f4(i) = 0.
+   plasma%E1(i) = 0. ; plasma%E2(i) = 0. ; plasma%E3(i) = 0. ; plasma%E4(i) = 0.
+   plasma%Erf_hat(i) = 0.
+   plasma%doppler(i) = 0.;
+
+END SUBROUTINE ResetFlags
 
 ! --------------------------------------------------------------------------
 SUBROUTINE AllocateFieldSpline(fieldspline,params)
