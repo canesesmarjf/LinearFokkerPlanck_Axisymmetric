@@ -16,10 +16,10 @@ TYPE(plasmaTYP)      :: plasma
 TYPE(fieldSplineTYP) :: fieldspline
 TYPE(outputTYP)      :: output
 ! Accumulators:
-REAL(i4) :: p1,p2,p3,p4,SP2RP
-REAL(i4) :: q1,q2,q3,q4,Edot3_hat
+REAL(r8) :: p1,p2,p3,p4,SP2RP
+REAL(r8) :: q1,q2,q3,q4,Prf_0
 ! DO loop indices:
-INTEGER(i4) :: i,j,k
+INTEGER(i4) :: i,j,k,N3
 ! Thread ID:
 INTEGER(i4) :: id
 ! OPENMP computational time:
@@ -68,6 +68,7 @@ WRITE(*,*) 'zDump [m]:          ', params%zmin
 WRITE(*,*) 'BC_zp_mean [m]:     ', params%BC_zp_mean
 WRITE(*,*) 'B field file:       ', TRIM(params%BFieldFile)
 WRITE(*,*) 'Ew:                 ', params%Ew
+WRITE(*,*) 'Prf:                ', params%Prf
 WRITE(*,*) 'Te0:                ', params%Te0
 WRITE(*,*) 'ne0:                ', params%ne0
 IF (params%CollOperType .EQ. 1) WRITE(*,*) 'Boozer-Only collision operator'
@@ -109,10 +110,6 @@ fieldspline%U%y = 0.
 ! Complete setting up the spline data :
 CALL ComputeFieldSpline(fieldspline)
 
-! Record start time:
-! ==============================================================================
-ostart = OMP_GET_WTIME()
-
 ! Initialize simulation variables:
 ! ==============================================================================
 CALL InitializePlasma(plasma,params)
@@ -125,6 +122,10 @@ WRITE(*,*) '********************************************************************
 WRITE(*,*) "Number of threads given: ", params%threads_given
 WRITE(*,*) '*********************************************************************'
 WRITE(*,*) ''
+
+! Record start time:
+! ==============================================================================
+ostart = OMP_GET_WTIME()
 
 ! Initialize simulation diagnostics:
 ! ==============================================================================
@@ -142,6 +143,9 @@ NS_loop: DO j = 1,params%NS
 
     ! Reset resonance number:
     dresNum = 0.; resNum0 = 0.; resNum1 = 0.
+
+    ! Reset reference RF power:
+    Prf_0 = 0.
 
     ! Calculate scale factor: super-particle to real-particle
     SP2RP = plasma%NR(j)/plasma%NSP(j)
@@ -181,7 +185,7 @@ NS_loop: DO j = 1,params%NS
            dresNum = dsign(1.d0,resNum0*resNum1)
            IF (dresNum .LT. 0 .AND. plasma%zp(i) .GT. params%zRes1 .AND. plasma%zp(i) .LT. params%zRes2)  THEN
               plasma%f3(i) = 1
-              CALL RFoperatorTerms(i,plasma,params,fieldspline)
+              CALL RFoperatorTerms(i,plasma,fieldspline,params)
            END IF
         END IF
 
@@ -189,11 +193,20 @@ NS_loop: DO j = 1,params%NS
     !$OMP END DO
 
     ! Calculate RF power per unit electric field:
-    !$OMP DO REDUCTION(+:Edot3_hat)
+    !$OMP DO REDUCTION(+:Prf_0)
     NC_loop2: DO i = 1,params%NC
-       Edot3_hat = Edot3_hat + (SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)*plasma%Erf_hat(i)*(1 + plasma%doppler(i))
+       Prf_0 = Prf_0 + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)*plasma%Erf_hat(i)*(1 + plasma%doppler(i))
     END DO NC_loop2
     !$OMP END DO
+  
+    !IF (OMP_GET_THREAD_NUM() .EQ. 0) THEN
+       !IF (ISNAN(Prf_0)) THEN
+        !   WRITE(*,*) 'N3:', N3
+      ! ELSE 
+        !   WRITE(*,*) 'Prf_0:', Prf_0
+       !    WRITE(*,*) 'N3:', N3          
+      ! END IF
+   ! END IF
 
     ! Apply RF operator and particle re-injection:
     !$OMP DO
@@ -202,7 +215,7 @@ NS_loop: DO j = 1,params%NS
            CALL ReinjectParticles(i,plasma,params)
        END IF
        IF (plasma%f3(i) .EQ. 1) THEN
-           CALL RFOperator(i,Edot3_hat,plasma,fieldspline,params)
+           CALL RFOperator(i,Prf_0,plasma,fieldspline,params)
        END IF
     END DO NC_loop3
     !$OMP END DO
@@ -221,6 +234,8 @@ NS_loop: DO j = 1,params%NS
     !$OMP END DO
 
     !$OMP END PARALLEL
+
+!    WRITE(*,*) 'Ew: ', sqrt(params%Prf/(e_c*Edot3_hat))
 
     ! Calculate particle and energy rates in physical units [P/s] and [J/s]
     ! ==============================================================================

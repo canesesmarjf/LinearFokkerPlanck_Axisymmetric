@@ -158,10 +158,6 @@ zp0  = plasma%zp(i)
 kep0 = plasma%kep(i)
 xip0 = plasma%xip(i)
 
-! Record event:
-!ecnt = ecnt + kep0
-!pcnt = pcnt + 1
-
 ! Choose particle BC:
 ! 1: Isotropic plasma source
 ! 2: NBI
@@ -287,9 +283,6 @@ REAL(r8) :: Bf, Omega, dOmega, ddOmega
 REAL(r8) :: Omega_dot, Omega_ddot, tau_rf
 REAL(r8) :: rl, flr, besselterm
 REAL(r8) :: mean_dkep_per
-!REAL(r8) :: dkep_par, dkep, kep1
-!REAL(r8) :: kep_per1, kep_par1
-!REAL(r8) :: upar1, u1
 REAL(r8) :: Ma, qa
 
 ! Input variables:
@@ -338,7 +331,7 @@ rl       = uper0/(abs(qa)*Bf/Ma)
 flr      = params%kper*rl
 besselterm = BESSEL_JN(params%n_harmonic-1,flr)
 
-!Calculate the mean RF kick per unit electric field:
+!Calculate the mean RF kick per unit electric field squared:
 mean_dkep_per = 0.5*(e_c/Ma)*(besselterm*tau_rf)**2.
 
 ! Populate plasma structure:
@@ -349,7 +342,7 @@ RETURN
 END SUBROUTINE RFoperatorTerms
 
 ! =======================================================================================================
-SUBROUTINE RFOperator(i,Edot3_hat,plasma,fieldspline,params)
+SUBROUTINE RFOperator(i,Prf_0,plasma,fieldspline,params)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -358,7 +351,7 @@ USE dataTYP
 
 IMPLICIT NONE
 ! Define interface variables:
-REAL(r8)               , INTENT(IN)    :: Edot3_hat
+REAL(r8)               , INTENT(IN)    :: Prf_0
 INTEGER(i4)            , INTENT(IN)    :: i
 TYPE(plasmaTYP)        , INTENT(INOUT) :: plasma
 TYPE(paramsTYP)        , INTENT(IN)    :: params
@@ -366,12 +359,7 @@ TYPE(fieldSplineTYP)   , INTENT(IN)    :: fieldspline
 
 ! Define local variables:
 REAL(r8) :: kep0, xip0, Ew2
-!REAL(r8) :: u0, upar0, uper0
 REAL(r8) :: kep_par0, kep_per0
-!REAL(r8) :: dB, ddB, dV
-!REAL(r8) :: Bf, Omega, dOmega, ddOmega
-!REAL(r8) :: Omega_dot, Omega_ddot, tau_rf
-!REAL(r8) :: rl, flr, besselterm
 REAL(r8) :: mean_dkep_per, dkep_per, Rm1
 REAL(r8) :: dkep_par, dkep, kep1
 REAL(r8) :: kep_per1, kep_par1
@@ -390,7 +378,7 @@ kep_par0 = kep0*xip0**2.
 kep_per0 = kep0*(1. - xip0**2.)
 
 ! Calculate the mean RF kick:
-Ew2 = params%Ew**2.
+Ew2 = (params%Prf/Prf_0)
 mean_dkep_per = plasma%Erf_hat(i)*Ew2
 
 ! Calculate the change in perp, parallel and total energy:
@@ -415,6 +403,7 @@ kep_par1 = kep_par0 + dkep_par
 kep1     = kep_per1 + kep_par1
 
 if (kep1 .LT. 0) then
+  WRITE(*,*) 'final kep < 0'
   print *, 'kep0', kep0
   print *, 'dkep', dkep
   print *, 'kep1', kep1
@@ -447,7 +436,7 @@ SUBROUTINE loadParticles(i,plasma,params)
   ! Define interface variables:
   INTEGER(i4)    , INTENT(IN)    :: i
   TYPE(plasmaTYP), INTENT(INOUT) :: plasma
-  TYPE(paramsTYP)    , INTENT(IN)    :: params
+  TYPE(paramsTYP), INTENT(IN)    :: params
 
   ! Declare internal variables:
   REAL(r8) :: zp0, kep0, xip0

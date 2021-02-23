@@ -1,7 +1,7 @@
 &params_nml
 ! Simulation name:
 ! ===============
-params%fileDescriptor = '2021_02_19d',
+params%fileDescriptor = '2021_02_22d',
 
 ! Magnetic field input data:
 ! =========================
@@ -75,8 +75,8 @@ params%zRes1      = 0.                                                          
 params%zRes2      = +1.5                                                        ! Defines interval where RF is present
 params%kper       = 125.                                                        ! Perpendicular wave number of EBW
 params%kpar       = 30.                                                         ! Parallel wave number of EBW
-params%Ew         = 15000                                                       ! Wave electric field magnitude [V/m]
-params%Prf        = 300000                                                      ! Mean RF power absorbed via cyclotron interaction
+params%Ew         = 10000                                                       ! Wave electric field magnitude [V/m]
+params%Prf        = 2000000                                                      ! Mean RF power absorbed via cyclotron interaction
 params%n_harmonic = 2                                                           ! Cyclotron harmonic
 
 ! Electric potential conditions:
