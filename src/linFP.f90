@@ -16,10 +16,13 @@ TYPE(plasmaTYP)      :: plasma
 TYPE(fieldSplineTYP) :: fieldspline
 TYPE(outputTYP)      :: output
 ! Accumulators:
-REAL(r8) :: p1,p2,p3,p4,SP2RP
-REAL(r8) :: q1,q2,q3,q4,Prf_0
+REAL(r8) :: n1,n2,n3,n4
+REAL(r8) :: e1,e2,e3,e4
+REAL(r8) :: e3_hat
+! Super particle to real particle conversion factor:
+REAL(r8) :: SP2RP
 ! DO loop indices:
-INTEGER(i4) :: i,j,k,N3
+INTEGER(i4) :: i,j,k
 ! Thread ID:
 INTEGER(i4) :: id
 ! OPENMP computational time:
@@ -67,8 +70,7 @@ WRITE(*,*) 'zTarget [m]:        ', params%zmax
 WRITE(*,*) 'zDump [m]:          ', params%zmin
 WRITE(*,*) 'BC_zp_mean [m]:     ', params%BC_zp_mean
 WRITE(*,*) 'B field file:       ', TRIM(params%BFieldFile)
-WRITE(*,*) 'Ew:                 ', params%Ew
-WRITE(*,*) 'Prf:                ', params%Prf
+WRITE(*,*) 'Prf [kW]:           ', params%Prf*1E-3
 WRITE(*,*) 'Te0:                ', params%Te0
 WRITE(*,*) 'ne0:                ', params%ne0
 IF (params%CollOperType .EQ. 1) WRITE(*,*) 'Boozer-Only collision operator'
@@ -138,14 +140,14 @@ tp = 0
 ! ==============================================================================
 NS_loop: DO j = 1,params%NS
     ! Reset all accumulators:
-    p1 = 0. ; p2 = 0. ; p3 = 0. ; p4 = 0.;
-    q1 = 0. ; q2 = 0. ; q3 = 0. ; q4 = 0.;
+    n1 = 0. ; n2 = 0. ; n3 = 0. ; n4 = 0.;
+    e1 = 0. ; e2 = 0. ; e3 = 0. ; e4 = 0.;
 
     ! Reset resonance number:
     dresNum = 0.; resNum0 = 0.; resNum1 = 0.
 
     ! Reset reference RF power:
-    Prf_0 = 0.
+    e3_hat = 0.
 
     ! Calculate scale factor: super-particle to real-particle
     SP2RP = plasma%NR(j)/plasma%NSP(j)
@@ -178,7 +180,7 @@ NS_loop: DO j = 1,params%NS
         ! ------------------------------------------------------------------------
         IF (params%iColl) CALL collisionOperator(i,plasma,params)
 
-        ! Apply RF heating operator:
+        ! Check resonance condition:
         ! ------------------------------------------------------------------------
         IF (params%iHeat) THEN
            CALL CyclotronResonanceNumber(i,plasma,resNum1,fieldspline,params)
@@ -192,61 +194,51 @@ NS_loop: DO j = 1,params%NS
     END DO NC_loop1
     !$OMP END DO
 
-    ! Calculate RF power per unit electric field:
-    !$OMP DO REDUCTION(+:Prf_0)
+    !$OMP DO REDUCTION(+:n1,n2,n3,n4,e1,e2,e3_hat,e4)
+    ! Calculate particle and energy rates:
     NC_loop2: DO i = 1,params%NC
-       Prf_0 = Prf_0 + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)*plasma%Erf_hat(i)*(1 + plasma%doppler(i))
+       n1     = n1     +     (SP2RP/params%dt)*plasma%a(i)*plasma%f1(i)
+       n2     = n2     +     (SP2RP/params%dt)*plasma%a(i)*plasma%f2(i)
+       n3     = n3     +     (SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)
+       n4     = n4     +     (SP2RP/params%dt)*plasma%a(i)*plasma%f4(i)
+       e1     = e1     + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f1(i)*plasma%E1(i)
+       e2     = e2     + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f2(i)*plasma%E2(i)
+       e3_hat = e3_hat + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)*plasma%E3_hat(i)
+       e4     = e4     + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f4(i)*plasma%E4(i)
     END DO NC_loop2
     !$OMP END DO
   
-    !IF (OMP_GET_THREAD_NUM() .EQ. 0) THEN
-       !IF (ISNAN(Prf_0)) THEN
-        !   WRITE(*,*) 'N3:', N3
-      ! ELSE 
-        !   WRITE(*,*) 'Prf_0:', Prf_0
-       !    WRITE(*,*) 'N3:', N3          
-      ! END IF
-   ! END IF
-
-    ! Apply RF operator and particle re-injection:
     !$OMP DO
+    ! Apply particle re-injection and RF operator:
     NC_loop3: DO i = 1,params%NC
        IF (plasma%f1(i) .EQ. 1 .OR. plasma%f2(i) .EQ. 1) THEN
            CALL ReinjectParticles(i,plasma,params)
        END IF
        IF (plasma%f3(i) .EQ. 1) THEN
-           CALL RFOperator(i,Prf_0,plasma,fieldspline,params)
+           CALL RFOperator(i,plasma,fieldspline,params,e3_hat)
        END IF
     END DO NC_loop3
     !$OMP END DO
 
-    !$OMP DO REDUCTION(+:p1,p2,p3,p4,q1,q2,q3,q4)
+    !$OMP DO REDUCTION(+:e3)
+    ! Calculate RF power absorption:
     NC_loop4: DO i = 1,params%NC
-       p1 = p1 + plasma%a(i)*plasma%f1(i)
-       p2 = p2 + plasma%a(i)*plasma%f2(i)
-       p3 = p3 + plasma%a(i)*plasma%f3(i)
-       p4 = p4 + plasma%a(i)*plasma%f4(i)
-       q1 = q1 + plasma%a(i)*plasma%f1(i)*plasma%E1(i)
-       q2 = q2 + plasma%a(i)*plasma%f2(i)*plasma%E2(i)
-       q3 = q3 + plasma%a(i)*plasma%f3(i)*plasma%E3(i)
-       q4 = q4 + plasma%a(i)*plasma%f4(i)*plasma%E4(i)
+       e3 = e3 + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)*plasma%E3(i)
     END DO NC_loop4
     !$OMP END DO
 
     !$OMP END PARALLEL
 
-!    WRITE(*,*) 'Ew: ', sqrt(params%Prf/(e_c*Edot3_hat))
-
-    ! Calculate particle and energy rates in physical units [P/s] and [J/s]
+    ! Assign particle and energy rates in physical units [P/s] and [J/s]
     ! ==============================================================================
-    plasma%Ndot1(j) = SP2RP*p1/params%dt
-    plasma%Ndot2(j) = SP2RP*p2/params%dt
-    plasma%Ndot3(j) = SP2RP*p3/params%dt
-    plasma%Ndot4(j) = SP2RP*p4/params%dt
-    plasma%Edot1(j) = e_c*SP2RP*q1/params%dt
-    plasma%Edot2(j) = e_c*SP2RP*q2/params%dt
-    plasma%Edot3(j) = e_c*SP2RP*q3/params%dt
-    plasma%Edot4(j) = e_c*SP2RP*q4/params%dt
+    plasma%Ndot1(j) = n1
+    plasma%Ndot2(j) = n2
+    plasma%Ndot3(j) = n3
+    plasma%Ndot4(j) = n4
+    plasma%Edot1(j) = e1
+    plasma%Edot2(j) = e2
+    plasma%Edot3(j) = e3
+    plasma%Edot4(j) = e4
 
     ! Select data to save:
     ! =====================================================================

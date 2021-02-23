@@ -244,7 +244,7 @@ TYPE paramsTYP
   INTEGER(i4) :: IC_Type
   REAL(r8)    :: IC_zp_mean, IC_Ep, IC_xip, IC_zp_std, IC_Tp
   ! RF heating operator conditions:
-  REAL(r8)    :: f_RF, kpar, kper, Ew, zRes1, zRes2, Prf
+  REAL(r8)    :: f_RF, kpar, kper, zRes1, zRes2, Prf
   INTEGER(i4) :: n_harmonic
   ! Electric potential conditions:
   REAL(r8) :: s1, s2, s3, phi1, phi2, phi3

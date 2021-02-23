@@ -337,12 +337,13 @@ mean_dkep_per = 0.5*(e_c/Ma)*(besselterm*tau_rf)**2.
 ! Populate plasma structure:
 plasma%Erf_hat(i) = mean_dkep_per
 plasma%doppler(i) = params%kpar*(upar0)/Omega
+plasma%E3_hat(i)  = plasma%Erf_hat(i)*(1. + plasma%doppler(i))
 
 RETURN
 END SUBROUTINE RFoperatorTerms
 
 ! =======================================================================================================
-SUBROUTINE RFOperator(i,Prf_0,plasma,fieldspline,params)
+SUBROUTINE RFOperator(i,plasma,fieldspline,params,q3_hat)
 ! =======================================================================================================
 USE local
 USE spline_fits
@@ -351,7 +352,7 @@ USE dataTYP
 
 IMPLICIT NONE
 ! Define interface variables:
-REAL(r8)               , INTENT(IN)    :: Prf_0
+REAL(r8)               , INTENT(IN)    :: q3_hat
 INTEGER(i4)            , INTENT(IN)    :: i
 TYPE(plasmaTYP)        , INTENT(INOUT) :: plasma
 TYPE(paramsTYP)        , INTENT(IN)    :: params
@@ -378,7 +379,7 @@ kep_par0 = kep0*xip0**2.
 kep_per0 = kep0*(1. - xip0**2.)
 
 ! Calculate the mean RF kick:
-Ew2 = (params%Prf/Prf_0)
+Ew2 = (params%Prf/q3_hat)
 mean_dkep_per = plasma%Erf_hat(i)*Ew2
 
 ! Calculate the change in perp, parallel and total energy:

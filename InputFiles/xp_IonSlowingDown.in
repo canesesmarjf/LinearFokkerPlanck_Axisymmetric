@@ -75,7 +75,6 @@ params%zRes1      = 2.4                                                         
 params%zRes2      = 3.0                                                         ! Defines interval where RF is present
 params%kper       = 29920.                                                      ! Perpendicular wave number of EBW
 params%kpar       = 5864.                                                       ! Parallel wave number of EBW
-params%Ew         = 10000                                                       ! Wave electric field magnitude [V/m]
 params%Prf        = 300000                                                      ! Mean RF power absorbed via cyclotron interaction
 params%n_harmonic = 4                                                           ! Cyclotron harmonic
 
