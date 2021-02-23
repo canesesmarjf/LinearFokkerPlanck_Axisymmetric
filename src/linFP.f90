@@ -141,13 +141,10 @@ tp = 0
 NS_loop: DO j = 1,params%NS
     ! Reset all accumulators:
     n1 = 0. ; n2 = 0. ; n3 = 0. ; n4 = 0.;
-    e1 = 0. ; e2 = 0. ; e3 = 0. ; e4 = 0.;
+    e1 = 0. ; e2 = 0. ; e3 = 0. ; e4 = 0.; e3_hat = 0.;
 
     ! Reset resonance number:
     dresNum = 0.; resNum0 = 0.; resNum1 = 0.
-
-    ! Reset reference RF power:
-    e3_hat = 0.
 
     ! Calculate scale factor: super-particle to real-particle
     SP2RP = plasma%NR(j)/plasma%NSP(j)
