@@ -152,7 +152,7 @@ NSP = plasma%NSP
 ! ==============================================================================
 NS_loop: DO j = 1,params%NS
     ! Reset all accumulators:
-    N1  = 0.; N2  = 0.; N3  = 0.; N4 = 0.; N5 = 0.; 
+    N1  = 0.; N2  = 0.; N3  = 0.; N4 = 0.; N5 = 0.;
     E1  = 0.; E2  = 0.; E3  = 0.; E4 = 0.; E5 = 0.;
     uE3 = 0.; uN1 = 0.; uN2 = 0.; ER = 0.;
 
@@ -255,10 +255,8 @@ NS_loop: DO j = 1,params%NS
     ! ==============================================================================
     dNR  = a_new*(uN1 + uN2)*dt - (N1 + N2)*dt
     dNSP = dNR/alpha
-!    dER = (E3 + E5 - E4 - E1 - E2)*dt
     NR  = NR  + dNR
-    NSP = NSP + dNSP 
- !   ER  = ER + dER
+    NSP = NSP + dNSP
 
     ! Assign new NR and NSP:
     ! ============================================================================
@@ -266,8 +264,6 @@ NS_loop: DO j = 1,params%NS
     output%NSP(j) = NSP
     output%ER(j)  = ER
     
-    !WRITE(*,*) 'ER: ', output%ER(j)
-
     ! Assign particle and energy rates in physical units [P/s] and [J/s]
     ! ==============================================================================
     output%Ndot1(j) = N1
@@ -431,7 +427,7 @@ IF (params%iSave) THEN
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%Edot5
     CLOSE(unit=8)
-    
+
     ! Save ER, NR and NSP:
     ! -------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'ER.out')

@@ -15,6 +15,7 @@ params%nz            = 501,			                                                ! 
 params%NC = 100000,                                                             ! Total number of particles
 params%NS = 5000,                                                               ! Total number of time steps
 params%dt = 0.5E-7,                                                             ! Time step in [s]
+params%G  = 15.0E+21,                                                           ! Real particle injection rate
 
 ! Time steps to record:
 ! ====================
