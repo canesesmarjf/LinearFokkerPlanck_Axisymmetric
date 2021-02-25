@@ -1,3 +1,4 @@
+
 PROGRAM linFP
 ! MODULES:
 ! ==============================================================================
@@ -16,11 +17,15 @@ TYPE(plasmaTYP)      :: plasma
 TYPE(fieldSplineTYP) :: fieldspline
 TYPE(outputTYP)      :: output
 ! Accumulators:
-REAL(r8) :: n1,n2,n3,n4
-REAL(r8) :: e1,e2,e3,e4
-REAL(r8) :: e3_hat
-! Super particle to real particle conversion factor:
-REAL(r8) :: SP2RP
+REAL(r8) :: N1,N2,N3,N4,N5
+REAL(r8) :: E1,E2,E3,E4,E5
+REAL(r8) :: uE3,uN1,uN2
+! Conversion factor from SP to R particles:
+REAL(r8) :: alpha
+! Real and super particle energy, number and change:
+REAL(r8) :: ER, NR, NSP, dER, dNSP, dNR
+! New particle weight due to fueling:
+REAL(r8) :: a_new
 ! DO loop indices:
 INTEGER(i4) :: i,j,k
 ! Thread ID:
@@ -30,7 +35,7 @@ DOUBLE PRECISION :: ostart, oend, oend_estimate
 ! Cyclotron resonance numbers:
 REAL(r8) :: dresNum, resNum0, resNum1
 ! simulation time:
-REAl(r8) :: tp
+REAl(r8) :: tp, dt
 ! To store system commands and fileNames:
 CHARACTER*300 :: command, mpwd
 INTEGER(i4) :: n_mpwd, STATUS
@@ -135,19 +140,24 @@ ostart = OMP_GET_WTIME()
 k = 1
 ! Time array:
 tp = 0
+! SP to R particle conversion factor:
+alpha = plasma%alpha
+! Time step:
+dt = params%dt
+! Real and super-particle number:
+NR  = plasma%NR
+NSP = plasma%NSP
 
 ! Loop over time:
 ! ==============================================================================
 NS_loop: DO j = 1,params%NS
     ! Reset all accumulators:
-    n1 = 0. ; n2 = 0. ; n3 = 0. ; n4 = 0.;
-    e1 = 0. ; e2 = 0. ; e3 = 0. ; e4 = 0.; e3_hat = 0.;
+    N1  = 0.; N2  = 0.; N3  = 0.; N4 = 0.; N5 = 0.; 
+    E1  = 0.; E2  = 0.; E3  = 0.; E4 = 0.; E5 = 0.;
+    uE3 = 0.; uN1 = 0.; uN2 = 0.; ER = 0.;
 
     ! Reset resonance number:
     dresNum = 0.; resNum0 = 0.; resNum1 = 0.
-
-    ! Calculate scale factor: super-particle to real-particle
-    SP2RP = plasma%NR(j)/plasma%NSP(j)
 
     !$OMP PARALLEL FIRSTPRIVATE(dresNum,resNum0,resNum1)
     !$OMP DO SCHEDULE(STATIC)
@@ -159,7 +169,7 @@ NS_loop: DO j = 1,params%NS
 
         ! Calculate Cyclotron resonance number:
         ! ------------------------------------------------------------------------
-        IF (params%iHeat) CALL CyclotronResonanceNumber(i,plasma,resNum0,fieldspline,params)
+        IF (params%iHeat) CALL CyclotronResonanceNumber(i,plasma,fieldspline,params,resNum0)
 
         ! Push particles adiabatically:
         ! ------------------------------------------------------------------------
@@ -168,9 +178,11 @@ NS_loop: DO j = 1,params%NS
         ! Check boundaries:
         ! ------------------------------------------------------------------------
         IF (plasma%zp(i) .GE. params%zmax) THEN
-           plasma%f2(i) = 1; plasma%E2(i) = plasma%kep(i)
+           plasma%f2(i)  = 1
+           plasma%dE2(i) = plasma%kep(i)
         ELSE IF (plasma%zp(i) .LE. params%zmin) THEN
-           plasma%f1(i) = 1; plasma%E1(i) = plasma%kep(i)
+           plasma%f1(i)  = 1
+           plasma%dE1(i) = plasma%kep(i)
         END IF
 
         ! Apply Coulomb collision operator:
@@ -180,7 +192,7 @@ NS_loop: DO j = 1,params%NS
         ! Check resonance condition:
         ! ------------------------------------------------------------------------
         IF (params%iHeat) THEN
-           CALL CyclotronResonanceNumber(i,plasma,resNum1,fieldspline,params)
+           CALL CyclotronResonanceNumber(i,plasma,fieldspline,params,resNum1)
            dresNum = dsign(1.d0,resNum0*resNum1)
            IF (dresNum .LT. 0 .AND. plasma%zp(i) .GT. params%zRes1 .AND. plasma%zp(i) .LT. params%zRes2)  THEN
               plasma%f3(i) = 1
@@ -191,51 +203,83 @@ NS_loop: DO j = 1,params%NS
     END DO NC_loop1
     !$OMP END DO
 
-    !$OMP DO REDUCTION(+:n1,n2,n3,n4,e1,e2,e3_hat,e4)
+    !$OMP DO REDUCTION(+:uN1,uN2,N1,N2,N3,N4,E1,E2,uE3,E4)
     ! Calculate particle and energy rates:
     NC_loop2: DO i = 1,params%NC
-       n1     = n1     +     (SP2RP/params%dt)*plasma%a(i)*plasma%f1(i)
-       n2     = n2     +     (SP2RP/params%dt)*plasma%a(i)*plasma%f2(i)
-       n3     = n3     +     (SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)
-       n4     = n4     +     (SP2RP/params%dt)*plasma%a(i)*plasma%f4(i)
-       e1     = e1     + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f1(i)*plasma%E1(i)
-       e2     = e2     + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f2(i)*plasma%E2(i)
-       e3_hat = e3_hat + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)*plasma%E3_hat(i)
-       e4     = e4     + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f4(i)*plasma%E4(i)
+       uN1 = uN1  +             (alpha/dt)* plasma%f1(i)
+       uN2 = uN2  +             (alpha/dt)* plasma%f2(i)
+       N1  = N1   +  (alpha/dt)*plasma%a(i)*plasma%f1(i)
+       N2  = N2   +  (alpha/dt)*plasma%a(i)*plasma%f2(i)
+       N3  = N3   +  (alpha/dt)*plasma%a(i)*plasma%f3(i)
+       N4  = N4   +  (alpha/dt)*plasma%a(i)*plasma%f4(i)
+       E1  = E1   +  (alpha/dt)*plasma%a(i)*plasma%f1(i)*plasma%dE1(i)*e_c
+       E2  = E2   +  (alpha/dt)*plasma%a(i)*plasma%f2(i)*plasma%dE2(i)*e_c
+       uE3 = uE3  +  (alpha/dt)*plasma%a(i)*plasma%f3(i)*plasma%udE3(i)*e_c
+       E4  = E4   +  (alpha/dt)*plasma%a(i)*plasma%f4(i)*plasma%dE4(i)*e_c
     END DO NC_loop2
     !$OMP END DO
-  
+
+    !$OMP SINGLE
+    a_new = params%G/(uN1 + uN2)
+    !a_new = 1.
+    !$OMP END SINGLE
+
     !$OMP DO
     ! Apply particle re-injection and RF operator:
     NC_loop3: DO i = 1,params%NC
        IF (plasma%f1(i) .EQ. 1 .OR. plasma%f2(i) .EQ. 1) THEN
+           plasma%a(i) = a_new
            CALL ReinjectParticles(i,plasma,params)
+           plasma%dE5(i) = plasma%kep(i)
        END IF
        IF (plasma%f3(i) .EQ. 1) THEN
-           CALL RFOperator(i,plasma,fieldspline,params,e3_hat)
+           CALL RFOperator(i,plasma,fieldspline,params,uE3)
        END IF
     END DO NC_loop3
     !$OMP END DO
 
-    !$OMP DO REDUCTION(+:e3)
-    ! Calculate RF power absorption:
+    !$OMP DO REDUCTION(+:E3,N5,E5,ER)
+    ! Calculate RF power absorption and real particle source:
     NC_loop4: DO i = 1,params%NC
-       e3 = e3 + e_c*(SP2RP/params%dt)*plasma%a(i)*plasma%f3(i)*plasma%E3(i)
+       E3 = E3 + (alpha/dt)*plasma%a(i)*plasma%f3(i)*plasma%dE3(i)*e_c
+       N5 = N5 + (alpha/dt)*plasma%a(i)*(plasma%f1(i) + plasma%f2(i))
+       E5 = E5 + (alpha/dt)*plasma%a(i)*(plasma%f1(i) + plasma%f2(i))*plasma%dE5(i)*e_c
+       IF (isnan(plasma%kep(i))) plasma%kep(i) = 0.
+       ER = ER + alpha*plasma%a(i)*plasma%kep(i)*e_c
     END DO NC_loop4
     !$OMP END DO
 
     !$OMP END PARALLEL
 
+    ! Calculate new number of real particles NR and super-particles NSP:
+    ! ==============================================================================
+    dNR  = a_new*(uN1 + uN2)*dt - (N1 + N2)*dt
+    dNSP = dNR/alpha
+!    dER = (E3 + E5 - E4 - E1 - E2)*dt
+    NR  = NR  + dNR
+    NSP = NSP + dNSP 
+ !   ER  = ER + dER
+
+    ! Assign new NR and NSP:
+    ! ============================================================================
+    output%NR(j)  = NR
+    output%NSP(j) = NSP
+    output%ER(j)  = ER
+    
+    !WRITE(*,*) 'ER: ', output%ER(j)
+
     ! Assign particle and energy rates in physical units [P/s] and [J/s]
     ! ==============================================================================
-    plasma%Ndot1(j) = n1
-    plasma%Ndot2(j) = n2
-    plasma%Ndot3(j) = n3
-    plasma%Ndot4(j) = n4
-    plasma%Edot1(j) = e1
-    plasma%Edot2(j) = e2
-    plasma%Edot3(j) = e3
-    plasma%Edot4(j) = e4
+    output%Ndot1(j) = N1
+    output%Ndot2(j) = N2
+    output%Ndot3(j) = N3
+    output%Ndot4(j) = N4
+    output%Ndot5(j) = N5
+    output%Edot1(j) = E1
+    output%Edot2(j) = E2
+    output%Edot3(j) = E3
+    output%Edot4(j) = E4
+    output%Edot5(j) = E5
 
     ! Select data to save:
     ! =====================================================================
@@ -249,6 +293,7 @@ NS_loop: DO j = 1,params%NS
              output%zp(i,k)  = plasma%zp(i)
              output%kep(i,k) = plasma%kep(i)
              output%xip(i,k) = plasma%xip(i)
+             output%a(i,k)   = plasma%a(i)
           END DO
          !$OMP END PARALLEL DO
          k = k + 1
@@ -257,7 +302,7 @@ NS_loop: DO j = 1,params%NS
 
     ! Update time array:
     ! =========================================================================
-    tp = tp + params%dt
+    tp = tp + dt
 
     ! Estimate computational time:
     ! =====================================================================
@@ -306,28 +351,35 @@ IF (params%iSave) THEN
     CALL SYSTEM(command,STATUS)
     CALL GETCWD(mpwd)
 
-    ! Saving zp_hist to file:
+    ! Saving zp to file:
     ! --------------------------------------------------------------------------
     fileName = TRIM(TRIM(dir1)//'/'//'zp.out')
     OPEN(UNIT=8,FILE=fileName,FORM="unformatted",STATUS="unknown")
     WRITE(8) output%zp
     CLOSE(UNIT=8)
 
-    ! Saving kep_hist to file:
+    ! Saving kep to file:
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'kep.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%kep
     CLOSE(unit=8)
 
-    ! Saving xip_hist to file:
+    ! Saving xip to file:
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'xip.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%xip
     CLOSE(unit=8)
 
-    ! Saving t_hist to file:
+    ! Saving 'a' to file:
+    ! --------------------------------------------------------------------------
+    fileName = trim(trim(dir1)//'/'//'a.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%a
+    CLOSE(unit=8)
+
+    ! Saving tp to file:
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'tp.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
@@ -338,38 +390,61 @@ IF (params%iSave) THEN
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'pcount1.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) plasma%Ndot1
+    WRITE(8) output%Ndot1
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'pcount2.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) plasma%Ndot2
+    WRITE(8) output%Ndot2
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'pcount3.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) plasma%Ndot3
+    WRITE(8) output%Ndot3
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'pcount4.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) plasma%Ndot4
+    WRITE(8) output%Ndot4
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'pcount5.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Ndot5
     CLOSE(unit=8)
 
     ! Saving ecount to file:
     ! --------------------------------------------------------------------------
     fileName = trim(trim(dir1)//'/'//'ecount1.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) plasma%Edot1
+    WRITE(8) output%Edot1
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'ecount2.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) plasma%Edot2
+    WRITE(8) output%Edot2
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'ecount3.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) plasma%Edot3
+    WRITE(8) output%Edot3
     CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'ecount4.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) plasma%Edot4
+    WRITE(8) output%Edot4
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'ecount5.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Edot5
+    CLOSE(unit=8)
+    
+    ! Save ER, NR and NSP:
+    ! -------------------------------------------------------------------------
+    fileName = trim(trim(dir1)//'/'//'ER.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%ER
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'NR.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%NR
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'NSP.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%NSP
     CLOSE(unit=8)
 
     ! Write output metadata:

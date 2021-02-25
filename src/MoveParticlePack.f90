@@ -162,15 +162,15 @@ xip0 = plasma%xip(i)
 ! 1: Isotropic plasma source
 ! 2: NBI
 ! 3: Periodic boundary
-if (params%BC_Type .EQ. 1 .OR. params%BC_Type .EQ. 2) then
+IF (params%BC_Type .EQ. 1 .OR. params%BC_Type .EQ. 2) THEN
 
-  if (params%BC_Type .EQ. 1) then
+  IF (params%BC_Type .EQ. 1) THEN
     T = params%Te0
     E = 0
-  else if (params%BC_Type .EQ. 2) then
+  ELSE IF (params%BC_Type .EQ. 2) THEN
     T = params%BC_Tp
     E = params%BC_Ep
-  end if
+  END IF
 
   ! Velocity distribution:
   Ma = params%Ma
@@ -204,19 +204,19 @@ if (params%BC_Type .EQ. 1 .OR. params%BC_Type .EQ. 2) then
   ! Position distribution:
   plasma%zp(i) = params%BC_zp_std*sqrt(-2.*log(Rm6(5)))*cos(2.*pi*Rm6(6)) + params%BC_zp_mean
 
-else if (params%BC_Type .EQ. 3) then
-  if (zp0 .GE. params%zmax) then
+ELSE if (params%BC_Type .EQ. 3) THEN
+  IF (zp0 .GE. params%zmax) THEN
     plasma%zp(i) = params%zmin
-  else
+  ELSE
     plasma%zp(i) = params%zmax
-  end if
-end if
+  END IF
+END IF
 
 RETURN
 END SUBROUTINE ReinjectParticles
 
 ! =======================================================================================================
-SUBROUTINE CyclotronResonanceNumber(i,plasma,resNum0,fieldspline,params)
+SUBROUTINE CyclotronResonanceNumber(i,plasma,fieldspline,params,resNum0)
 ! =======================================================================================================
 
 USE local
@@ -296,7 +296,7 @@ Ma = params%Ma
 ! Test particle charge:
 qa = params%qa
 
-! Calculate derived quantities
+! Calculate derived quantities:
 u0       = sqrt(2.*e_c*kep0/Ma)
 upar0    = u0*xip0
 uper0    = u0*(1. - xip0**2)**0.5
@@ -319,12 +319,12 @@ Omega_dot = upar0*dOmega
 Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - qa*dV*dOmega/Ma
 
 ! Calculate the interaction time (tau_RF):
-if ( (Omega_ddot**2.) .GT. 4.8175*ABS(Omega_dot**3.) )  then
+IF ( (Omega_ddot**2.) .GT. 4.8175*ABS(Omega_dot**3.) )  then
         ! Approximate Ai(x) ~ 0.3833
         tau_rf = (2.*pi)*(ABS(2./Omega_ddot)**(1/3.))*0.3833
-else
+ELSE
         tau_rf = sqrt(2.*pi/ABS(Omega_dot))
-end if
+END IF
 
 ! Calculate Bessel term:
 rl       = uper0/(abs(qa)*Bf/Ma)
@@ -335,24 +335,25 @@ besselterm = BESSEL_JN(params%n_harmonic-1,flr)
 mean_dkep_per = 0.5*(e_c/Ma)*(besselterm*tau_rf)**2.
 
 ! Populate plasma structure:
-plasma%Erf_hat(i) = mean_dkep_per
-plasma%doppler(i) = params%kpar*(upar0)/Omega
-plasma%E3_hat(i)  = plasma%Erf_hat(i)*(1. + plasma%doppler(i))
+plasma%udErf(i)   = mean_dkep_per
+plasma%doppler(i) = params%kpar*upar0/Omega
+plasma%udE3(i)    = plasma%udErf(i)*(1. + plasma%doppler(i))
 
 RETURN
 END SUBROUTINE RFoperatorTerms
 
 ! =======================================================================================================
-SUBROUTINE RFOperator(i,plasma,fieldspline,params,q3_hat)
+SUBROUTINE RFOperator(i,plasma,fieldspline,params,uE3)
 ! =======================================================================================================
 USE local
 USE spline_fits
 USE PhysicalConstants
 USE dataTYP
+USE OMP_LIB
 
 IMPLICIT NONE
 ! Define interface variables:
-REAL(r8)               , INTENT(IN)    :: q3_hat
+REAL(r8)               , INTENT(IN)    :: uE3
 INTEGER(i4)            , INTENT(IN)    :: i
 TYPE(plasmaTYP)        , INTENT(INOUT) :: plasma
 TYPE(paramsTYP)        , INTENT(IN)    :: params
@@ -379,8 +380,13 @@ kep_par0 = kep0*xip0**2.
 kep_per0 = kep0*(1. - xip0**2.)
 
 ! Calculate the mean RF kick:
-Ew2 = (params%Prf/q3_hat)
-mean_dkep_per = plasma%Erf_hat(i)*Ew2
+Ew2 = params%Prf/uE3
+mean_dkep_per = plasma%udErf(i)*Ew2
+
+IF (OMP_GET_THREAD_NUM() .EQ. 0) THEN
+!   WRITE(*,*) 'Ew', sqrt(Ew2)
+END IF
+
 
 ! Calculate the change in perp, parallel and total energy:
 CALL RANDOM_NUMBER(Rm1)
@@ -421,7 +427,7 @@ plasma%xip(i) = upar1/u1
 ! Record resonance event:
 plasma%f3(i) = 1
 ! Record energy kick:
-plasma%E3(i) = dkep
+plasma%dE3(i) = dkep
 
 RETURN
 END SUBROUTINE RFOperator
@@ -453,8 +459,8 @@ SUBROUTINE loadParticles(i,plasma,params)
   xip0 = plasma%xip(i)
 
   ! Particle position:
-  zmin = params%zmin !+ .01*(in0%zmax-in0%zmin)
-  zmax = params%zmax !- .01*(in0%zmax-in0%zmin)
+  zmin = params%zmin 
+  zmax = params%zmax 
   if (params%IC_Type .EQ. 1) then
       ! Uniform load
       call random_number(X1)

@@ -41,29 +41,29 @@ xip0 = plasma%xip(i)
 Ma = params%Ma
 qa = params%qa
 species_a = params%species_a
-if (species_a .EQ. 1) then      ! Test electrons
+IF (species_a .EQ. 1) THEN      ! Test electrons
    Za = -1.
-else if (species_a .EQ. 1) then ! Test ions
+ELSE IF (species_a .EQ. 1) THEN ! Test ions
    Za = params%Zion
-end if
+END IF
 
-species_b_loop: do ss = 1,2
+species_b_loop: DO ss = 1,2
 ! Background species properties:
 ! -----------------------------------------------------------------------------------------------------------------
-if (ss .EQ. 1) species_b = 1
-if (ss .EQ. 2) species_b = 2
+IF (ss .EQ. 1) species_b = 1
+IF (ss .EQ. 2) species_b = 2
 
-if(species_b .EQ. 1) then       ! Background electron
+IF (species_b .EQ. 1) THEN       ! Background electron
   Mb = m_e
   Tb = params%Te0
   Zb = -1.
   nb = params%ne0
-else if(species_b .EQ. 2) then  ! Background ion
+ELSE IF (species_b .EQ. 2) THEN  ! Background ion
   Mb = params%Aion*m_p
   Tb = params%Ti0
   Zb = params%Zion
   nb = params%ne0
-end if
+END IF
 
 ! Coordinate systems:
 ! -----------------------------------------------------------------------------------------------------------------
@@ -80,15 +80,15 @@ vpar = xip0*v
 vper = sqrt(1 - (xip0**2.) )*v
 
 ! Plasma drift in the lab frame:
-if (params%iDrag) then
-   if (zp0 .GE. params%BC_zp_mean) then
+IF (params%iDrag) THEN
+   IF (zp0 .GE. params%BC_zp_mean) THEN
       u = +1.*sqrt( e_c*(params%Te0 + params%Ti0)/(params%Aion*m_p) )
-   else
+   ELSE
       u = -1.*sqrt( e_c*(params%Te0 + params%Ti0)/(params%Aion*m_p) )
-   end if
-else
+   END IF
+ELSE
    u = 0.
-end if
+END IF
 
 ! Plasma frame:
 ! ----------------------------------------------------------------------------------------------------------------
@@ -102,9 +102,9 @@ xip_pf_0 = wpar/w
 kep_pf_0 = (0.5*Ma/e_c)*w**2.
 
 ! Diagnostic:
-if (xip_pf_0**2. .GT. 1.) then
+IF (xip_pf_0**2. .GT. 1.) THEN
 	print *,'xip_pf_0^2 > 1', xip_pf_0
-end if
+END IF
 
 ! Test particle to background thermal velocity ratio:
 wTb = sqrt(2.*e_c*Tb/Mb)
@@ -127,8 +127,8 @@ xip_pf_1 = S1 + S3
 ! Apply energy scattering in plasma frame:
 ! ----------------------------------------
 ! Select mass term
-if (params%CollOperType .EQ. 1) mass_term = 1.                 ! Boozer-Only term
-if (params%CollOperType .EQ. 2) mass_term = 1. + (Mb/Ma)   ! Boozer-Kim term
+IF (params%CollOperType .EQ. 1) mass_term = 1.                 ! Boozer-Only term
+IF (params%CollOperType .EQ. 2) mass_term = 1. + (Mb/Ma)   ! Boozer-Kim term
 
 d2 = nu_E(xab,nb,Tb,Mb,Zb,Za,Ma)*params%dt/mass_term
 E0 = (1.5 + E_nuE_d_nu_E_dE(xab))*Tb
@@ -138,24 +138,24 @@ dE_pf = 2.*E1
 kep_pf_1 = kep_pf_0 - dE_pf + (2.*xsi2*E2)
 
 ! Diagnotics
-if (isnan(xip_pf_1)) xip_pf_1 = xip_pf_0
-if  (xip_pf_1**2. .GT. 1.) then
+IF (isnan(xip_pf_1)) xip_pf_1 = xip_pf_0
+IF  (xip_pf_1**2. .GT. 1.) THEN
 	call random_number(ran_num)
 	xip_pf_1 = 2.*ran_num - 1.
-end if
+END IF
 if (kep_pf_1 .le. 0.) kep_pf_1 = kep_pf_0
 
 ! Record energy loss due to collisions in the plasma frame:
-if (kep_pf_1 .GT. params%elevel*Tb) then
+IF (kep_pf_1 .GT. params%elevel*Tb) THEN
 	! Record slowing down energy during time step dt
 	!ecnt = ecnt + dE_pf
-        plasma%E4(i) = plasma%E4(i) +  dE_pf
+        plasma%dE4(i) = plasma%dE4(i) +  dE_pf
 	! Count how many particles are involved in the slowing down power calculation
-	if(species_a .EQ. species_b) then
+	IF (species_a .EQ. species_b) THEN
 		!pcnt = pcnt + 1
                 plasma%f4(i) = 1
-	end if
-end if
+	END IF
+END IF
 
 ! Based on the modifed xip_pf and kep_pf, we get:
 w    = sqrt(2.*e_c*kep_pf_1/Ma)
@@ -173,7 +173,7 @@ v     = sqrt( (vpar**2.) + (vper**2.) )
 xip0 = vpar/v
 kep0 = 0.5*(Ma/e_c)*v**2.
 
-end do species_b_loop
+END DO species_b_loop
 
 ! Output data from calculation:
 plasma%xip(i) = vpar/v

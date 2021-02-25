@@ -227,6 +227,7 @@ TYPE paramsTYP
   ! Simulation conditions:
   INTEGER(i4) :: NC, NS
   REAL(r8)    :: dt
+  REAL(r8)    :: G
   ! Time steps to record:
   INTEGER(i4) :: jstart, jend, jincr
   ! Domain geometry:
@@ -256,14 +257,14 @@ END TYPE paramsTYP
 
 ! -----------------------------------------------------------------------------
 TYPE plasmaTYP
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep, xip, a
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep,xip, a
  INTEGER(i4), DIMENSION(:), ALLOCATABLE :: f1, f2, f3, f4
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: E1, E2, E3, E4, E3_hat
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Erf_hat, doppler
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: NR , NSP
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Eplus, Eminus
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Ndot1, Ndot2, Ndot3, Ndot4
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Edot1, Edot2, Edot3, Edot4, Edot3_hat
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dE1, dE2, dE3, dE4, dE5
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: udE3, udErf, doppler
+ REAL(r8) :: NR , NSP, alpha
+ REAL(r8) :: Eplus, Eminus
+ REAL(r8) :: Ndot1, Ndot2, Ndot3, Ndot4
+ REAL(r8) :: Edot1, Edot2, Edot3, Edot4, uEdot3
 END TYPE plasmaTYP
 
 ! -----------------------------------------------------------------------------
@@ -275,7 +276,10 @@ END TYPE fieldSplineTYP
 TYPE outputTYP
  REAL(r8) , DIMENSION(:,:), ALLOCATABLE :: zp, kep, xip, a
  REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: tp, jrng
- INTEGER(i4) :: jsize
+ REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: NR, NSP, ER
+ REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: Eplus, Eminus
+ REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: Ndot1, Ndot2, Ndot3, Ndot4, Ndot5
+ REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: Edot1, Edot2, Edot3, Edot4, Edot5
 END TYPE outputTYP
 
 CONTAINS
@@ -287,27 +291,18 @@ SUBROUTINE AllocatePlasma(plasma,params)
    TYPE(paramsTYP), INTENT(IN)    :: params
 
    ! Declare local variables:
-   INTEGER(i4) :: NC, NS
+   INTEGER(i4) :: NC
 
    ! NC: Number of computational particles
    NC = params%NC
-   ! NS: Number of time steps
-   NS = params%NS
-
+ 
    ! Allocate memory: For all computational particles
-   ALLOCATE(plasma%zp(NC) ,plasma%kep(NC) ,plasma%xip(NC) ,plasma%a(NC))
-   ALLOCATE(plasma%f1(NC) ,plasma%f2(NC)  ,plasma%f3(NC)  ,plasma%f4(NC))
-   ALLOCATE(plasma%E1(NC) ,plasma%E2(NC)  ,plasma%E3(NC)  ,plasma%E4(NC))
-   ALLOCATE(plasma%Erf_hat(NC))
+   ALLOCATE(plasma%zp(NC)  ,plasma%kep(NC) ,plasma%xip(NC) ,plasma%a(NC))
+   ALLOCATE(plasma%f1(NC)  ,plasma%f2(NC)  ,plasma%f3(NC)  ,plasma%f4(NC))
+   ALLOCATE(plasma%dE1(NC) ,plasma%dE2(NC) ,plasma%dE3(NC) ,plasma%dE4(NC), plasma%dE5(NC))
+   ALLOCATE(plasma%udErf(NC))
    ALLOCATE(plasma%doppler(NC))
-   ALLOCATE(plasma%E3_hat(NC))
-
-   ! Allocate memory: For all time steps
-   ALLOCATE(plasma%NR(NS)   ,plasma%NSP(NS))
-   ALLOCATE(plasma%Eplus(NS),plasma%Eminus(NS))
-   ALLOCATE(plasma%Ndot1(NS),plasma%Ndot2(NS) ,plasma%Ndot3(NS),plasma%Ndot4(NS))
-   ALLOCATE(plasma%Edot1(NS),plasma%Edot2(NS) ,plasma%Edot3(NS),plasma%Edot4(NS))
-   ALLOCATE(plasma%Edot3_hat(NS))
+   ALLOCATE(plasma%udE3(NC))
 
 END SUBROUTINE AllocatePlasma
 
@@ -319,51 +314,45 @@ SUBROUTINE InitializePlasma(plasma,params)
    ! Declare interface variables:
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
    TYPE(paramsTYP), INTENT(INOUT) :: params
-   INTEGER(i4) :: i, j
+   
+   ! Declare local variables:
+   INTEGER(i4) :: i
 
    ! Derived parameters: Reference cross sectional area
-    params%Area0 = 0.5*params%dtheta*( params%r2**2. - params%r1**2.)
+   params%Area0 = 0.5*params%dtheta*( params%r2**2. - params%r1**2.)
 
    ! Derived parameters: Select test species
-   if (params%species_a .EQ. 1) then
+   IF (params%species_a .EQ. 1) THEN
        params%qa = -e_c
        params%Ma = m_e
-   else
+   ELSE
        params%qa = +params%Zion*e_c
        params%Ma = params%Aion*m_p
-   end if
+   END IF
+   
+   ! Initialize plasma: scalar quantities:
+   plasma%NR      = params%ne0*params%Area0*(params%zmax - params%zmin)
+   plasma%NSP     = params%NC
+   plasma%alpha   = plasma%NR/plasma%NSP
+   plasma%Eplus   = 0.
+   plasma%Eminus  = 0.
+   plasma%Ndot1   = 0.
+   plasma%Ndot2   = 0.
+   plasma%Ndot3   = 0.
+   plasma%Ndot4   = 0.
+   plasma%Edot1   = 0.
+   plasma%Edot2   = 0.
+   plasma%Edot3   = 0.
+   plasma%Edot4   = 0.
+   plasma%uEdot3  = 0.
 
-   !$OMP PARALLEL
-   !$OMP DO
-   ! Initialize plasma: time dependent quantities:
-   DO j = 1,params%NS
-     ! Initialize plasma: NR and NC
-     ! When source contrained fueling is used, these quantities
-     ! can be time depedent
-     plasma%NR(j)         = params%ne0*params%Area0*(params%zmax - params%zmin)
-     plasma%NSP(j)        = params%NC
-     plasma%Eplus(j)      = 0.
-     plasma%Eminus(j)     = 0.
-     plasma%Ndot1(j)      = 0.
-     plasma%Ndot2(j)      = 0.
-     plasma%Ndot3(j)      = 0.
-     plasma%Ndot4(j)      = 0.
-     plasma%Edot1(j)      = 0.
-     plasma%Edot2(j)      = 0.
-     plasma%Edot3(j)      = 0.
-     plasma%Edot4(j)      = 0.
-     plasma%Edot3_hat(j)  = 0.
-   END DO
-   !$OMP DO
-
-   !$OMP DO
-   ! Initialize plasma: For all computational particles
+   !$OMP PARALLEL DO
+   ! Initialize plasma: zp, kep, xip and a:
    DO i = 1,params%NC
      plasma%a(i)  = 1.
      CALL loadParticles(i,plasma,params)
    END DO
-   !$OMP END DO
-   !$OMP END PARALLEL
+   !$OMP END PARALLEL DO
 
 END SUBROUTINE InitializePlasma
 
@@ -375,9 +364,17 @@ SUBROUTINE ResetFlags(i,plasma)
    INTEGER(i4)    , INTENT(IN)    :: i
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
 
-   plasma%f1(i) = 0. ; plasma%f2(i) = 0. ; plasma%f3(i) = 0. ; plasma%f4(i) = 0.
-   plasma%E1(i) = 0. ; plasma%E2(i) = 0. ; plasma%E3(i) = 0. ; plasma%E4(i) = 0.
-   plasma%Erf_hat(i) = 0.
+   plasma%f1(i)      = 0. 
+   plasma%f2(i)      = 0. 
+   plasma%f3(i)      = 0. 
+   plasma%f4(i)      = 0.
+   plasma%dE1(i)     = 0. 
+   plasma%dE2(i)     = 0. 
+   plasma%dE3(i)     = 0. 
+   plasma%dE4(i)     = 0.
+   plasma%dE5(i)     = 0.
+   plasma%udE3(i)    = 0.
+   plasma%udErf(i)   = 0.
    plasma%doppler(i) = 0.;
 
 END SUBROUTINE ResetFlags
@@ -430,22 +427,30 @@ SUBROUTINE AllocateOutput(output,params)
    ! Declare interface variables:
    TYPE(outputTYP), INTENT(INOUT) :: output
    TYPE(paramsTYP), INTENT(IN)    :: params
-   INTEGER(i4) :: j
+   
+   ! Declare local variables:
+   INTEGER(i4) :: j, jsize, NS
 
    ! Determine size of temporal snapshots to record:
-   output%jsize = (params%jend-params%jstart+1)/params%jincr
-
+   jsize = (params%jend-params%jstart+1)/params%jincr
+   
    ! Allocate memory:
-   ALLOCATE(output%jrng(output%jsize))
-   ALLOCATE(output%zp(params%NC ,output%jsize))
-   ALLOCATE(output%kep(params%NC,output%jsize))
-   ALLOCATE(output%xip(params%NC,output%jsize))
-   ALLOCATE(output%a(params%NC  ,output%jsize))
-   ALLOCATE(output%tp(output%jsize))
+   ALLOCATE(output%jrng(jsize))
+   ALLOCATE(output%zp(params%NC ,jsize))
+   ALLOCATE(output%kep(params%NC,jsize))
+   ALLOCATE(output%xip(params%NC,jsize))
+   ALLOCATE(output%a(params%NC  ,jsize))
+   ALLOCATE(output%tp(jsize))
 
    ! Create array with the indices of the time steps to save:
    output%jrng = (/ (j, j=params%jstart, params%jend, params%jincr) /)
 
+  ! Allocate memory: For all time steps
+   NS = params%NS
+   ALLOCATE(output%NR(NS)   ,output%NSP(NS)  ,output%Eplus(NS),output%Eminus(NS),output%ER(NS))
+   ALLOCATE(output%Ndot1(NS),output%Ndot2(NS),output%Ndot3(NS),output%Ndot4(NS) ,output%Ndot5(NS))
+   ALLOCATE(output%Edot1(NS),output%Edot2(NS),output%Edot3(NS),output%Edot4(NS) ,output%Edot5(NS))
+  
 END SUBROUTINE AllocateOutput
 
 END MODULE dataTYP
