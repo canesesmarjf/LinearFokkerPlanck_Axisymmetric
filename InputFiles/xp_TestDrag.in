@@ -1,49 +1,49 @@
 &params_nml
 ! Simulation name:
 ! ===============
-params%fileDescriptor = '2021_02_25a',
+params%fileDescriptor = '2021_03_01d',
 
 ! Magnetic field input data:
 ! =========================
 params%repoDir       ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
 params%BFieldFileDir = "/BfieldData",
-params%BFieldFile    = "/Bfield_b.txt",
+params%BFieldFile    = "/Bfield_a.txt",
 params%nz            = 501,                                                     ! Number of points in BFieldFile
 
 ! Simulation conditions:
 ! =====================
-params%NC = 70000,                                                              ! Total number of particles
-params%NS = 10000,                                                              ! Total number of time steps
+params%NC = 500000,                                                              ! Total number of particles
+params%NS = 50000,                                                              ! Total number of time steps
 params%dt = 0.5E-7,                                                             ! Time step in [s]
-params%G  = 15.0E+21,                                                           ! Real particle injection rate 
+params%G  = 2.5E+20,                                                            ! Real particle injection rate 
 
 ! Time steps to record:
 ! ====================
 params%jstart = 1,                                                              ! start frame
-params%jend   = 10000,                                                          ! end frame
-params%jincr  = 250,                                                            ! increment
+params%jend   = 50000,                                                          ! end frame
+params%jincr  = 500,                                                            ! increment
 
 ! Domain geometry:
 ! ====================
 params%dtheta = 6.2832                                                          ! Radians
 params%r1     = 0.03                                                            ! Inner radius at reference location [m]
 params%r2     = 0.05                                                            ! Outer radius at reference location [m]
-params%zmax   = +5.0,                                                           ! Boundary 2 (right)
-params%zmin   = -5.0,                                                           ! Boundary 1 (left)
+params%zmax   = +3.0,                                                           ! Boundary 2 (right)
+params%zmin   = -3.0,                                                           ! Boundary 1 (left)
 
 ! Physics:
 ! ======================
 params%iSave      = .true.,
 params%iPush      = .true.,                                                     ! Enable RK4 particle pusher
 params%iColl      = .true.,                                                     ! Collisions or no collisions
-params%iHeat      = .true.,                                                     ! Enable RF heating operator
+params%iHeat      = .false.,                                                     ! Enable RF heating operator
 params%iPotential = .false.,                                                    ! Enable electric potential
 params%iDrag      = .true.,                                                     ! Enable plasma drag
 
 ! Collision operator conditions:
 ! ==============================
-params%Te0          = 10.,                                                      ! eV
-params%Ti0          = 10.,                                                      ! eV
+params%Te0          = 250.,                                                      ! eV
+params%Ti0          = 250.,                                                      ! eV
 params%ne0          = 3.0E+19,                                                  ! m**-3
 params%Aion         = 1.,                                                       ! Ion mass
 params%Zion         = 1.,                                                       ! Charge number for main ion species
@@ -53,10 +53,10 @@ params%CollOperType = 2,                                                        
 
 ! Particle Boundary Conditions:
 ! ============================
-params%BC_Type    = 1,                                                          ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
+params%BC_Type    = 2,                                                          ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
 params%BC_zp_mean = 0.0,                                                        ! Mean particle injection
 params%BC_zp_std  = 0.3,                                                        ! STD of particle injection
-params%BC_Ep      = 20000.,                                                     ! Drift kinetic energy
+params%BC_Ep      = 5000.,                                                      ! Drift kinetic energy
 params%BC_Tp      = 10,                                                         ! Thermal kinetic energy
 params%BC_xip     = 0.707,                                                      ! Mean pitch angle where xip = cos(theta) = vpar/v
 
