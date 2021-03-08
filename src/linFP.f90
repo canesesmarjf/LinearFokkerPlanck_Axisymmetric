@@ -14,7 +14,9 @@ IMPLICIT NONE
 ! User-defined structures:
 TYPE(paramsTYP)      :: params
 TYPE(plasmaTYP)      :: plasma
+TYPE(fieldsTYP)      :: fields
 TYPE(fieldSplineTYP) :: fieldspline
+TYPE(meshTYP)        :: mesh
 TYPE(outputTYP)      :: output
 ! Accumulators:
 REAL(r8) :: N1,N2,N3,N4,N5
@@ -57,36 +59,14 @@ CLOSE(UNIT=4)
 
 ! Print to the terminal:
 ! ==============================================================================
-WRITE(*,*) ''
-WRITE(*,*) '*********************************************************************'
-WRITE(*,*) 'Input file:         ', TRIM(inputFile)
-WRITE(*,*) 'fileDescriptor:     ', TRIM(params%fileDescriptor)
-WRITE(*,*) 'Number of particles:', params%NC
-WRITE(*,*) 'Number of steps:    ', params%NS
-WRITE(*,*) 'Particle BC:        ', params%BC_Type
-WRITE(*,*) 'dt [ns]:            ', params%dt*1E+9
-WRITE(*,*) 'iPush:              ', params%iPush
-WRITE(*,*) 'iDrag:              ', params%iDrag
-WRITE(*,*) 'iColl:              ', params%iColl
-WRITE(*,*) 'iHeat:              ', params%iHeat
-WRITE(*,*) 'iSave:              ', params%iSave
-WRITE(*,*) 'elevel:             ', params%elevel
-WRITE(*,*) 'zTarget [m]:        ', params%zmax
-WRITE(*,*) 'zDump [m]:          ', params%zmin
-WRITE(*,*) 'BC_zp_mean [m]:     ', params%BC_zp_mean
-WRITE(*,*) 'B field file:       ', TRIM(params%BFieldFile)
-WRITE(*,*) 'Prf [kW]:           ', params%Prf*1E-3
-WRITE(*,*) 'Te0:                ', params%Te0
-WRITE(*,*) 'ne0:                ', params%ne0
-IF (params%CollOperType .EQ. 1) WRITE(*,*) 'Boozer-Only collision operator'
-IF (params%CollOperType .EQ. 2) WRITE(*,*) 'Boozer-Kim collision operator'
-WRITE(*,*) '*********************************************************************'
-WRITE(*,*) ''
+CALL PrintParamsToTerminal(params,inputFile)
 
 ! Allocate memory:
 ! ===========================================================================
 CALL AllocateFieldSpline(fieldspline,params)
 CALL AllocatePlasma(plasma,params)
+CALL AllocateFields(fields,params)
+CALL AllocateMesh(mesh,params)
 CALL AllocateOutput(output,params)
 
 ! Create splines of electromagnetic fields:
@@ -110,15 +90,12 @@ END IF
 CALL ComputeSpline(fieldspline%V)
 CALL diffSpline(fieldspline%V,fieldspline%dV)
 
-! Plasma flow U:
-fieldspline%U%x = fieldspline%B%x
-fieldspline%U%y = 0.
-
 ! Complete setting up the spline data :
 CALL ComputeFieldSpline(fieldspline)
 
 ! Initialize simulation variables:
 ! ==============================================================================
+CALL InitializeMesh(mesh,params)
 CALL InitializePlasma(plasma,params)
 
 !$OMP PARALLEL
@@ -159,8 +136,7 @@ NS_loop: DO j = 1,params%NS
     ! Reset resonance number:
     dresNum = 0.; resNum0 = 0.; resNum1 = 0.
 
-    !$OMP PARALLEL FIRSTPRIVATE(dresNum,resNum0,resNum1)
-    !$OMP DO SCHEDULE(STATIC)
+    !$OMP PARALLEL DO FIRSTPRIVATE(dresNum,resNum0,resNum1) SCHEDULE(STATIC)
     NC_loop1: DO i = 1,params%NC
 
         ! Initialize plasma: flags and Energy increments
@@ -201,9 +177,9 @@ NS_loop: DO j = 1,params%NS
         END IF
 
     END DO NC_loop1
-    !$OMP END DO
+    !$OMP END PARALLEL DO
 
-    !$OMP DO REDUCTION(+:uN1,uN2,N1,N2,N3,N4,E1,E2,uE3,E4)
+    !$OMP PARALLEL DO REDUCTION(+:uN1,uN2,N1,N2,N3,N4,E1,E2,uE3,E4)
     ! Calculate particle and energy rates:
     NC_loop2: DO i = 1,params%NC
        uN1 = uN1  +             (alpha/dt)* plasma%f1(i)
@@ -217,14 +193,14 @@ NS_loop: DO j = 1,params%NS
        uE3 = uE3  +  (alpha/dt)*plasma%a(i)*plasma%f3(i)*plasma%udE3(i)*e_c
        E4  = E4   +  (alpha/dt)*plasma%a(i)*plasma%f4(i)*plasma%dE4(i)*e_c
     END DO NC_loop2
-    !$OMP END DO
+    !$OMP END PARALLEL DO
 
-    !$OMP SINGLE
     a_new = params%G/(uN1 + uN2)
-    !a_new = 1.
-    !$OMP END SINGLE
+    IF (a_new .GT. 100) THEN
+       a_new = 1.
+    END IF
 
-    !$OMP DO
+    !$OMP PARALLEL DO
     ! Apply particle re-injection and RF operator:
     NC_loop3: DO i = 1,params%NC
        IF (plasma%f1(i) .EQ. 1 .OR. plasma%f2(i) .EQ. 1) THEN
@@ -236,20 +212,18 @@ NS_loop: DO j = 1,params%NS
            CALL RFOperator(i,plasma,fieldspline,params,uE3)
        END IF
     END DO NC_loop3
-    !$OMP END DO
+    !$OMP END PARALLEL DO
 
-    !$OMP DO REDUCTION(+:E3,N5,E5,ER)
+    !$OMP PARALLEL DO REDUCTION(+:E3,N5,E5,ER)
     ! Calculate RF power absorption and real particle source:
     NC_loop4: DO i = 1,params%NC
        E3 = E3 + (alpha/dt)*plasma%a(i)*plasma%f3(i)*plasma%dE3(i)*e_c
        N5 = N5 + (alpha/dt)*plasma%a(i)*(plasma%f1(i) + plasma%f2(i))
        E5 = E5 + (alpha/dt)*plasma%a(i)*(plasma%f1(i) + plasma%f2(i))*plasma%dE5(i)*e_c
-       IF (isnan(plasma%kep(i))) plasma%kep(i) = 0.
+       IF (isnan(plasma%kep(i))) WRITE(*,*) 'kep is NaN'
        ER = ER + alpha*plasma%a(i)*plasma%kep(i)*e_c
     END DO NC_loop4
-    !$OMP END DO
-
-    !$OMP END PARALLEL
+    !$OMP END PARALLEL DO
 
     ! Calculate new number of real particles NR and super-particles NSP:
     ! ==============================================================================
@@ -257,6 +231,19 @@ NS_loop: DO j = 1,params%NS
     dNSP = dNR/alpha
     NR  = NR  + dNR
     NSP = NSP + dNSP
+
+    IF(ISNAN(dNSP)) THEN
+      WRITE(*,*) 'a_new:', a_new
+      WRITE(*,*) 'N1:'   , N1
+      WRITE(*,*) 'N2:'   , N2
+      WRITE(*,*) 'uN1:'  , uN1
+      WRITE(*,*) 'uN2:'  , uN2
+      WRITE(*,*) 'a_new:', a_new
+      WRITE(*,*) 'alpha:', alpha
+      WRITE(*,*) 'dNR:'  , dNR
+      WRITE(*,*) 'dNSP is NaN'
+    END IF
+    IF(ISNAN(dNR/alpha)) WRITE(*,*) 'dNR/alpha is NaN'
 
     ! Assign new NR and NSP:
     ! ============================================================================

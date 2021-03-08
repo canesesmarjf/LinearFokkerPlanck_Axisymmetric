@@ -1,7 +1,7 @@
 &params_nml
 ! Simulation name:
 ! ===============
-params%fileDescriptor = '2021_03_01d',
+params%fileDescriptor = '2021_03_08a',
 
 ! Magnetic field input data:
 ! =========================
@@ -12,16 +12,16 @@ params%nz            = 501,                                                     
 
 ! Simulation conditions:
 ! =====================
-params%NC = 500000,                                                              ! Total number of particles
-params%NS = 50000,                                                              ! Total number of time steps
+params%NC = 50000,                                                              ! Total number of particles
+params%NS = 90000,                                                              ! Total number of time steps
 params%dt = 0.5E-7,                                                             ! Time step in [s]
 params%G  = 2.5E+20,                                                            ! Real particle injection rate 
 
 ! Time steps to record:
 ! ====================
 params%jstart = 1,                                                              ! start frame
-params%jend   = 50000,                                                          ! end frame
-params%jincr  = 500,                                                            ! increment
+params%jend   = 90000,                                                          ! end frame
+params%jincr  = 600,                                                            ! increment
 
 ! Domain geometry:
 ! ====================
@@ -30,6 +30,7 @@ params%r1     = 0.03                                                            
 params%r2     = 0.05                                                            ! Outer radius at reference location [m]
 params%zmax   = +3.0,                                                           ! Boundary 2 (right)
 params%zmin   = -3.0,                                                           ! Boundary 1 (left)
+params%NZmesh = 200,                                                            ! Mesh number of elements
 
 ! Physics:
 ! ======================

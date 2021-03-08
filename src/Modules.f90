@@ -213,7 +213,7 @@ END MODULE spline_fits
 ! plasmaTYP: Contain arrays of simulation data
 ! fieldSplineTYP: Contain splines for fields
 MODULE dataTYP
-USE local
+USE LOCAL
 USE spline_fits
 
 IMPLICIT NONE
@@ -232,6 +232,7 @@ TYPE paramsTYP
   INTEGER(i4) :: jstart, jend, jincr
   ! Domain geometry:
   REAL(r8) :: zmin, zmax, dtheta, r1, r2, Area0
+  INTEGER(i4) :: NZmesh
   ! Physics:
   LOGICAL :: iDrag, iPotential, iSave, iPush, iHeat, iColl
   ! Collision operator conditions:
@@ -265,11 +266,12 @@ TYPE plasmaTYP
  REAL(r8) :: Eplus, Eminus
  REAL(r8) :: Ndot1, Ndot2, Ndot3, Ndot4
  REAL(r8) :: Edot1, Edot2, Edot3, Edot4, uEdot3
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: n, nU, unU, U
 END TYPE plasmaTYP
 
 ! -----------------------------------------------------------------------------
 TYPE fieldSplineTYP
- TYPE(splTYP) :: B, dB, ddB, V, dV, U
+ TYPE(splTYP) :: B, dB, ddB, V, dV
 END TYPE fieldSplineTYP
 
 ! -----------------------------------------------------------------------------
@@ -282,7 +284,76 @@ TYPE outputTYP
  REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: Edot1, Edot2, Edot3, Edot4, Edot5
 END TYPE outputTYP
 
+! -----------------------------------------------------------------------------
+TYPE meshTYP
+ REAL(r8) , DIMENSION(:), ALLOCATABLE :: zm
+ REAL(r8) :: LZ, zmin, zmax, dz
+ INTEGER(i4) :: NZ
+END TYPE meshTYP
+
+TYPE fieldsTYP
+ REAL(r8) , DIMENSION(:), ALLOCATABLE :: E, B 
+ REAL(r8) , DIMENSION(:), ALLOCATABLE :: V, dB, ddB 
+END TYPE fieldsTYP
+
+
 CONTAINS
+! ----------------------------------------------------------------------------
+SUBROUTINE AllocateFields(fields,params)
+   IMPLICIT NONE
+   ! Declare interface variables:
+   TYPE(fieldsTYP), INTENT(INOUT) :: fields
+   TYPE(paramsTYP), INTENT(IN)    :: params
+
+   ! Declare local variables:
+   INTEGER(i4) :: NZ
+ 
+   ! Allocate memory to mesh:
+   NZ = params%NZmesh
+   ALLOCATE(fields%E(NZ),fields%B(NZ),fields%dB(NZ),fields%ddB(NZ))
+END SUBROUTINE AllocateFields
+
+! ----------------------------------------------------------------------------
+SUBROUTINE AllocateMesh(mesh,params)
+   IMPLICIT NONE
+   ! Declare interface variables:
+   TYPE(meshTYP)  , INTENT(INOUT) :: mesh
+   TYPE(paramsTYP), INTENT(IN)    :: params
+
+   ! Declare local variables:
+   INTEGER(i4) :: NZ
+ 
+   ! Allocate memory to mesh:
+   NZ = params%NZmesh
+   ALLOCATE(mesh%zm(NZ))
+END SUBROUTINE AllocateMesh
+
+! ----------------------------------------------------------------------------
+SUBROUTINE InitializeMesh(mesh,params)
+   IMPLICIT NONE
+   ! Declare interface variables:
+   TYPE(meshTYP)  , INTENT(INOUT) :: mesh
+   TYPE(paramsTYP), INTENT(IN)    :: params
+
+   ! Declare local variables:
+   INTEGER(i4), DIMENSION(params%NZ) :: m
+   INTEGER(i4) :: i
+
+   ! Populate fields:
+   mesh%NZ   = params%NZmesh
+   mesh%zmin = params%zmin
+   mesh%zmax = params%zmax
+
+   ! Derived quantities:
+   mesh%LZ = params%zmax - params%zmin
+   mesh%dz = mesh%LZ/mesh%NZ
+   m = (/ (i, i=1,mesh%NZ, 1) /)
+
+   ! Create mesh:
+   mesh%zm = (m-1)*mesh%dz + 0.5*mesh%dz + mesh%zmin
+
+END SUBROUTINE InitializeMesh
+
 ! ----------------------------------------------------------------------------
 SUBROUTINE AllocatePlasma(plasma,params)
    IMPLICIT NONE
@@ -400,7 +471,6 @@ SUBROUTINE AllocateFieldSpline(fieldspline,params)
    CALL AllocateSpline(fieldspline%ddB,NZ,0._8,0._8)
    CALL AllocateSpline(fieldspline%V  ,NZ,0._8,0._8)
    CALL AllocateSpline(fieldspline%dV ,NZ,0._8,0._8)
-   CALL AllocateSpline(fieldspline%U  ,NZ,0._8,0._8)
 
 END SUBROUTINE AllocateFieldSpline
 
@@ -417,7 +487,6 @@ SUBROUTINE ComputeFieldSpline(fieldspline)
    CALL ComputeSpline(fieldspline%ddB)
    CALL ComputeSpline(fieldspline%V)
    CALL ComputeSpline(fieldspline%dV)
-   CALL ComputeSpline(fieldspline%U)
 
 END SUBROUTINE ComputeFieldSpline
 
@@ -452,5 +521,41 @@ SUBROUTINE AllocateOutput(output,params)
    ALLOCATE(output%Edot1(NS),output%Edot2(NS),output%Edot3(NS),output%Edot4(NS) ,output%Edot5(NS))
   
 END SUBROUTINE AllocateOutput
+
+! ---------------------------------------------------------------------------
+SUBROUTINE PrintParamsToTerminal(params,inputFile)
+ IMPLICIT NONE
+ ! Declare interface variables:
+ TYPE(paramsTYP), INTENT(IN) :: params
+ CHARACTER*300 :: inputFile
+
+ ! Print to terminal:
+ WRITE(*,*) '' 
+ WRITE(*,*) '*********************************************************************'
+ WRITE(*,*) 'Input file:         ', TRIM(inputFile)
+ WRITE(*,*) 'fileDescriptor:     ', TRIM(params%fileDescriptor)
+ WRITE(*,*) 'Number of particles:', params%NC
+ WRITE(*,*) 'Number of steps:    ', params%NS
+ WRITE(*,*) 'Particle BC:        ', params%BC_Type
+ WRITE(*,*) 'dt [ns]:            ', params%dt*1E+9
+ WRITE(*,*) 'iPush:              ', params%iPush
+ WRITE(*,*) 'iDrag:              ', params%iDrag
+ WRITE(*,*) 'iColl:              ', params%iColl
+ WRITE(*,*) 'iHeat:              ', params%iHeat
+ WRITE(*,*) 'iSave:              ', params%iSave
+ WRITE(*,*) 'elevel:             ', params%elevel
+ WRITE(*,*) 'zTarget [m]:        ', params%zmax
+ WRITE(*,*) 'zDump [m]:          ', params%zmin
+ WRITE(*,*) 'BC_zp_mean [m]:     ', params%BC_zp_mean
+ WRITE(*,*) 'B field file:       ', TRIM(params%BFieldFile)
+ WRITE(*,*) 'Prf [kW]:           ', params%Prf*1E-3
+ WRITE(*,*) 'Te0:                ', params%Te0
+ WRITE(*,*) 'ne0:                ', params%ne0
+ IF (params%CollOperType .EQ. 1) WRITE(*,*) 'Boozer-Only collision operator'
+ IF (params%CollOperType .EQ. 2) WRITE(*,*) 'Boozer-Kim collision operator'
+ WRITE(*,*) '*********************************************************************'
+ WRITE(*,*) ''
+
+END SUBROUTINE PrintParamsToTerminal
 
 END MODULE dataTYP
