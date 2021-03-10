@@ -289,15 +289,15 @@ TYPE(paramsTYP), INTENT(IN)    :: params
 ! Define local variables:
 INTEGER(i4) :: i, ix, frame, NZ
 REAL(r8) :: vpar, Ma, Ep, alpha, xip, vper, v, a
-REAL(r8), DIMENSION(mesh%NZmesh + 4) :: n
+REAL(r8), DIMENSION(mesh%NZmesh + 4) :: n, nU, unU, P11, P22, nUE
  
 ! Initialize mesh quantities:
 n = 0.
-!nU = 0.
-!unU = 0.
-!mesh%P11 = 0.
-!mesh%P22 = 0.
-!mesh%nuE = 0.
+nU = 0.
+unU = 0.
+mesh%P11 = 0.
+mesh%P22 = 0.
+mesh%nUE = 0.
 
 ! Species "a" mass:
 Ma = params%Ma
@@ -307,7 +307,7 @@ alpha = plasma%alpha
 NZ = mesh%NZmesh + 4
 
 ! Calculate moments and extrapolate to mesh points
-!$OMP PARALLEL DO PRIVATE(ix,a,Ep,v,xip,vpar,vper) REDUCTION(+:n)
+!$OMP PARALLEL DO PRIVATE(ix,a,Ep,v,xip,vpar,vper) REDUCTION(+:n, nU, unU, P11, P22, nuE)
 DO i = 1,params%NC
 	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
 		
@@ -322,24 +322,65 @@ DO i = 1,params%NC
 		! Mesh point with ghost cells:
 		ix = plasma%m(i) + 2
 
-		! Plasma density: [NSP m^-3]
-		n(ix-1) = n(ix-1) + plasma%wL(i)*a;
-		n(ix)   = n(ix)   + plasma%wC(i)*a;
-		n(ix+1) = n(ix+1) + plasma%wR(i)*a;
+		! Particle density: [NSP m^-3]
+		n(ix-1)  = n(ix-1)    + plasma%wL(i)*a
+		n(ix)    = n(ix)      + plasma%wC(i)*a
+		n(ix+1)  = n(ix+1)    + plasma%wR(i)*a
+
+		! Particle flux density: [NSP m^-2 s^-1]
+		nU(ix-1)  = nU(ix-1)  + plasma%wL(i)*a*vpar
+		nU(ix)    = nU(ix)    + plasma%wC(i)*a*vpar
+		nU(ix+1)  = nU(ix+1)  + plasma%wR(i)*a*vpar
+
+		! Computational particle flux density: [NC m^-2 s^-1]
+		unU(ix-1) = unU(ix-1) + plasma%wL(i)*vpar
+		unU(ix)   = unU(ix)   + plasma%wC(i)*vpar
+		unU(ix+1) = unU(ix+1) + plasma%wR(i)*vpar
+
+		! Stress tensor 11:
+		P11(ix-1)  = P11(ix-1)  + plasma%wL(i)*a*Ma*vpar**2.
+		P11(ix)    = P11(ix)    + plasma%wC(i)*a*Ma*vpar**2.
+		P11(ix+1)  = P11(ix+1)  + plasma%wR(i)*a*Ma*vpar**2.
+
+		! Stress tensor 22:
+		P22(ix-1)  = P22(ix-1)  + plasma%wL(i)*a*Ma*vper**2.
+		P22(ix)    = P22(ix)    + plasma%wC(i)*a*Ma*vper**2.
+		P22(ix+1)  = P22(ix+1)  + plasma%wR(i)*a*Ma*vper**2.
+
+		! Energy flux density:
+		nUE(ix-1)  = nUE(ix-1)  + plasma%wL(i)*a*vpar*Ep
+		nUE(ix)    = nUE(ix)    + plasma%wC(i)*a*vpar*Ep
+		nUE(ix+1)  = nUE(ix+1)  + plasma%wR(i)*a*vpar*Ep
 
 	END IF
 END DO
 !$OMP END PARALLEL DO
 
 ! Apply magnetic compression:
-mesh%n = n/params%Area0
+mesh%n   =  n/params%Area0
+mesh%nU  = nU/params%Area0
+mesh%P11 = P11/params%Area0
+mesh%P22 = P22/params%Area0
+mesh%nUE = nUE/params%Area0
 
 ! Apply scaling factor:
-mesh%n = alpha*mesh%n/mesh%dzm
+mesh%n   = alpha*  mesh%n/mesh%dzm
+mesh%nU  = alpha* mesh%nU/mesh%dzm
+mesh%unU = alpha*mesh%unU/mesh%dzm
+mesh%P11 = alpha*mesh%P11/mesh%dzm
+mesh%P22 = alpha*mesh%P22/mesh%dzm
+mesh%nUE = alpha*mesh%nUE/mesh%dzm
 
 ! Apply smoothing:
 frame = 9
-CALL MovingMean(mesh%n,NZ,frame)
+!$OMP PARALLEL
+IF (OMP_GET_THREAD_NUM() .EQ. 0) CALL MovingMean(mesh%n  ,NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 1) CALL MovingMean(mesh%nU ,NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 2) CALL MovingMean(mesh%unU,NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 3) CALL MovingMean(mesh%P11,NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 4) CALL MovingMean(mesh%P22,NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 5) CALL MovingMean(mesh%nUE,NZ,frame)
+!$OMP END PARALLEL
 
 ! Calculate U, Tpar, Tper:
 
