@@ -1,7 +1,7 @@
 &params_nml
 ! Simulation name:
 ! ===============
-params%fileDescriptor = '2021_03_08a',
+params%fileDescriptor = '2021_03_09b',
 
 ! Magnetic field input data:
 ! =========================
@@ -12,16 +12,16 @@ params%nz            = 501,                                                     
 
 ! Simulation conditions:
 ! =====================
-params%NC = 50000,                                                              ! Total number of particles
-params%NS = 90000,                                                              ! Total number of time steps
+params%NC = 90000,                                                              ! Total number of particles
+params%NS = 50000,                                                              ! Total number of time steps
 params%dt = 0.5E-7,                                                             ! Time step in [s]
 params%G  = 2.5E+20,                                                            ! Real particle injection rate 
 
 ! Time steps to record:
 ! ====================
 params%jstart = 1,                                                              ! start frame
-params%jend   = 90000,                                                          ! end frame
-params%jincr  = 600,                                                            ! increment
+params%jend   = 50000,                                                          ! end frame
+params%jincr  = 500,                                                            ! increment
 
 ! Domain geometry:
 ! ====================
@@ -57,7 +57,7 @@ params%CollOperType = 2,                                                        
 params%BC_Type    = 2,                                                          ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
 params%BC_zp_mean = 0.0,                                                        ! Mean particle injection
 params%BC_zp_std  = 0.3,                                                        ! STD of particle injection
-params%BC_Ep      = 5000.,                                                      ! Drift kinetic energy
+params%BC_Ep      = 2000.,                                                      ! Drift kinetic energy
 params%BC_Tp      = 10,                                                         ! Thermal kinetic energy
 params%BC_xip     = 0.707,                                                      ! Mean pitch angle where xip = cos(theta) = vpar/v
 

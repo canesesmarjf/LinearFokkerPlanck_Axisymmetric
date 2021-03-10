@@ -6,7 +6,7 @@ OBJ_1 = Modules.o linFP.o PotentialProfile.o
 OBJ_2 = fitpack.o MoveParticlePack.o CoulombCollisions.o
 
 All: $(OBJ_1) $(OBJ_2)
-	gfortran  $(OPTFLAGS) -fopenmp $(OBJ_1) $(OBJ_2) -o linFP
+	$(COMPILER) $(OPTFLAGS) -fopenmp $(OBJ_1) $(OBJ_2) -o linFP
 	rm *.o *.mod
 
 Modules.o: Modules.f90
@@ -22,7 +22,7 @@ fitpack.o: fitpack.f
 	$(COMPILER) $(OPTFLAGS) -c -w fitpack.f
 
 MoveParticlePack.o: MoveParticlePack.f90
-	$(COMPILER) $(OPTFLAGS) -c MoveParticlePack.f90
+	$(COMPILER) $(OPTFLAGS) -c -fopenmp MoveParticlePack.f90
 
 CoulombCollisions.o: CoulombCollisions.f90
 	$(COMPILER) $(OPTFLAGS) -fopenmp -c CoulombCollisions.f90

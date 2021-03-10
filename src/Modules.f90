@@ -259,14 +259,14 @@ END TYPE paramsTYP
 ! -----------------------------------------------------------------------------
 TYPE plasmaTYP
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep,xip, a
- INTEGER(i4), DIMENSION(:), ALLOCATABLE :: f1, f2, f3, f4
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: wL, wC, wR
+ INTEGER(i4), DIMENSION(:), ALLOCATABLE :: m, f1, f2, f3, f4
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dE1, dE2, dE3, dE4, dE5
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: udE3, udErf, doppler
- REAL(r8) :: NR , NSP, alpha
+ REAL(r8) :: NR , NSP, alpha, tp
  REAL(r8) :: Eplus, Eminus
  REAL(r8) :: Ndot1, Ndot2, Ndot3, Ndot4
  REAL(r8) :: Edot1, Edot2, Edot3, Edot4, uEdot3
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: n, nU, unU, U
 END TYPE plasmaTYP
 
 ! -----------------------------------------------------------------------------
@@ -276,43 +276,30 @@ END TYPE fieldSplineTYP
 
 ! -----------------------------------------------------------------------------
 TYPE outputTYP
- REAL(r8) , DIMENSION(:,:), ALLOCATABLE :: zp, kep, xip, a
- REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: tp, jrng
- REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: NR, NSP, ER
- REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: Eplus, Eminus
- REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: Ndot1, Ndot2, Ndot3, Ndot4, Ndot5
- REAL(r8) , DIMENSION(:)  , ALLOCATABLE :: Edot1, Edot2, Edot3, Edot4, Edot5
+ REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: zp, kep, xip, a
+ INTEGER(i4), DIMENSION(:,:), ALLOCATABLE :: m
+ REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: tp, jrng
+ REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: NR, NSP, ER
+ REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: Eplus, Eminus
+ REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: Ndot1, Ndot2, Ndot3, Ndot4, Ndot5
+ REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: Edot1, Edot2, Edot3, Edot4, Edot5
+ REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: n, nU, unU, nUE, P11, P22, E, B, dB, ddB
+ REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: zm
+
 END TYPE outputTYP
 
 ! -----------------------------------------------------------------------------
 TYPE meshTYP
  REAL(r8) , DIMENSION(:), ALLOCATABLE :: zm
- REAL(r8) :: LZ, zmin, zmax, dz
- INTEGER(i4) :: NZ
+ REAL(r8) , DIMENSION(:), ALLOCATABLE :: n, nU, nUE, P11, P22
+ REAL(r8) , DIMENSION(:), ALLOCATABLE :: E, B, dB, ddB
+ REAL(r8) , DIMENSION(:), ALLOCATABLE :: unU
+ REAL(r8) :: LZ, zmin, zmax, dzm
+ INTEGER(i4) :: NZmesh
 END TYPE meshTYP
-
-TYPE fieldsTYP
- REAL(r8) , DIMENSION(:), ALLOCATABLE :: E, B 
- REAL(r8) , DIMENSION(:), ALLOCATABLE :: V, dB, ddB 
-END TYPE fieldsTYP
 
 
 CONTAINS
-! ----------------------------------------------------------------------------
-SUBROUTINE AllocateFields(fields,params)
-   IMPLICIT NONE
-   ! Declare interface variables:
-   TYPE(fieldsTYP), INTENT(INOUT) :: fields
-   TYPE(paramsTYP), INTENT(IN)    :: params
-
-   ! Declare local variables:
-   INTEGER(i4) :: NZ
- 
-   ! Allocate memory to mesh:
-   NZ = params%NZmesh
-   ALLOCATE(fields%E(NZ),fields%B(NZ),fields%dB(NZ),fields%ddB(NZ))
-END SUBROUTINE AllocateFields
-
 ! ----------------------------------------------------------------------------
 SUBROUTINE AllocateMesh(mesh,params)
    IMPLICIT NONE
@@ -321,11 +308,25 @@ SUBROUTINE AllocateMesh(mesh,params)
    TYPE(paramsTYP), INTENT(IN)    :: params
 
    ! Declare local variables:
-   INTEGER(i4) :: NZ
+   INTEGER(i4) :: NZmesh
  
    ! Allocate memory to mesh:
-   NZ = params%NZmesh
-   ALLOCATE(mesh%zm(NZ))
+   NZmesh = params%NZmesh
+   ALLOCATE(mesh%zm(NZmesh))
+
+   ! Allocate memory for mesh defined quantities:
+   ! Ghost cells are used:
+   ALLOCATE(mesh%n(NZmesh + 4))
+   ALLOCATE(mesh%nU(NZmesh + 4))
+   ALLOCATE(mesh%unU(NZmesh + 4))
+   ALLOCATE(mesh%P11(NZmesh + 4))
+   ALLOCATE(mesh%P22(NZmesh + 4))
+   ALLOCATE(mesh%nuE(NZmesh + 4))
+   ALLOCATE(mesh%B(NZmesh + 4))
+   ALLOCATE(mesh%dB(NZmesh + 4))
+   ALLOCATE(mesh%ddB(NZmesh + 4))
+   ALLOCATE(mesh%E(NZmesh + 4))
+
 END SUBROUTINE AllocateMesh
 
 ! ----------------------------------------------------------------------------
@@ -336,21 +337,33 @@ SUBROUTINE InitializeMesh(mesh,params)
    TYPE(paramsTYP), INTENT(IN)    :: params
 
    ! Declare local variables:
-   INTEGER(i4), DIMENSION(params%NZ) :: m
+   INTEGER(i4), DIMENSION(params%NZmesh) :: m
    INTEGER(i4) :: i
 
    ! Populate fields:
-   mesh%NZ   = params%NZmesh
-   mesh%zmin = params%zmin
-   mesh%zmax = params%zmax
+   mesh%NZmesh   = params%NZmesh
+   mesh%zmin     = params%zmin
+   mesh%zmax     = params%zmax
 
    ! Derived quantities:
-   mesh%LZ = params%zmax - params%zmin
-   mesh%dz = mesh%LZ/mesh%NZ
-   m = (/ (i, i=1,mesh%NZ, 1) /)
+   mesh%LZ  = params%zmax - params%zmin
+   mesh%dzm = mesh%LZ/mesh%NZmesh
+   m = (/ (i, i=1,mesh%NZmesh, 1) /)
 
    ! Create mesh:
-   mesh%zm = (m-1)*mesh%dz + 0.5*mesh%dz + mesh%zmin
+   mesh%zm = (m-1)*mesh%dzm + 0.5*mesh%dzm + mesh%zmin
+
+   ! Initialize all mesh-defined quantities:
+   mesh%n   = 0.
+   mesh%nU  = 0.
+   mesh%unU = 0.
+   mesh%nUE = 0.
+   mesh%P11 = 0.
+   mesh%P22 = 0.
+   mesh%B   = 0.
+   mesh%E   = 0.
+   mesh%dB  = 0.
+   mesh%ddB = 0.
 
 END SUBROUTINE InitializeMesh
 
@@ -367,8 +380,9 @@ SUBROUTINE AllocatePlasma(plasma,params)
    ! NC: Number of computational particles
    NC = params%NC
  
-   ! Allocate memory: For all computational particles
+   ! Allocate memory: for all computational particles
    ALLOCATE(plasma%zp(NC)  ,plasma%kep(NC) ,plasma%xip(NC) ,plasma%a(NC))
+   ALLOCATE(plasma%m(NC)   ,plasma%wL(NC)  ,plasma%wC(NC)  ,plasma%wR(NC))
    ALLOCATE(plasma%f1(NC)  ,plasma%f2(NC)  ,plasma%f3(NC)  ,plasma%f4(NC))
    ALLOCATE(plasma%dE1(NC) ,plasma%dE2(NC) ,plasma%dE3(NC) ,plasma%dE4(NC), plasma%dE5(NC))
    ALLOCATE(plasma%udErf(NC))
@@ -402,6 +416,7 @@ SUBROUTINE InitializePlasma(plasma,params)
    END IF
    
    ! Initialize plasma: scalar quantities:
+   plasma%tp      = 0.
    plasma%NR      = params%ne0*params%Area0*(params%zmax - params%zmin)
    plasma%NSP     = params%NC
    plasma%alpha   = plasma%NR/plasma%NSP
@@ -498,7 +513,7 @@ SUBROUTINE AllocateOutput(output,params)
    TYPE(paramsTYP), INTENT(IN)    :: params
    
    ! Declare local variables:
-   INTEGER(i4) :: j, jsize, NS
+   INTEGER(i4) :: j, jsize, NS, NZmesh
 
    ! Determine size of temporal snapshots to record:
    jsize = (params%jend-params%jstart+1)/params%jincr
@@ -509,6 +524,7 @@ SUBROUTINE AllocateOutput(output,params)
    ALLOCATE(output%kep(params%NC,jsize))
    ALLOCATE(output%xip(params%NC,jsize))
    ALLOCATE(output%a(params%NC  ,jsize))
+   ALLOCATE(output%m(params%NC  ,jsize))
    ALLOCATE(output%tp(jsize))
 
    ! Create array with the indices of the time steps to save:
@@ -520,9 +536,23 @@ SUBROUTINE AllocateOutput(output,params)
    ALLOCATE(output%Ndot1(NS),output%Ndot2(NS),output%Ndot3(NS),output%Ndot4(NS) ,output%Ndot5(NS))
    ALLOCATE(output%Edot1(NS),output%Edot2(NS),output%Edot3(NS),output%Edot4(NS) ,output%Edot5(NS))
   
+  ! Allocate memory for mesh-defined quantities:
+  NZmesh = params%NZmesh
+  ALLOCATE(output%zm(NZmesh))
+  ALLOCATE(output%n(NZmesh + 4  ,jsize))
+  ALLOCATE(output%nU(NZmesh + 4 ,jsize))
+  ALLOCATE(output%unU(NZmesh + 4,jsize))
+  ALLOCATE(output%nUE(NZmesh + 4,jsize))
+  ALLOCATE(output%P11(NZmesh + 4,jsize))
+  ALLOCATE(output%P22(NZmesh + 4,jsize))
+  ALLOCATE(output%B(NZmesh + 4  ,jsize))
+  ALLOCATE(output%E(NZmesh +4   ,jsize))
+  ALLOCATE(output%dB(NZmesh + 4 ,jsize))
+  ALLOCATE(output%ddB(NZmesh + 4,jsize))
+
 END SUBROUTINE AllocateOutput
 
-! ---------------------------------------------------------------------------
+! =================================================================================
 SUBROUTINE PrintParamsToTerminal(params,inputFile)
  IMPLICIT NONE
  ! Declare interface variables:
@@ -557,5 +587,124 @@ SUBROUTINE PrintParamsToTerminal(params,inputFile)
  WRITE(*,*) ''
 
 END SUBROUTINE PrintParamsToTerminal
+
+! =================================================================================
+SUBROUTINE SaveData(output,dir1)
+  IMPLICIT NONE
+
+ !Declare interface variables:
+ TYPE(outputTYP), INTENT(IN) :: output
+ CHARACTER*300  , INTENT(IN) :: dir1
+
+ ! Declare local variables:
+ CHARACTER*300 :: fileName
+ 
+ WRITE(*,*) "Saving data ..."
+
+    ! Save plasma quantities:
+    ! --------------------------------------------------------------------------
+    fileName = TRIM(TRIM(dir1)//'/'//'zp.out')
+    OPEN(UNIT=8,FILE=fileName,FORM="unformatted",STATUS="unknown")
+    WRITE(8) output%zp
+    CLOSE(UNIT=8)
+    fileName = trim(trim(dir1)//'/'//'kep.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%kep
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'xip.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%xip
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'a.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%a
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'tp.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%tp
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'m.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%m
+    CLOSE(unit=8)
+
+    ! Saving mesh-defined quantities:
+    ! -------------------------------------------------------------------------
+    fileName = trim(trim(dir1)//'/'//'z_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%zm
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'n_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%n
+    CLOSE(unit=8)
+
+
+    ! Saving pcount to file:
+    ! --------------------------------------------------------------------------
+    fileName = trim(trim(dir1)//'/'//'pcount1.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Ndot1
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'pcount2.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Ndot2
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'pcount3.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Ndot3
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'pcount4.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Ndot4
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'pcount5.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Ndot5
+    CLOSE(unit=8)
+
+
+    ! Saving ecount to file:
+    ! --------------------------------------------------------------------------
+    fileName = trim(trim(dir1)//'/'//'ecount1.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Edot1
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'ecount2.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Edot2
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'ecount3.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Edot3
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'ecount4.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Edot4
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'ecount5.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Edot5
+    CLOSE(unit=8)
+
+
+    ! Save ER, NR and NSP:
+    ! -------------------------------------------------------------------------
+    fileName = trim(trim(dir1)//'/'//'ER.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%ER
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'NR.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%NR
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'NSP.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%NSP
+    CLOSE(unit=8)
+
+ WRITE(*,*) "Data saving complete"
+
+END SUBROUTINE SaveData
 
 END MODULE dataTYP

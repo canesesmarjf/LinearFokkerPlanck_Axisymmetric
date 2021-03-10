@@ -1,4 +1,98 @@
 ! =======================================================================================================
+SUBROUTINE AdvanceParticles(plasma,fieldspline,params)
+! =======================================================================================================
+USE local
+USE dataTYP
+USE OMP_LIB
+
+IMPLICIT NONE
+
+! Declare interface variables:
+TYPE(plasmaTYP)     , INTENT(INOUT) :: plasma
+TYPE(paramsTYP)     , INTENT(IN)    :: params
+TYPE(fieldSplineTYP), INTENT(IN)    :: fieldspline
+
+! Declare local variables:
+REAL(r8) :: dresNum, resNum0, resNum1
+INTEGER(i4) :: i
+	
+! Initialize resonance number:
+dresNum = 0.
+resNum0 = 0.
+resNum1 = 0.
+
+!$OMP PARALLEL DO FIRSTPRIVATE(dresNum, resNum0, resNum1) SCHEDULE(STATIC) 
+DO i = 1,params%NC
+
+	! 2.1 - Reset flags:
+	CALL ResetFlags(i,plasma)
+		
+	! 2.2- Compute resonance number:
+	IF (params%iHeat) THEN
+		CALL CyclotronResonanceNumber(i,plasma,fieldspline,params,resNum0)
+        END IF
+		
+	! 2.3- Advance zp, kep, xip:
+	IF (params%iPush) THEN
+		CALL  MoveParticle(i,plasma,fieldspline,params)
+        END IF
+		
+	! 2.4- Check boundaries: set f1 and f2 flags
+	IF (params%iPush) THEN
+		CALL CheckBoundary(i,plasma,params)
+	END IF
+	
+        ! Apply Coulomb collision operator:
+        ! ------------------------------------------------------------------------
+        IF (params%iColl) THEN
+		CALL collisionOperator(i,plasma,params)
+	END IF
+
+	! 2.5- Compute resonance number:
+	IF (params%iHeat) THEN
+		CALL CyclotronResonanceNumber(i,plasma,fieldspline,params,resNum0)
+        END IF
+		
+	! 2.6- Check resonance: set f3 flag
+	IF (params%iHeat) THEN
+		dresNum = dsign(1.d0,resNum0*resNum1)
+		IF (dresNum .LT. 0 .AND. plasma%zp(i) .GT. params%zRes1 .AND. plasma%zp(i) .LT. params%zRes2) THEN
+        		plasma%f3(i) = 1
+			CALL RFoperatorTerms(i,plasma,fieldspline,params)
+ 		END IF
+        END IF
+END DO
+!$OMP END PARALLEL DO
+
+RETURN
+END SUBROUTINE AdvanceParticles
+
+! =======================================================================================================
+SUBROUTINE CheckBoundary(i,plasma,params)
+! =======================================================================================================
+USE LOCAL
+USE dataTYP
+
+IMPLICIT NONE
+
+! Declare interface variables:
+INTEGER(i4),     INTENT(IN)    :: i
+TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+TYPE(paramsTYP), INTENT(IN)    :: params
+
+IF (plasma%zp(i) .GE. params%zmax) THEN
+	plasma%f2(i)  = 1
+	plasma%dE2(i) = plasma%kep(i)
+ELSE IF (plasma%zp(i) .LE. params%zmin) THEN
+	plasma%f1(i)  = 1
+	plasma%dE1(i) = plasma%kep(i)
+END IF
+
+RETURN
+END SUBROUTINE CheckBoundary
+
+
+! =======================================================================================================
 SUBROUTINE MoveParticle(i,plasma,fieldspline,params)
 ! =======================================================================================================
 USE local
@@ -132,6 +226,122 @@ M = 0
 
 RETURN
 END SUBROUTINE RightHandSide
+
+! =======================================================================================================
+SUBROUTINE AssignCell(plasma,mesh,params)
+! =======================================================================================================
+USE LOCAL
+USE dataTYP
+USE OMP_LIB
+
+IMPLICIT NONE
+
+! Define interface variables:
+TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+TYPE(meshTYP)  , INTENT(IN)    :: mesh
+TYPE(paramsTYP), INTENT(IN)    :: params
+
+! Declare local variables:
+INTEGER(i4) :: i
+REAL(r8)    :: Z, dz, zi, zoffset
+
+! Mesh grid size:
+dz      = mesh%dzm
+! Mesh offset:
+zoffset = mesh%zmin
+
+!$OMP PARALLEL DO PRIVATE(zi,Z)
+DO i = 1,params%NC
+	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
+	   
+	! Using zm and zp, find nearest grid point (NGP):
+	zi = plasma%zp(i)
+	plasma%m(i) = NINT(0.5 + (zi - zoffset)/dz)
+		
+	! Compute wL(i), wC(i), wR(i)
+	Z = mesh%zm(plasma%m(i)) - zi
+	plasma%wC(i) = 0.75 - (Z/dz)**2.
+	plasma%wL(i) = 0.5*(1.5 + ((Z - dz)/dz) )**2.
+	plasma%wR(i) = 0.5*(1.5 - ((Z + dz)/dz) )**2.
+	
+	END IF
+END DO	
+!$OMP END PARALLEL DO
+
+RETURN
+END SUBROUTINE AssignCell
+
+! =======================================================================================================
+SUBROUTINE ExtrapolateMomentsToMesh(plasma,mesh,params)
+! =======================================================================================================
+USE LOCAL
+USE PhysicalConstants
+USE dataTYP
+USE OMP_LIB
+
+IMPLICIT NONE
+
+! Define interface variables:
+TYPE(plasmaTYP), INTENT(IN)    :: plasma
+TYPE(meshTYP)  , INTENT(INOUT) :: mesh
+TYPE(paramsTYP), INTENT(IN)    :: params
+
+! Define local variables:
+INTEGER(i4) :: i, ix, frame
+REAL(r8) :: vpar, Ma, Ep, alpha, xip, vper, v, a
+
+! Initialize mesh quantities:
+mesh%n = 0.
+mesh%nU = 0.
+mesh%unU = 0.
+mesh%P11 = 0.
+mesh%P22 = 0.
+mesh%nuE = 0.
+
+! Species "a" mass:
+Ma = params%Ma
+! Scaling factor:
+alpha = plasma%alpha
+
+! Calculate moments and extrapolate to mesh points
+!$OMP PARALLEL DO private(ix,a,Ep,v,xip,vpar,vper)
+DO i = 1,params%NC
+	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
+		
+		! Derived quantities:
+		a    = plasma%a(i)
+		Ep   = e_c*plasma%kep(i)
+		v    = sqrt(2*Ep/Ma)
+		xip  = plasma%xip(i)
+		vpar = v*xip
+		vper = v*sqrt(1 - xip**2.)
+
+		! Mesh point with ghost cells:
+		ix = plasma%m(i) + 2
+
+		! Plasma density: [NSP m^-3]
+		mesh%n(ix-1) = mesh%n(ix-1) + plasma%wL(i)*a;
+		mesh%n(ix)   = mesh%n(ix)   + plasma%wC(i)*a;
+		mesh%n(ix+1) = mesh%n(ix+1) + plasma%wR(i)*a;
+
+	END IF
+END DO
+!$OMP END PARALLEL DO
+
+! Apply magnetic compression:
+mesh%n = mesh%n/params%Area0
+
+! Apply scaling factor:
+mesh%n = alpha*mesh%n/mesh%dzm
+
+! Apply smoothing:
+frame = 9
+! CALL MovingMean(mesh%n  ,frame)
+
+! Calculate U, Tpar, Tper:
+
+END SUBROUTINE ExtrapolateMomentsToMesh
+
 
 ! =======================================================================================================
 SUBROUTINE ReinjectParticles(i,plasma,params)
