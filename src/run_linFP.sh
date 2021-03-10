@@ -9,7 +9,7 @@ INPUT_FILE="xp_TestDrag.in"
 
 # Set number of threads:
 # ===================================================
-export OMP_NUM_THREADS=96
+export OMP_NUM_THREADS=48
 
 # Set processor binding for openMP:
 # ===================================================

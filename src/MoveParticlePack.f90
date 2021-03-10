@@ -289,14 +289,15 @@ TYPE(paramsTYP), INTENT(IN)    :: params
 ! Define local variables:
 INTEGER(i4) :: i, ix, frame
 REAL(r8) :: vpar, Ma, Ep, alpha, xip, vper, v, a
-
+REAL(r8), DIMENSION(mesh%NZmesh + 4) :: n
+ 
 ! Initialize mesh quantities:
-mesh%n = 0.
-mesh%nU = 0.
-mesh%unU = 0.
-mesh%P11 = 0.
-mesh%P22 = 0.
-mesh%nuE = 0.
+n = 0.
+!mesh%nU = 0.
+!mesh%unU = 0.
+!mesh%P11 = 0.
+!mesh%P22 = 0.
+!mesh%nuE = 0.
 
 ! Species "a" mass:
 Ma = params%Ma
@@ -304,7 +305,10 @@ Ma = params%Ma
 alpha = plasma%alpha
 
 ! Calculate moments and extrapolate to mesh points
-!$OMP PARALLEL DO private(ix,a,Ep,v,xip,vpar,vper)
+! mesh quantities need to be private to prevent race conditions 
+! if they are declared shared
+
+!$OMP PARALLEL DO PRIVATE(ix,a,Ep,v,xip,vpar,vper) REDUCTION(+:n)
 DO i = 1,params%NC
 	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
 		
@@ -320,16 +324,16 @@ DO i = 1,params%NC
 		ix = plasma%m(i) + 2
 
 		! Plasma density: [NSP m^-3]
-		mesh%n(ix-1) = mesh%n(ix-1) + plasma%wL(i)*a;
-		mesh%n(ix)   = mesh%n(ix)   + plasma%wC(i)*a;
-		mesh%n(ix+1) = mesh%n(ix+1) + plasma%wR(i)*a;
+		n(ix-1) = n(ix-1) + plasma%wL(i)*a;
+		n(ix)   = n(ix)   + plasma%wC(i)*a;
+		n(ix+1) = n(ix+1) + plasma%wR(i)*a;
 
 	END IF
 END DO
 !$OMP END PARALLEL DO
 
 ! Apply magnetic compression:
-mesh%n = mesh%n/params%Area0
+mesh%n = n/params%Area0
 
 ! Apply scaling factor:
 mesh%n = alpha*mesh%n/mesh%dzm
