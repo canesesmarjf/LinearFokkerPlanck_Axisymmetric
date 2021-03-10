@@ -287,14 +287,14 @@ TYPE(meshTYP)  , INTENT(INOUT) :: mesh
 TYPE(paramsTYP), INTENT(IN)    :: params
 
 ! Define local variables:
-INTEGER(i4) :: i, ix, frame
+INTEGER(i4) :: i, ix, frame, NZ
 REAL(r8) :: vpar, Ma, Ep, alpha, xip, vper, v, a
 REAL(r8), DIMENSION(mesh%NZmesh + 4) :: n
  
 ! Initialize mesh quantities:
 n = 0.
-!mesh%nU = 0.
-!mesh%unU = 0.
+!nU = 0.
+!unU = 0.
 !mesh%P11 = 0.
 !mesh%P22 = 0.
 !mesh%nuE = 0.
@@ -303,11 +303,10 @@ n = 0.
 Ma = params%Ma
 ! Scaling factor:
 alpha = plasma%alpha
+! Size of mesh quantities:
+NZ = mesh%NZmesh + 4
 
 ! Calculate moments and extrapolate to mesh points
-! mesh quantities need to be private to prevent race conditions 
-! if they are declared shared
-
 !$OMP PARALLEL DO PRIVATE(ix,a,Ep,v,xip,vpar,vper) REDUCTION(+:n)
 DO i = 1,params%NC
 	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
@@ -340,12 +339,55 @@ mesh%n = alpha*mesh%n/mesh%dzm
 
 ! Apply smoothing:
 frame = 9
-! CALL MovingMean(mesh%n  ,frame)
+CALL MovingMean(mesh%n,NZ,frame)
 
 ! Calculate U, Tpar, Tper:
 
 END SUBROUTINE ExtrapolateMomentsToMesh
 
+! =======================================================================================================
+SUBROUTINE MovingMean(y,NX,k)
+! =======================================================================================================
+USE LOCAL
+USE dataTYP
+
+IMPLICIT NONE
+
+! Define interface variables:
+INTEGER(i4),  INTENT(IN) :: NX, k
+REAL(r8)   , DIMENSION(NX), INTENT(INOUT) :: y
+
+! Define local variables:
+REAL(r8), DIMENSION(NX) :: ym
+REAL(r8) :: yd
+INTEGER(i4) :: s, ii, jj, istart, iend, N 
+
+! Half frame size:
+s = (k-1)/2
+
+DO ii = 1,NX
+	! Start and end of frame:
+	istart = ii-s
+	iend   = ii+s
+
+	! Correct frame at edges:
+	IF (istart .LE. 0 ) istart = 1
+	IF (iend   .GT. NX) iend   = NX
+
+	! Effective frame size:
+	N = iend - istart + 1
+
+	! Calculate mean:
+	yd = 0.
+	DO jj = istart,iend
+		yd = yd + y(jj)/N
+	END DO
+	ym(ii) = yd
+END DO
+
+y = ym
+
+END SUBROUTINE MovingMean
 
 ! =======================================================================================================
 SUBROUTINE ReinjectParticles(i,plasma,params)
