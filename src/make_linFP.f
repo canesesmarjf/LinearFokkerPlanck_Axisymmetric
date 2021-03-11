@@ -18,9 +18,6 @@ linFP.o: linFP.f90
 PotentialProfile.o: PotentialProfile.f90
 	$(COMPILER) $(OPTFLAGS) -c PotentialProfile.f90
 
-fitpack.o: fitpack.f
-	$(COMPILER) $(OPTFLAGS) -c -w fitpack.f
-
 MoveParticlePack.o: MoveParticlePack.f90
 	$(COMPILER) $(OPTFLAGS) -c -fopenmp MoveParticlePack.f90
 

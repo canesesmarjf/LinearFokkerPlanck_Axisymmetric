@@ -258,12 +258,15 @@ END TYPE paramsTYP
 
 ! -----------------------------------------------------------------------------
 TYPE plasmaTYP
+ ! Particle quantities:
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep,xip, a
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: wL, wC, wR
- REAL(r8)   , DIMENSION(:), ALLOCATABLE :: n, U, Tpar, Tper, B, E, dB, ddB
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: np, Up, Tparp, Tperp
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: Bp, Ep, dBp, ddBp
  INTEGER(i4), DIMENSION(:), ALLOCATABLE :: m, f1, f2, f3, f4
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dE1, dE2, dE3, dE4, dE5
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: udE3, udErf, doppler
+ ! Global quantities (scalars):
  REAL(r8) :: NR , NSP, alpha, tp
  REAL(r8) :: Eplus, Eminus
  REAL(r8) :: Ndot1, Ndot2, Ndot3, Ndot4
@@ -277,13 +280,17 @@ END TYPE fieldSplineTYP
 
 ! -----------------------------------------------------------------------------
 TYPE outputTYP
+ ! Particle quantities:
  REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: zp, kep, xip, a
  INTEGER(i4), DIMENSION(:,:), ALLOCATABLE :: m
+ REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: np, Up, Tparp, Tperp
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: tp, jrng
+! Global quantities:
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: NR, NSP, ER
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: Eplus, Eminus
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: Ndot1, Ndot2, Ndot3, Ndot4, Ndot5
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: Edot1, Edot2, Edot3, Edot4, Edot5
+! Mesh quantities:
  REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: n, nU, unU, nUE, P11, P22, E, B, dB, ddB
  REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: U, Ppar, Pper, Tpar, Tper
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: zm
@@ -363,16 +370,16 @@ SUBROUTINE InitializeMesh(mesh,params,fieldspline)
    mesh%zm = (m-1)*mesh%dzm + 0.5*mesh%dzm + mesh%zmin
 
    ! Initialize all mesh-defined quantities:
-   mesh%n    = 0. ! interpolation?
+   mesh%n    = 0.
    mesh%nU   = 0.
    mesh%unU  = 0.
    mesh%nUE  = 0.
    mesh%P11  = 0.
    mesh%P22  = 0.
-   mesh%B    = 0. ! Interpolation?
+   mesh%B    = 0. ! Needs to be interpolated from fieldspline%B 
    mesh%E    = 0.
-   mesh%dB   = 0. ! Interpolation?
-   mesh%ddB  = 0. ! Interpolation?
+   mesh%dB   = 0. ! Needs to be interpolated from fieldspline%dB
+   mesh%ddB  = 0. ! Needs to be interpolated from fieldspline%ddB
    mesh%U    = 0.
    mesh%Ppar = 0.
    mesh%Pper = 0.
@@ -394,13 +401,13 @@ SUBROUTINE AllocatePlasma(plasma,params)
    ! NC: Number of computational particles
    NC = params%NC
  
-   ! Allocate memory: for all computational particles
-   ALLOCATE(plasma%zp(NC)  ,plasma%kep(NC) ,plasma%xip(NC) ,plasma%a(NC))
-   ALLOCATE(plasma%m(NC)   ,plasma%wL(NC)  ,plasma%wC(NC)  ,plasma%wR(NC))
-   ALLOCATE(plasma%n(NC)   ,plasma%U(NC)   ,plasma%Tpar(NC),plasma%Tper(NC))
-   ALLOCATE(plasma%B(NC)   ,plasma%E(NC)   ,plasma%dB(NC)  ,plasma%ddB(NC))
-   ALLOCATE(plasma%f1(NC)  ,plasma%f2(NC)  ,plasma%f3(NC)  ,plasma%f4(NC))
-   ALLOCATE(plasma%dE1(NC) ,plasma%dE2(NC) ,plasma%dE3(NC) ,plasma%dE4(NC), plasma%dE5(NC))
+   ! Allocate memory: Particle quantities: 
+   ALLOCATE(plasma%zp(NC)  ,plasma%kep(NC) ,plasma%xip(NC)  ,plasma%a(NC))
+   ALLOCATE(plasma%m(NC)   ,plasma%wL(NC)  ,plasma%wC(NC)   ,plasma%wR(NC))
+   ALLOCATE(plasma%np(NC)  ,plasma%Up(NC)  ,plasma%Tparp(NC),plasma%Tperp(NC))
+   ALLOCATE(plasma%Bp(NC)  ,plasma%Ep(NC)  ,plasma%dBp(NC)  ,plasma%ddBp(NC))
+   ALLOCATE(plasma%f1(NC)  ,plasma%f2(NC)  ,plasma%f3(NC)   ,plasma%f4(NC))
+   ALLOCATE(plasma%dE1(NC) ,plasma%dE2(NC) ,plasma%dE3(NC)  ,plasma%dE4(NC), plasma%dE5(NC))
    ALLOCATE(plasma%udErf(NC))
    ALLOCATE(plasma%doppler(NC))
    ALLOCATE(plasma%udE3(NC))
@@ -458,14 +465,14 @@ SUBROUTINE InitializePlasma(plasma,params)
 
    !$OMP PARALLEL DO
    DO i = 1,params%NC
-     plasma%n(i)    = params%ne0
-     plasma%U(i)    = 0.
-     plasma%Tpar(i) = params%Ti0
-     plasma%Tper(i) = params%Ti0
-     plasma%B(i)    = 0.
-     plasma%E(i)    = 0.
-     plasma%dB(i)   = 0.
-     plasma%ddB(i)  = 0.
+     plasma%np(i)    = 0.
+     plasma%Up(i)    = 0.
+     plasma%Tparp(i) = 0.
+     plasma%Tperp(i) = 0.
+     plasma%Bp(i)    = 0. ! Needs to be PIC interpolated from mesh%B
+     plasma%Ep(i)    = 0.
+     plasma%dBp(i)   = 0. ! Needs to be PIC interpolated from mesh%dB
+     plasma%ddBp(i)  = 0. ! Needs to be PIC interpolated from mesh%ddB
    END DO
    !$OMP END PARALLEL DO
 
@@ -547,25 +554,29 @@ SUBROUTINE AllocateOutput(output,params)
    ! Determine size of temporal snapshots to record:
    jsize = (params%jend-params%jstart+1)/params%jincr
    
-   ! Allocate memory:
+   ! Allocate memory: Particle quantities
    ALLOCATE(output%jrng(jsize))
    ALLOCATE(output%zp(params%NC ,jsize))
    ALLOCATE(output%kep(params%NC,jsize))
    ALLOCATE(output%xip(params%NC,jsize))
    ALLOCATE(output%a(params%NC  ,jsize))
    ALLOCATE(output%m(params%NC  ,jsize))
+   ALLOCATE(output%np(params%NC  ,jsize))
+   ALLOCATE(output%Up(params%NC  ,jsize))
+   ALLOCATE(output%Tparp(params%NC  ,jsize))
+   ALLOCATE(output%Tperp(params%NC  ,jsize))
    ALLOCATE(output%tp(jsize))
 
    ! Create array with the indices of the time steps to save:
    output%jrng = (/ (j, j=params%jstart, params%jend, params%jincr) /)
 
-  ! Allocate memory: For all time steps
+  ! Allocate memory: Global quantities
    NS = params%NS
    ALLOCATE(output%NR(NS)   ,output%NSP(NS)  ,output%Eplus(NS),output%Eminus(NS),output%ER(NS))
    ALLOCATE(output%Ndot1(NS),output%Ndot2(NS),output%Ndot3(NS),output%Ndot4(NS) ,output%Ndot5(NS))
    ALLOCATE(output%Edot1(NS),output%Edot2(NS),output%Edot3(NS),output%Edot4(NS) ,output%Edot5(NS))
   
-  ! Allocate memory for mesh-defined quantities:
+  ! Allocate memory: mesh-defined quantities:
   NZmesh = params%NZmesh
   ALLOCATE(output%zm(NZmesh))
   ALLOCATE(output%n(NZmesh + 4  ,jsize))
@@ -635,7 +646,7 @@ SUBROUTINE SaveData(output,dir1)
  
  WRITE(*,*) "Saving data ..."
 
-    ! Save plasma quantities:
+    ! Save particle quantities:
     ! --------------------------------------------------------------------------
     fileName = TRIM(TRIM(dir1)//'/'//'zp.out')
     OPEN(UNIT=8,FILE=fileName,FORM="unformatted",STATUS="unknown")
@@ -660,6 +671,22 @@ SUBROUTINE SaveData(output,dir1)
     fileName = trim(trim(dir1)//'/'//'m.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%m
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'np.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%np
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'Up.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Up
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'Tparp.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Tparp
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'Tperp.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Tperp
     CLOSE(unit=8)
 
     ! Saving mesh-defined quantities:

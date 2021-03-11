@@ -15,10 +15,55 @@ TYPE(paramsTYP), INTENT(IN)    :: params
 
 ! Define local variables:
 INTEGER(i4) :: i, ix
+REAL(r8), DIMENSION (3) :: w, n, U, Tpar, Tper
 
-! Interpolate n and U to particle positions:
+! Interpolate n ,U ,Tpar and Tper to particle positions:
+! =========================================
+!$OMP PARALLEL DO PRIVATE(ix, w, n, U, Tpar, Tper)
+DO i = 1,params%NC
+	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
+		! Get nearest grid point:
+		ix = plasma%m(i) + 2
+		
+		! Assignment function:
+		w(1) = plasma%wL(i)
+		w(2) = plasma%wC(i)
+		w(3) = plasma%wR(i)
+		
+		! Plasma density:
+		n(1) = mesh%n(ix - 1)
+		n(2) = mesh%n(ix)
+		n(3) = mesh%n(ix + 1)
+		plasma%np(i) = w(1)*n(1) + w(2)*n(2) + w(3)*n(3)  
 
+		! Parallel drift velocity:
+		U(1) = mesh%U(ix - 1)
+		U(2) = mesh%U(ix)
+		U(3) = mesh%U(ix + 1)
+		plasma%Up(i) = w(1)*U(1) + w(2)*U(2) + w(3)*U(3)  
 
+		! Parallel Temperature:
+		Tpar(1) = mesh%Tpar(ix - 1)
+		Tpar(2) = mesh%Tpar(ix)
+		Tpar(3) = mesh%Tpar(ix + 1)
+		plasma%Tparp(i) = w(1)*Tpar(1) + w(2)*Tpar(2) + w(3)*Tpar(3) 
+
+ 		! Perpendicular Temperature:
+		Tper(1) = mesh%Tper(ix - 1)
+		Tper(2) = mesh%Tper(ix)
+		Tper(3) = mesh%Tper(ix + 1)
+		plasma%Tperp(i) = w(1)*Tper(1) + w(2)*Tper(2) + w(3)*Tper(3) 
+	END IF
+END DO
+!$OMP END PARALLEL DO
+
+! Apply collision operator:
+! =========================
+!$OMP PARALLEL DO
+ DO i = 1,params%NC
+	 CALL CollisionOperator(i,plasma,params)
+ END DO
+!$OMP END PARALLEL DO
 
 END SUBROUTINE ApplyCollisionOperator
 
@@ -36,7 +81,6 @@ IMPLICIT NONE
 INTEGER(i4)    , INTENT(IN)    :: i
 TYPE(plasmaTYP), INTENT(INOUT) :: plasma
 TYPE(paramsTYP), INTENT(IN)    :: params
-!REAL(r8)       , INTENT(INOUT) :: ecnt, pcnt
 
 ! Define local variables:
 REAL(r8) :: zp0, xip0, kep0

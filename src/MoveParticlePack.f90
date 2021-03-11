@@ -42,12 +42,6 @@ DO i = 1,params%NC
 		CALL CheckBoundary(i,plasma,params)
 	END IF
 	
-        ! Apply Coulomb collision operator:
-        ! ------------------------------------------------------------------------
-        IF (params%iColl) THEN
-		CALL collisionOperator(i,plasma,params)
-	END IF
-
 	! 2.5- Compute resonance number:
 	IF (params%iHeat) THEN
 		CALL CyclotronResonanceNumber(i,plasma,fieldspline,params,resNum0)

@@ -217,19 +217,23 @@ NS_loop: DO j = 1,params%NS
     ! Check if data is to be saved
     IF (params%iSave) THEN
        IF (j .EQ. output%jrng(k)) THEN
+	  ! Record particle quantities:
           output%tp(k) = plasma%tp
           !$OMP PARALLEL DO
           DO i = 1,params%NC
-             ! Record "ith" particle at "kth" time
-             output%zp(i,k)  = plasma%zp(i)
-             output%kep(i,k) = plasma%kep(i)
-             output%xip(i,k) = plasma%xip(i)
-             output%a(i,k)   = plasma%a(i)
-             output%m(i,k)   = plasma%m(i)
+             output%zp(i,k)    = plasma%zp(i)
+             output%kep(i,k)   = plasma%kep(i)
+             output%xip(i,k)   = plasma%xip(i)
+             output%a(i,k)     = plasma%a(i)
+             output%m(i,k)     = plasma%m(i)
+             output%np(i,k)    = plasma%np(i)
+             output%Up(i,k)    = plasma%Up(i)
+             output%Tparp(i,k) = plasma%Tparp(i)
+             output%Tperp(i,k) = plasma%Tperp(i)
           END DO
          !$OMP END PARALLEL DO
-         ! Record mesh defined quantities:
-	 !DO i = 1,(mesh%NZmesh + 4)
+
+	 ! Record mesh quantities:
 	 output%n(:,k)    = mesh%n
 	 output%nU(:,k)   = mesh%nU
 	 output%unU(:,k)  = mesh%unU
@@ -239,7 +243,7 @@ NS_loop: DO j = 1,params%NS
 	 output%Tpar(:,k) = mesh%Tpar
 	 output%Tper(:,k) = mesh%Tper
 	 output%U(:,k)    = mesh%U
-	 !END DO
+
          ! Increment counter:
          k = k + 1
       END IF
