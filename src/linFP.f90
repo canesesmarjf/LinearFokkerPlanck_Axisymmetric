@@ -93,7 +93,7 @@ CALL ComputeFieldSpline(fieldspline)
 
 ! Initialize simulation variables:
 ! ==============================================================================
-CALL InitializeMesh(mesh,params)
+CALL InitializeMesh(mesh,params,fieldspline)
 CALL InitializePlasma(plasma,params)
 
 !$OMP PARALLEL
@@ -137,6 +137,9 @@ NS_loop: DO j = 1,params%NS
 
     ! Calculate moments and extrapolate to mesh:
     CALL ExtrapolateMomentsToMesh(plasma,mesh,params)
+
+    ! Apply collision operator:
+    CALL ApplyCollisionOperator(plasma,mesh,params)
 
     !$OMP PARALLEL DO REDUCTION(+:uN1,uN2,N1,N2,N3,N4,E1,E2,uE3,E4)
     ! Calculate particle and energy rates:

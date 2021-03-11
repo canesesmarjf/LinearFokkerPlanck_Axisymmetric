@@ -260,6 +260,7 @@ END TYPE paramsTYP
 TYPE plasmaTYP
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: zp, kep,xip, a
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: wL, wC, wR
+ REAL(r8)   , DIMENSION(:), ALLOCATABLE :: n, U, Tpar, Tper, B, E, dB, ddB
  INTEGER(i4), DIMENSION(:), ALLOCATABLE :: m, f1, f2, f3, f4
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: dE1, dE2, dE3, dE4, dE5
  REAL(r8)   , DIMENSION(:), ALLOCATABLE :: udE3, udErf, doppler
@@ -337,11 +338,12 @@ SUBROUTINE AllocateMesh(mesh,params)
 END SUBROUTINE AllocateMesh
 
 ! ----------------------------------------------------------------------------
-SUBROUTINE InitializeMesh(mesh,params)
+SUBROUTINE InitializeMesh(mesh,params,fieldspline)
    IMPLICIT NONE
    ! Declare interface variables:
-   TYPE(meshTYP)  , INTENT(INOUT) :: mesh
-   TYPE(paramsTYP), INTENT(IN)    :: params
+   TYPE(meshTYP)       , INTENT(INOUT) :: mesh
+   TYPE(paramsTYP)     , INTENT(IN)    :: params
+   TYPE(fieldSplineTYP), INTENT(IN)    :: fieldspline
 
    ! Declare local variables:
    INTEGER(i4), DIMENSION(params%NZmesh) :: m
@@ -361,16 +363,16 @@ SUBROUTINE InitializeMesh(mesh,params)
    mesh%zm = (m-1)*mesh%dzm + 0.5*mesh%dzm + mesh%zmin
 
    ! Initialize all mesh-defined quantities:
-   mesh%n    = 0.
+   mesh%n    = 0. ! interpolation?
    mesh%nU   = 0.
    mesh%unU  = 0.
    mesh%nUE  = 0.
    mesh%P11  = 0.
    mesh%P22  = 0.
-   mesh%B    = 0.
+   mesh%B    = 0. ! Interpolation?
    mesh%E    = 0.
-   mesh%dB   = 0.
-   mesh%ddB  = 0.
+   mesh%dB   = 0. ! Interpolation?
+   mesh%ddB  = 0. ! Interpolation?
    mesh%U    = 0.
    mesh%Ppar = 0.
    mesh%Pper = 0.
@@ -395,6 +397,8 @@ SUBROUTINE AllocatePlasma(plasma,params)
    ! Allocate memory: for all computational particles
    ALLOCATE(plasma%zp(NC)  ,plasma%kep(NC) ,plasma%xip(NC) ,plasma%a(NC))
    ALLOCATE(plasma%m(NC)   ,plasma%wL(NC)  ,plasma%wC(NC)  ,plasma%wR(NC))
+   ALLOCATE(plasma%n(NC)   ,plasma%U(NC)   ,plasma%Tpar(NC),plasma%Tper(NC))
+   ALLOCATE(plasma%B(NC)   ,plasma%E(NC)   ,plasma%dB(NC)  ,plasma%ddB(NC))
    ALLOCATE(plasma%f1(NC)  ,plasma%f2(NC)  ,plasma%f3(NC)  ,plasma%f4(NC))
    ALLOCATE(plasma%dE1(NC) ,plasma%dE2(NC) ,plasma%dE3(NC) ,plasma%dE4(NC), plasma%dE5(NC))
    ALLOCATE(plasma%udErf(NC))
@@ -447,8 +451,21 @@ SUBROUTINE InitializePlasma(plasma,params)
    !$OMP PARALLEL DO
    ! Initialize plasma: zp, kep, xip and a:
    DO i = 1,params%NC
-     plasma%a(i)  = 1.
+     plasma%a(i)    = 1.
      CALL loadParticles(i,plasma,params)
+   END DO
+   !$OMP END PARALLEL DO
+
+   !$OMP PARALLEL DO
+   DO i = 1,params%NC
+     plasma%n(i)    = params%ne0
+     plasma%U(i)    = 0.
+     plasma%Tpar(i) = params%Ti0
+     plasma%Tper(i) = params%Ti0
+     plasma%B(i)    = 0.
+     plasma%E(i)    = 0.
+     plasma%dB(i)   = 0.
+     plasma%ddB(i)  = 0.
    END DO
    !$OMP END PARALLEL DO
 

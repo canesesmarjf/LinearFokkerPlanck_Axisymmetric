@@ -1,4 +1,28 @@
 ! =======================================================================================================
+SUBROUTINE ApplyCollisionOperator(plasma,mesh,params)
+! =======================================================================================================
+USE LOCAL
+USE PhysicalConstants
+USE dataTYP
+USE OMP_LIB
+
+IMPLICIT NONE
+
+! Define interface variables:
+TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+TYPE(meshTYP)  , INTENT(IN)    :: mesh
+TYPE(paramsTYP), INTENT(IN)    :: params
+
+! Define local variables:
+INTEGER(i4) :: i, ix
+
+! Interpolate n and U to particle positions:
+
+
+
+END SUBROUTINE ApplyCollisionOperator
+
+! =======================================================================================================
 SUBROUTINE collisionOperator(i,plasma,params)
 ! =======================================================================================================
 
