@@ -284,6 +284,7 @@ TYPE outputTYP
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: Ndot1, Ndot2, Ndot3, Ndot4, Ndot5
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: Edot1, Edot2, Edot3, Edot4, Edot5
  REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: n, nU, unU, nUE, P11, P22, E, B, dB, ddB
+ REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: U, Ppar, Pper, Tpar, Tper
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: zm
 
 END TYPE outputTYP
@@ -292,6 +293,7 @@ END TYPE outputTYP
 TYPE meshTYP
  REAL(r8) , DIMENSION(:), ALLOCATABLE :: zm
  REAL(r8) , DIMENSION(:), ALLOCATABLE :: n, nU, nUE, P11, P22
+ REAL(r8) , DIMENSION(:), ALLOCATABLE :: U, Ppar, Pper, Tpar, Tper
  REAL(r8) , DIMENSION(:), ALLOCATABLE :: E, B, dB, ddB
  REAL(r8) , DIMENSION(:), ALLOCATABLE :: unU
  REAL(r8) :: LZ, zmin, zmax, dzm
@@ -321,11 +323,16 @@ SUBROUTINE AllocateMesh(mesh,params)
    ALLOCATE(mesh%unU(NZmesh + 4))
    ALLOCATE(mesh%P11(NZmesh + 4))
    ALLOCATE(mesh%P22(NZmesh + 4))
-   ALLOCATE(mesh%nuE(NZmesh + 4))
+   ALLOCATE(mesh%nUE(NZmesh + 4))
    ALLOCATE(mesh%B(NZmesh + 4))
    ALLOCATE(mesh%dB(NZmesh + 4))
    ALLOCATE(mesh%ddB(NZmesh + 4))
    ALLOCATE(mesh%E(NZmesh + 4))
+   ALLOCATE(mesh%U(NZmesh + 4))
+   ALLOCATE(mesh%Ppar(NZmesh + 4))
+   ALLOCATE(mesh%Pper(NZmesh + 4))
+   ALLOCATE(mesh%Tpar(NZmesh + 4))
+   ALLOCATE(mesh%Tper(NZmesh + 4))
 
 END SUBROUTINE AllocateMesh
 
@@ -354,16 +361,21 @@ SUBROUTINE InitializeMesh(mesh,params)
    mesh%zm = (m-1)*mesh%dzm + 0.5*mesh%dzm + mesh%zmin
 
    ! Initialize all mesh-defined quantities:
-   mesh%n   = 0.
-   mesh%nU  = 0.
-   mesh%unU = 0.
-   mesh%nUE = 0.
-   mesh%P11 = 0.
-   mesh%P22 = 0.
-   mesh%B   = 0.
-   mesh%E   = 0.
-   mesh%dB  = 0.
-   mesh%ddB = 0.
+   mesh%n    = 0.
+   mesh%nU   = 0.
+   mesh%unU  = 0.
+   mesh%nUE  = 0.
+   mesh%P11  = 0.
+   mesh%P22  = 0.
+   mesh%B    = 0.
+   mesh%E    = 0.
+   mesh%dB   = 0.
+   mesh%ddB  = 0.
+   mesh%U    = 0.
+   mesh%Ppar = 0.
+   mesh%Pper = 0.
+   mesh%Tpar = 0.
+   mesh%Tper = 0.
 
 END SUBROUTINE InitializeMesh
 
@@ -549,6 +561,11 @@ SUBROUTINE AllocateOutput(output,params)
   ALLOCATE(output%E(NZmesh +4   ,jsize))
   ALLOCATE(output%dB(NZmesh + 4 ,jsize))
   ALLOCATE(output%ddB(NZmesh + 4,jsize))
+  ALLOCATE(output%U(NZmesh + 4,jsize))
+  ALLOCATE(output%Ppar(NZmesh + 4,jsize))
+  ALLOCATE(output%Pper(NZmesh + 4,jsize))
+  ALLOCATE(output%Tpar(NZmesh + 4,jsize))
+  ALLOCATE(output%Tper(NZmesh + 4,jsize))
 
 END SUBROUTINE AllocateOutput
 
@@ -637,6 +654,38 @@ SUBROUTINE SaveData(output,dir1)
     fileName = trim(trim(dir1)//'/'//'n_mesh.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%n
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'nU_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%nU
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'unU_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%unU
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'nUE_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%nUE
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'Ppar_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Ppar
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'Pper_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Pper
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'Tpar_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Tpar
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'Tper_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Tper
+    CLOSE(unit=8)    
+    fileName = trim(trim(dir1)//'/'//'U_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%U
     CLOSE(unit=8)
 
 

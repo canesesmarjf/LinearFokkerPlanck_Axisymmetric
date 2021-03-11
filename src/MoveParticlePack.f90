@@ -288,33 +288,37 @@ TYPE(paramsTYP), INTENT(IN)    :: params
 
 ! Define local variables:
 INTEGER(i4) :: i, ix, frame, NZ
+INTEGER(i4), DIMENSION(3) :: ixLeft, ixRight
 REAL(r8) :: vpar, Ma, Ep, alpha, xip, vper, v, a
 REAL(r8), DIMENSION(mesh%NZmesh + 4) :: n, nU, unU, P11, P22, nUE
- 
-! Initialize mesh quantities:
+
+! Initialize local mesh quantities:
 n = 0.
 nU = 0.
 unU = 0.
-mesh%P11 = 0.
-mesh%P22 = 0.
-mesh%nUE = 0.
+P11 = 0.
+P22 = 0.
+nUE = 0.
 
 ! Species "a" mass:
 Ma = params%Ma
 ! Scaling factor:
 alpha = plasma%alpha
 ! Size of mesh quantities:
-NZ = mesh%NZmesh + 4
+NZ = mesh%NZmesh
+! Set the edge cell number:
+ixLeft  = (/1,2,3/) 
+ixRight = (/2,3,4/) + NZ
 
 ! Calculate moments and extrapolate to mesh points
-!$OMP PARALLEL DO PRIVATE(ix,a,Ep,v,xip,vpar,vper) REDUCTION(+:n, nU, unU, P11, P22, nuE)
+!$OMP PARALLEL DO PRIVATE(a,Ep,v,xip,vpar,vper,ix) REDUCTION(+:n, nU, unU, P11, P22, nUE)
 DO i = 1,params%NC
 	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
 		
 		! Derived quantities:
 		a    = plasma%a(i)
 		Ep   = e_c*plasma%kep(i)
-		v    = sqrt(2*Ep/Ma)
+		v    = sqrt(2.*Ep/Ma)
 		xip  = plasma%xip(i)
 		vpar = v*xip
 		vper = v*sqrt(1 - xip**2.)
@@ -356,9 +360,14 @@ DO i = 1,params%NC
 END DO
 !$OMP END PARALLEL DO
 
+! Correct edge cells of particle density:
+n(ixLeft)  = n(4)
+n(ixRight) = n(NZ+1)
+
 ! Apply magnetic compression:
 mesh%n   =  n/params%Area0
 mesh%nU  = nU/params%Area0
+mesh%unU = unU
 mesh%P11 = P11/params%Area0
 mesh%P22 = P22/params%Area0
 mesh%nUE = nUE/params%Area0
@@ -374,15 +383,24 @@ mesh%nUE = alpha*mesh%nUE/mesh%dzm
 ! Apply smoothing:
 frame = 9
 !$OMP PARALLEL
-IF (OMP_GET_THREAD_NUM() .EQ. 0) CALL MovingMean(mesh%n  ,NZ,frame)
-IF (OMP_GET_THREAD_NUM() .EQ. 1) CALL MovingMean(mesh%nU ,NZ,frame)
-IF (OMP_GET_THREAD_NUM() .EQ. 2) CALL MovingMean(mesh%unU,NZ,frame)
-IF (OMP_GET_THREAD_NUM() .EQ. 3) CALL MovingMean(mesh%P11,NZ,frame)
-IF (OMP_GET_THREAD_NUM() .EQ. 4) CALL MovingMean(mesh%P22,NZ,frame)
-IF (OMP_GET_THREAD_NUM() .EQ. 5) CALL MovingMean(mesh%nUE,NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 0) CALL MovingMean(mesh%n(3:(NZ+2))  ,NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 1) CALL MovingMean(mesh%nU(3:(NZ+2)) ,NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 2) CALL MovingMean(mesh%unU(3:(NZ+2)),NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 3) CALL MovingMean(mesh%P11(3:(NZ+2)),NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 4) CALL MovingMean(mesh%P22(3:(NZ+2)),NZ,frame)
+IF (OMP_GET_THREAD_NUM() .EQ. 5) CALL MovingMean(mesh%nUE(3:(NZ+2)),NZ,frame)
 !$OMP END PARALLEL
 
-! Calculate U, Tpar, Tper:
+! Calculate U:
+mesh%U    = mesh%nU/mesh%n
+
+! Calculate Ppar and Pper:
+mesh%Ppar = mesh%P11 - Ma*mesh%nU*mesh%U
+mesh%Pper = mesh%P22
+
+! Calculate Tpar and Tper:
+mesh%Tpar = mesh%Ppar/(e_c*mesh%n)
+mesh%Tper = mesh%Pper/(e_c*mesh%n)
 
 END SUBROUTINE ExtrapolateMomentsToMesh
 

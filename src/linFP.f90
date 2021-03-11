@@ -226,9 +226,17 @@ NS_loop: DO j = 1,params%NS
           END DO
          !$OMP END PARALLEL DO
          ! Record mesh defined quantities:
-	 DO i = 1,(mesh%NZmesh + 4)
-	     output%n(i,k) = mesh%n(i)
-	 END DO
+	 !DO i = 1,(mesh%NZmesh + 4)
+	 output%n(:,k)    = mesh%n
+	 output%nU(:,k)   = mesh%nU
+	 output%unU(:,k)  = mesh%unU
+	 output%nUE(:,k)  = mesh%nUE
+	 output%Ppar(:,k) = mesh%Ppar
+	 output%Pper(:,k) = mesh%Pper
+	 output%Tpar(:,k) = mesh%Tpar
+	 output%Tper(:,k) = mesh%Tper
+	 output%U(:,k)    = mesh%U
+	 !END DO
          ! Increment counter:
          k = k + 1
       END IF
