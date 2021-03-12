@@ -61,7 +61,11 @@ END DO
 ! =========================
 !$OMP PARALLEL DO
  DO i = 1,params%NC
-	 CALL CollisionOperator(i,plasma,params)
+	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
+		CALL CollisionOperator(i,plasma,params)
+!		IF (ISNAN(plasma%kep(i))) WRITE(*,*) "kep OUT is NaN"
+!		IF (ISNAN(plasma%xip(i))) WRITE(*,*) "xip is NaN"
+	END IF
  END DO
 !$OMP END PARALLEL DO
 
@@ -83,11 +87,17 @@ TYPE(plasmaTYP), INTENT(INOUT) :: plasma
 TYPE(paramsTYP), INTENT(IN)    :: params
 
 ! Define local variables:
-REAL(r8) :: zp0, xip0, kep0
+CHARACTER*10 :: dummy
+REAL(r8) :: xx, yy
+INTEGER(i4) :: Nstep, kk, nn
+REAL(r8) :: dt_s
+REAL(r8) :: zp0, np0, Up0, Tp0
+REAL(r8) :: xip0, kep0
+REAL(r8) :: xip1, kep1
 INTEGER(i4) :: species_a, species_b, ss
 REAL(r8) :: Za, Ma, qa
 REAL(r8) :: Zb, Mb, Tb, nb
-REAL(r8) :: u, w, wpar, wper, v, vpar, vper
+REAL(r8) :: w, wpar, wper, v, vpar, vper
 REAL(r8) :: xip_pf_0, kep_pf_0
 REAL(r8) :: xip_pf_1, kep_pf_1
 REAL(r8) :: xab, wTb
@@ -104,6 +114,14 @@ zp0  = plasma%zp(i)
 kep0 = plasma%kep(i)
 xip0 = plasma%xip(i)
 
+! Background conditions interpolated:
+np0  = plasma%np(i)
+!np0  = params%ne0
+Up0  = plasma%Up(i)
+!Tp0  = params%Te0
+Tp0  = abs(plasma%Tparp(i))
+
+
 ! Test particle properties:
 ! -----------------------------------------------------------------------------------------------------------------
 Ma = params%Ma
@@ -111,7 +129,7 @@ qa = params%qa
 species_a = params%species_a
 IF (species_a .EQ. 1) THEN      ! Test electrons
    Za = -1.
-ELSE IF (species_a .EQ. 1) THEN ! Test ions
+ELSE IF (species_a .EQ. 2) THEN ! Test ions
    Za = params%Zion
 END IF
 
@@ -125,12 +143,12 @@ IF (species_b .EQ. 1) THEN       ! Background electron
   Mb = m_e
   Tb = params%Te0
   Zb = -1.
-  nb = params%ne0
+  nb = np0
 ELSE IF (species_b .EQ. 2) THEN  ! Background ion
   Mb = params%Aion*m_p
-  Tb = params%Ti0
+  Tb = Tp0
   Zb = params%Zion
-  nb = params%ne0
+  nb = np0
 END IF
 
 ! Coordinate systems:
@@ -148,21 +166,25 @@ vpar = xip0*v
 vper = sqrt(1 - (xip0**2.) )*v
 
 ! Plasma drift in the lab frame:
-IF (params%iDrag) THEN
-   IF (zp0 .GE. params%BC_zp_mean) THEN
-      u = +1.*sqrt( e_c*(params%Te0 + params%Ti0)/(params%Aion*m_p) )
-   ELSE
-      u = -1.*sqrt( e_c*(params%Te0 + params%Ti0)/(params%Aion*m_p) )
-   END IF
-ELSE
-   u = 0.
-END IF
+!IF (params%iDrag) THEN
+ !  IF (zp0 .GE. params%BC_zp_mean) THEN
+  !    Up0 = +1.*sqrt( e_c*(params%Te0 + params%Ti0)/(params%Aion*m_p) )
+  ! ELSE
+  !    Up0 = -1.*sqrt( e_c*(params%Te0 + params%Ti0)/(params%Aion*m_p) )
+  ! END IF
+!ELSE
+!   Up0 = 0.
+!END IF
 
 ! Plasma frame:
 ! ----------------------------------------------------------------------------------------------------------------
 ! Thermal velocities in the plasma frame:
 wper = vper
-wpar = vpar - u
+IF (params%iDrag) THEN
+	wpar = vpar - Up0
+ELSE
+	wpar = vpar
+END IF
 w = sqrt( (wpar**2.) + (wper**2.) )
 
 ! Initial energy and pitch angle in the plasma frame:
@@ -179,48 +201,117 @@ wTb = sqrt(2.*e_c*Tb/Mb)
 xab = w/wTb
 
 ! Generate random numbers:
-call random_number(ran_num)
-xsi1 = sign(1._r8, ran_num - 0.5_r8)
-call random_number(ran_num)
-xsi2 = sign(1._r8, ran_num - 0.5_r8)
+!call random_number(ran_num)
+!xsi1 = sign(1._r8, ran_num - 0.5_r8)
+!call random_number(ran_num)
+!xsi2 = sign(1._r8, ran_num - 0.5_r8)
 
 ! Apply pitch angle scattering in plasma frame:
 ! ---------------------------------------------
+
+! Calculating substepping time increment:
 d1 = nu_D(xab,nb,Tb,Mb,Zb,Za,Ma)*params%dt
-S1 = xip_pf_0*(1. - d1)
-S2 = ( 1. - xip_pf_0*xip_pf_0 )*d1
-S3 = xsi1*sqrt(S2)
-xip_pf_1 = S1 + S3
+Nstep = NINT(d1/0.4) + 1
+dt_s = params%dt/Nstep
+
+IF (Nstep .GT. 20) THEN
+	WRITE(*,*) "Pitch: Nstep > 20, Ntep: ", Nstep
+	!WRITE(*,*) "nu_D*dt_s: ", d1*dt_s/params%dt
+	!WRITE(*,*) "tp0", plasma%tp
+	!WRITE(*,*) "zp0", zp0
+	!WRITE(*,*) "np0", np0
+	!WRITE(*,*) "Tp0", Tp0
+	!WRITE(*,*) "Up0", Up0
+	Nstep = 20
+END IF
+
+! Apply operator:
+xip_pf_1 = xip_pf_0
+d1 = nu_D(xab,nb,Tb,Mb,Zb,Za,Ma)*dt_s
+DO kk = 1,Nstep
+	S1 = xip_pf_1*(1. - d1)
+	S2 = ( 1. - (xip_pf_1**2.) )*d1
+	call random_number(ran_num)
+	xsi1 = sign(1._r8, ran_num - 0.5_r8)	
+	S3 = xsi1*sqrt(S2)
+	xip_pf_1 = S1 + S3
+END DO
 
 ! Apply energy scattering in plasma frame:
 ! ----------------------------------------
 ! Select mass term
-IF (params%CollOperType .EQ. 1) mass_term = 1.                 ! Boozer-Only term
+IF (params%CollOperType .EQ. 1) mass_term = 1.             ! Boozer-Only term
 IF (params%CollOperType .EQ. 2) mass_term = 1. + (Mb/Ma)   ! Boozer-Kim term
 
+! Calculate substepping:
 d2 = nu_E(xab,nb,Tb,Mb,Zb,Za,Ma)*params%dt/mass_term
+Nstep = NINT(d2/0.4) + 1
+dt_s = params%dt/Nstep
+
+IF (Nstep .GT. 1) THEN
+	WRITE(*,*) "Energy substepping, Nsteps: ", Nstep
+END IF
+
+IF (Nstep .GT. 20) THEN
+	WRITE(*,*) "Energy, Nstep > 20, Ntep: ", Nstep
+	WRITE(*,*) "nu_E*dt_s: ", d2*dt_s/params%dt
+	WRITE(*,*) "tp0", plasma%tp
+	WRITE(*,*) "zp0", zp0
+	WRITE(*,*) "np0", np0
+	WRITE(*,*) "Tp0", Tp0
+	WRITE(*,*) "Up0", Up0
+	Nstep = 20
+END IF
+
+IF (i .EQ. 1 .AND. NINT(plasma%tp/params%dt) .EQ. 10) THEN
+	WRITE(*,*) "recording f2"
+	OPEN(unit=8,file="f2.txt",form="formatted",status="unknown")
+	xx = 1E-4	
+	DO nn = 1,params%NZ
+		yy = (phip(xx)/(xx**2.))
+		WRITE(8,*) xx, yy
+		xx = xx + 0.01/params%NZ
+	END DO
+	CLOSE(unit=8)		
+
+!	WRITE(*,*) "tp0 [ms]", plasma%tp*1e3
+!	WRITE(*,*) "zp0", zp0
+!	WRITE(*,*) "np0", np0
+!	WRITE(*,*) "Tp0", Tp0
+!	WRITE(*,*) "Up0", Up0
+!	WRITE(*,*) ""
+END IF
+
+! Apply operator:
+kep_pf_1 = kep_pf_0
 E0 = (1.5 + E_nuE_d_nu_E_dE(xab))*Tb
-E1 = d2*(kep_pf_0 - E0)
-E2 = sqrt(Tb*kep_pf_0*d2)
-dE_pf = 2.*E1
-kep_pf_1 = kep_pf_0 - dE_pf + (2.*xsi2*E2)
+d2 = nu_E(xab,nb,Tb,Mb,Zb,Za,Ma)*dt_s/mass_term
+DO kk = 1,Nstep
+	E1 = d2*(kep_pf_1 - E0)
+	E2 = sqrt(Tb*kep_pf_1*d2)
+	dE_pf = 2.*E1
+	call random_number(ran_num)
+	xsi2 = sign(1._r8, ran_num - 0.5_r8)
+	kep_pf_1 = kep_pf_1 - dE_pf + (2.*xsi2*E2)
+END DO
 
 ! Diagnotics
-IF (isnan(xip_pf_1)) xip_pf_1 = xip_pf_0
-IF  (xip_pf_1**2. .GT. 1.) THEN
-	call random_number(ran_num)
-	xip_pf_1 = 2.*ran_num - 1.
-END IF
-if (kep_pf_1 .le. 0.) kep_pf_1 = kep_pf_0
+!IF (isnan(xip_pf_1)) xip_pf_1 = xip_pf_0
+!IF  (xip_pf_1**2. .GT. 1.) THEN
+!	call random_number(ran_num)
+!	xip_pf_1 = 2.*ran_num - 1.
+!END IF
+!IF (kep_pf_1 .le. 0.) THEN
+!	WRITE(*,*) "Final Kep is -ve, kep_pf_0: ", kep_pf_0
+!	kep_pf_1 = kep_pf_0
+!END IF
 
 ! Record energy loss due to collisions in the plasma frame:
-IF (kep_pf_1 .GT. params%elevel*Tb) THEN
+IF (kep_pf_1 .GT. params%elevel*params%Te0) THEN
 	! Record slowing down energy during time step dt
-	!ecnt = ecnt + dE_pf
         plasma%dE4(i) = plasma%dE4(i) +  dE_pf
 	! Count how many particles are involved in the slowing down power calculation
 	IF (species_a .EQ. species_b) THEN
-		!pcnt = pcnt + 1
                 plasma%f4(i) = 1
 	END IF
 END IF
@@ -233,13 +324,66 @@ wper = sqrt(1. - (xip_pf_1**2.) )*w
 ! Lab frame:
 ! ----------------------------------------------------------------------------------------------------------------
 dE_lf = dE_pf
-vpar  = u + wpar
+vpar  = Up0 + wpar
 vper  = wper
 v     = sqrt( (vpar**2.) + (vper**2.) )
 
 ! New pitch and energy in the lab frame:
 xip0 = vpar/v
 kep0 = 0.5*(Ma/e_c)*v**2.
+
+IF (ISNAN(kep0) .OR. ISNAN(xip0) ) THEN
+	WRITE(*,*) "kep:", kep0
+	WRITE(*,*) "xip:", xip0
+	WRITE(*,*) "ss: ", ss
+        WRITE(*,*) "nb: ", nb
+        WRITE(*,*) "Tb: ", Tb
+	WRITE(*,*) "Up0:", Up0
+
+	WRITE(*,*) "zp(i):" , plasma%zp(i)
+	WRITE(*,*) "kep(i):", plasma%kep(i)
+	WRITE(*,*) "xip(i):", plasma%xip(i)
+	WRITE(*,*) "massTerm:", mass_term
+
+	WRITE(*,*) "wTb: ", wTb
+	WRITE(*,*) "xab: ", xab
+        
+	WRITE(*,*) "nuE: ", nu_E(xab,nb,Tb,Mb,Zb,Za,Ma)
+	WRITE(*,*) "nuE*dt: ", d2
+        WRITE(*,*) "E_nuE_d_nu_E_dE: ", E_nuE_d_nu_E_dE(xab)
+        WRITE(*,*) "Gb(x)/x: ", Gb(xab)/xab
+        WRITE(*,*) "E0: ", E0
+        WRITE(*,*) "E1: ", E1
+        WRITE(*,*) "E2: ", E2
+        WRITE(*,*) "kep_pf_1: ", kep_pf_1
+
+	WRITE(*,*) "nuD: ", nu_D(xab,nb,Tb,Mb,Zb,Za,Ma)
+	WRITE(*,*) "nuD*dt: ", d1
+        WRITE(*,*) "S1: ", S1
+        WRITE(*,*) "S2: ", S2
+        WRITE(*,*) "S3: ", S3
+        WRITE(*,*) "xip_pf_1: ", xip_pf_1
+
+	OPEN(unit=8,file="f1.txt",form="formatted",status="unknown")
+	xx = xab	
+	DO nn = 1,params%NZ
+		yy = E_nuE_d_nu_E_dE(xx)
+		WRITE(8,*) xx, yy
+		xx = xx + 5./params%NZ
+	END DO
+	CLOSE(unit=8)		
+
+	OPEN(unit=8,file="f2.txt",form="formatted",status="unknown")
+	xx = xab	
+	DO nn = 1,params%NZ
+		yy = Gb(xx)/xx
+		WRITE(8,*) xx, yy
+		xx = xx + 5./params%NZ
+	END DO
+	CLOSE(unit=8)		
+
+        READ(*,*) dummy
+END IF
 
 END DO species_b_loop
 
@@ -288,13 +432,18 @@ END FUNCTION phi2p
 
 ! ===============================================================================================================
 REAL(r8) FUNCTION Gb(x)
-USE local
+USE LOCAL
+USE PhysicalConstants
 
 IMPLICIT NONE
 REAL(r8), INTENT(IN) :: x
 REAL(r8) :: phi, phip
 
-Gb = (phi(x) - x*phip(x))/(2.*x*x)
+IF (x .LT. 0.01) THEN
+	Gb = (2./sqrt(pi))*x/3.
+ELSE
+	Gb = (phi(x) - x*phip(x))/(2.*x*x)
+END IF
 
 END FUNCTION Gb
 
@@ -334,7 +483,11 @@ IMPLICIT NONE
 REAL(r8), INTENT(IN) :: x
 REAL(r8) :: phi, phip, phi2p
 
-E_nuE_d_nu_E_dE = 0.5*(  ( 3.*x*phip(x) - 3.*phi(x) - (x**2.)*phi2p(x) )/( phi(x) - (x*phip(x)) )  )
+IF (x .LT. 0.01) THEN
+	E_nuE_d_nu_E_dE = 0.
+ELSE
+	E_nuE_d_nu_E_dE = 0.5*(  ( 3.*x*phip(x) - 3.*phi(x) - (x**2.)*phi2p(x) )/( phi(x) - (x*phip(x)) )  )
+END IF
 
 END FUNCTION E_nuE_d_nu_E_dE
 
@@ -387,12 +540,12 @@ REAL(r8), INTENT(IN) :: nb,Tb,Mb,Zb,Za,Ma
 REAL(r8) :: nu_ab0, Gb, phip
 
 ! Energy loss rate:
-if (.false.) then
+IF (.FALSE.) THEN
 	! From Hinton 1983 EQ 92 and L. Chen 1988 EQ 50
 	nu_E = nu_ab0(nb,Tb,Mb,Zb,Za,Ma)*( (2.*(Ma/Mb)*Gb(x)/x) - (phip(x)/(x**2.)) )
-else
+ELSE
 	! From L. Chen 1983 EQ 57 commonly used for NBI
 	nu_E = nu_ab0(nb,Tb,Mb,Zb,Za,Ma)*(2.*(Ma/Mb))*(Gb(x)/x)
-end if
+END IF
 
 END FUNCTION nu_E

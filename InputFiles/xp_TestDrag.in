@@ -1,7 +1,7 @@
 &params_nml
 ! Simulation name:
 ! ===============
-params%fileDescriptor = '2021_03_11c',
+params%fileDescriptor = '2021_03_11h',
 
 ! Magnetic field input data:
 ! =========================
@@ -45,7 +45,7 @@ params%iDrag      = .true.,                                                     
 ! ==============================
 params%Te0          = 250.,                                                      ! eV
 params%Ti0          = 250.,                                                      ! eV
-params%ne0          = 3.0E+19,                                                  ! m**-3
+params%ne0          = 0.5E+19,                                                  ! m**-3
 params%Aion         = 1.,                                                       ! Ion mass
 params%Zion         = 1.,                                                       ! Charge number for main ion species
 params%species_a    = 2,                                                        ! =1 for electrons, =2 for ions
@@ -57,7 +57,7 @@ params%CollOperType = 2,                                                        
 params%BC_Type    = 2,                                                          ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
 params%BC_zp_mean = 0.0,                                                        ! Mean particle injection
 params%BC_zp_std  = 0.3,                                                        ! STD of particle injection
-params%BC_Ep      = 2000.,                                                      ! Drift kinetic energy
+params%BC_Ep      = 250.,                                                      ! Drift kinetic energy
 params%BC_Tp      = 10,                                                         ! Thermal kinetic energy
 params%BC_xip     = 0.707,                                                      ! Mean pitch angle where xip = cos(theta) = vpar/v
 

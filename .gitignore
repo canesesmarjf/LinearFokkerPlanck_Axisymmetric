@@ -2,6 +2,7 @@
 **.out
 **.dat
 **.asv
+**.txt
 
 # Ignore contents of the following directories
 /OutputFiles/*

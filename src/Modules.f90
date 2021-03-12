@@ -15,11 +15,11 @@ MODULE PhysicalConstants
 USE local
 IMPLICIT NONE
 
-REAL(r8), PARAMETER :: e_0   = 8.854e-12
+REAL(r8), PARAMETER :: e_0   = 8.8542e-12
 REAL(r8), PARAMETER :: pi    = 3.1415926
 REAL(r8), PARAMETER :: e_c   = 1.602e-19
-REAL(r8), PARAMETER :: m_e   = 9.109e-31
-REAL(r8), PARAMETER :: m_p   = 1.672e-27
+REAL(r8), PARAMETER :: m_e   = 9.1094e-31
+REAL(r8), PARAMETER :: m_p   = 1.6726e-27
 REAL(r8), PARAMETER :: c     = 299792458 ! Speed of light [m/s]
 
 END MODULE PhysicalConstants
