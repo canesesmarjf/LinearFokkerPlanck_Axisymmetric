@@ -79,22 +79,20 @@ CALL ReadSpline(fieldspline%B,fileName)
 CALL diffSpline(fieldspline%B ,fieldspline%dB )
 CALL diffSpline(fieldspline%dB,fieldspline%ddB)
 
-! Electric potential V, dV:
-fieldspline%V%x = fieldspline%B%x
-fieldspline%V%y = 0
-IF (params%iPotential) THEN
-  CALL PotentialProfile(fieldspline,params)
-END IF
-CALL ComputeSpline(fieldspline%V)
-CALL diffSpline(fieldspline%V,fieldspline%dV)
+! Electric field E:
+fieldspline%E%x = fieldspline%B%x
+fieldspline%E%y = 0
+CALL ComputeSpline(fieldspline%E)
 
 ! Complete setting up the spline data :
 CALL ComputeFieldSpline(fieldspline)
 
 ! Initialize simulation variables:
 ! ==============================================================================
+WRITE(*,*) "Initialize Mesh"
 CALL InitializeMesh(mesh,params,fieldspline)
-CALL InitializePlasma(plasma,params)
+WRITE(*,*) "Initialize Plasma"
+CALL InitializePlasma(plasma,mesh,params)
 
 !$OMP PARALLEL
 IF (OMP_GET_THREAD_NUM() .EQ. 0) params%threads_given = OMP_GET_NUM_THREADS()
@@ -130,7 +128,7 @@ NS_loop: DO j = 1,params%NS
     dresNum = 0.; resNum0 = 0.; resNum1 = 0.
 
     ! Advance particles:
-    CALL AdvanceParticles(plasma,fieldspline,params)
+    CALL AdvanceParticles(plasma,mesh,fieldspline,params)
 
     ! Assign charge to cells:
     CALL AssignCell(plasma,mesh,params)
@@ -186,6 +184,12 @@ NS_loop: DO j = 1,params%NS
     END DO NC_loop4
     !$OMP END PARALLEL DO
 
+    ! Field solve:
+    ! AdvanceEfield(plasma,mesh,params)
+
+    ! Interpolate electromagnetic fields to particle positions:
+    CALL InterpolateElectromagneticFields(plasma,mesh,params)
+
     ! Calculate new number of real particles NR and super-particles NSP:
     ! ==============================================================================
     dNR  = a_new*(uN1 + uN2)*dt - (N1 + N2)*dt
@@ -230,6 +234,9 @@ NS_loop: DO j = 1,params%NS
              output%Up(i,k)    = plasma%Up(i)
              output%Tparp(i,k) = plasma%Tparp(i)
              output%Tperp(i,k) = plasma%Tperp(i)
+             output%Bp(i,k)    = plasma%Bp(i)
+             output%dBp(i,k)   = plasma%dBp(i)
+             output%ddBp(i,k)  = plasma%ddBp(i)
           END DO
          !$OMP END PARALLEL DO
 

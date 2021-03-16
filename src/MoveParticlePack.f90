@@ -1,5 +1,5 @@
 ! =======================================================================================================
-SUBROUTINE AdvanceParticles(plasma,fieldspline,params)
+SUBROUTINE AdvanceParticles(plasma,mesh,fieldspline,params)
 ! =======================================================================================================
 USE local
 USE dataTYP
@@ -9,6 +9,7 @@ IMPLICIT NONE
 
 ! Declare interface variables:
 TYPE(plasmaTYP)     , INTENT(INOUT) :: plasma
+TYPE(meshTYP)       , INTENT(IN)    :: mesh
 TYPE(paramsTYP)     , INTENT(IN)    :: params
 TYPE(fieldSplineTYP), INTENT(IN)    :: fieldspline
 
@@ -21,9 +22,9 @@ dresNum = 0.
 resNum0 = 0.
 resNum1 = 0.
 
+! Advance particle positions and velocities:
 !$OMP PARALLEL DO FIRSTPRIVATE(dresNum, resNum0, resNum1) SCHEDULE(STATIC) 
 DO i = 1,params%NC
-
 	! 2.1 - Reset flags:
 	CALL ResetFlags(i,plasma)
 		
@@ -60,6 +61,84 @@ END DO
 
 RETURN
 END SUBROUTINE AdvanceParticles
+
+! ======================================================================================================
+SUBROUTINE InterpolateElectromagneticFields(plasma,mesh,params)
+! ======================================================================================================
+USE LOCAL
+USE dataTYP
+
+IMPLICIT NONE
+
+! Declare interface variables:
+TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+TYPE(meshTYP)  , INTENT(IN)    :: mesh
+TYPE(paramsTYP), INTENT(IN)    :: params
+
+! Declare local variables:
+INTEGER(i4) :: i, ix
+REAL(r8), DIMENSION(3) ::  w, E, B, dB, ddB
+
+!$OMP PARALLEL DO PRIVATE(ix, w, E, B, dB, ddB)
+DO i = 1,params%NC
+	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
+                ! Get nearest grid point:
+                ix = plasma%m(i) + 2
+
+                ! Assignment function:
+                w(1) = plasma%wL(i)
+                w(2) = plasma%wC(i)
+                w(3) = plasma%wR(i)
+
+                ! Electric field:
+                E(1) = mesh%E(ix - 1)
+                E(2) = mesh%E(ix)
+                E(3) = mesh%E(ix + 1)
+                plasma%Ep(i) = w(1)*E(1) + w(2)*E(2) + w(3)*E(3)
+
+                ! Magnetic field:
+                B(1) = mesh%B(ix - 1)
+                B(2) = mesh%B(ix)
+                B(3) = mesh%B(ix + 1)
+                plasma%Bp(i) = w(1)*B(1) + w(2)*B(2) + w(3)*B(3)
+
+                ! Magnetic field: 1st derivative
+                dB(1) = mesh%dB(ix - 1)
+                dB(2) = mesh%dB(ix)
+                dB(3) = mesh%dB(ix + 1)
+                plasma%dBp(i) = w(1)*dB(1) + w(2)*dB(2) + w(3)*dB(3)
+
+                ! Magnetic field: 2nd derivative
+		!IF (params%iHeat) THEN
+		IF (.TRUE.) THEN
+	                ddB(1) = mesh%ddB(ix - 1)
+        	        ddB(2) = mesh%ddB(ix)
+	        	ddB(3) = mesh%ddB(ix + 1)
+                	plasma%ddBp(i) = w(1)*ddB(1) + w(2)*ddB(2) + w(3)*ddB(3)
+		END IF
+	END IF
+END DO
+!$OMP END PARALLEL DO
+
+END SUBROUTINE InterpolateElectromagneticFields
+
+! =======================================================================================================
+SUBROUTINE InterpolateMoments(plasma,mesh,params)
+! =======================================================================================================
+USE LOCAL
+USE dataTYP
+
+IMPLICIT NONE
+
+! Declare interface variables:
+TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+TYPE(meshTYP)  , INTENT(INOUT) :: mesh
+TYPE(paramsTYP), INTENT(IN)    :: params
+
+! Declare local variables:
+INTEGER(i4) :: i
+
+END SUBROUTINE InterpolateMoments
 
 ! =======================================================================================================
 SUBROUTINE CheckBoundary(i,plasma,params)
@@ -198,7 +277,7 @@ TYPE(paramsTYP)     , INTENT(IN) :: params
 TYPE(fieldSplineTYP), INTENT(IN) :: fieldspline
 
 ! Local variables:
-REAL(r8) :: dB, dV
+REAL(r8) :: dB, E
 REAL(r8) :: Ma, qa
 
 ! Test particle mass:
@@ -210,13 +289,13 @@ qa = params%qa
 ! Calculate the magnetic field gradient at zp0:
 CALL Interp1(zp0,dB,fieldspline%dB)
 
-! Calculate electric potential gradient at zp0:
-CALL Interp1(zp0,dV,fieldspline%dV)
+! Calculate electric field at zp0:
+CALL Interp1(zp0,E,fieldspline%E)
 
 ! Assign values to output variables:
 K = upar0
-L = -(1/Ma)*(mu0*dB + qa*dV)
-M = 0
+L = (-mu0*dB + qa*E)/Ma
+M = 0.
 
 RETURN
 END SUBROUTINE RightHandSide
@@ -293,7 +372,6 @@ unU = 0.
 P11 = 0.
 P22 = 0.
 nUE = 0.
-
 ! Species "a" mass:
 Ma = params%Ma
 ! Scaling factor:
@@ -587,7 +665,7 @@ TYPE(fieldSplineTYP)   , INTENT(IN)    :: fieldspline
 REAL(r8) :: zp0, kep0, xip0
 REAL(r8) :: u0, upar0, uper0
 REAL(r8) :: kep_par0, kep_per0
-REAL(r8) :: dB, ddB, dV
+REAL(r8) :: dB, ddB, E
 REAL(r8) :: Bf, Omega, dOmega, ddOmega
 REAL(r8) :: Omega_dot, Omega_ddot, tau_rf
 REAL(r8) :: rl, flr, besselterm
@@ -613,9 +691,9 @@ kep_par0 = kep0*xip0**2.
 kep_per0 = kep0*(1. - xip0**2.)
 
 ! Gradients:
-CALL Interp1(zp0,dB ,fieldspline%dB)
+CALL Interp1(zp0,dB ,fieldspline%dB )
 CALL Interp1(zp0,ddB,fieldspline%ddB)
-CALL Interp1(zp0,dV ,fieldspline%dV )
+CALL Interp1(zp0,E  ,fieldspline%E  )
 
 ! Spatial derivatives of the magnetic field:
 CALL Interp1(zp0,Bf,fieldspline%B)
@@ -625,7 +703,7 @@ ddOmega   = params%n_harmonic*e_c*ddB/Ma
 
 ! Calculate the first and second time derivative of Omega:
 Omega_dot = upar0*dOmega
-Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) - qa*dV*dOmega/Ma
+Omega_ddot = (upar0**2.)*ddOmega  - (uper0**2.)*dOmega*dOmega/(2.*Omega) + qa*E*dOmega/Ma
 
 ! Calculate the interaction time (tau_RF):
 IF ( (Omega_ddot**2.) .GT. 4.8175*ABS(Omega_dot**3.) )  then

@@ -275,7 +275,7 @@ END TYPE plasmaTYP
 
 ! -----------------------------------------------------------------------------
 TYPE fieldSplineTYP
- TYPE(splTYP) :: B, dB, ddB, V, dV
+ TYPE(splTYP) :: B, dB, ddB, E
 END TYPE fieldSplineTYP
 
 ! -----------------------------------------------------------------------------
@@ -284,6 +284,7 @@ TYPE outputTYP
  REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: zp, kep, xip, a
  INTEGER(i4), DIMENSION(:,:), ALLOCATABLE :: m
  REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: np, Up, Tparp, Tperp
+ REAL(r8)   , DIMENSION(:,:), ALLOCATABLE :: Ep, Bp, dBp, ddBp
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: tp, jrng
 ! Global quantities:
  REAL(r8)   , DIMENSION(:)  , ALLOCATABLE :: NR, NSP, ER
@@ -355,6 +356,8 @@ SUBROUTINE InitializeMesh(mesh,params,fieldspline)
    ! Declare local variables:
    INTEGER(i4), DIMENSION(params%NZmesh) :: m
    INTEGER(i4) :: i
+   INTEGER(i4), DIMENSION(params%NZmesh+4) :: mg
+   REAL(r8), DIMENSION(params%NZmesh+4) :: zmg
 
    ! Populate fields:
    mesh%NZmesh   = params%NZmesh
@@ -376,15 +379,33 @@ SUBROUTINE InitializeMesh(mesh,params,fieldspline)
    mesh%nUE  = 0.
    mesh%P11  = 0.
    mesh%P22  = 0.
-   mesh%B    = 0. ! Needs to be interpolated from fieldspline%B 
+   mesh%B    = 0. 
    mesh%E    = 0.
-   mesh%dB   = 0. ! Needs to be interpolated from fieldspline%dB
-   mesh%ddB  = 0. ! Needs to be interpolated from fieldspline%ddB
+   mesh%dB   = 0. 
+   mesh%ddB  = 0. 
    mesh%U    = 0.
    mesh%Ppar = 0.
    mesh%Pper = 0.
    mesh%Tpar = 0.
    mesh%Tper = 0.
+
+   ! Populate E, B, dB and ddB with fieldspline data:
+   mg = (/ (i, i=1,mesh%NZmesh+4, 1) /)
+   zmg = (mg-1)*mesh%dzm + 0.5*mesh%dzm + mesh%zmin - 2.*mesh%dzm
+   DO i = 1,SIZE(zmg)
+	CALL Interp1(zmg(i),mesh%B(i)  ,fieldspline%B  )
+	CALL Interp1(zmg(i),mesh%dB(i) ,fieldspline%dB )
+	CALL Interp1(zmg(i),mesh%ddB(i),fieldspline%ddB)
+   END DO
+   
+   ! Output data to test:
+   IF (.TRUE.) THEN
+	   OPEN(unit=8,file="meshB.txt",form="formatted",status="unknown")
+	   DO i = 1,SIZE(zmg)
+	 	 WRITE(8,*) zmg(i), mesh%B(i), mesh%dB(i), mesh%ddB(i)
+	   END DO
+	   CLOSE(unit=8) 
+   END IF
 
 END SUBROUTINE InitializeMesh
 
@@ -415,21 +436,26 @@ SUBROUTINE AllocatePlasma(plasma,params)
 END SUBROUTINE AllocatePlasma
 
 ! --------------------------------------------------------------------------
-SUBROUTINE InitializePlasma(plasma,params)
+SUBROUTINE InitializePlasma(plasma,mesh,params)
    USE PhysicalConstants
    USE OMP_LIB
+
    IMPLICIT NONE
+
    ! Declare interface variables:
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
+   TYPE(meshTYP)  , INTENT(IN)    :: mesh
    TYPE(paramsTYP), INTENT(INOUT) :: params
    
    ! Declare local variables:
    INTEGER(i4) :: i
 
-   ! Derived parameters: Reference cross sectional area
+   ! 1- Initialize Parametes:
+   ! ===================================================================
+   ! Reference cross sectional area
    params%Area0 = 0.5*params%dtheta*( params%r2**2. - params%r1**2.)
 
-   ! Derived parameters: Select test species
+   ! Select test species
    IF (params%species_a .EQ. 1) THEN
        params%qa = -e_c
        params%Ma = m_e
@@ -438,13 +464,13 @@ SUBROUTINE InitializePlasma(plasma,params)
        params%Ma = params%Aion*m_p
    END IF
    
-   ! Initialize plasma: scalar quantities:
+   ! 2- Initialize plasma:
+   ! ===================================================================
+   ! 2.1- Global quantities:
    plasma%tp      = 0.
    plasma%NR      = params%ne0*params%Area0*(params%zmax - params%zmin)
    plasma%NSP     = params%NC
    plasma%alpha   = plasma%NR/plasma%NSP
-   plasma%Eplus   = 0.
-   plasma%Eminus  = 0.
    plasma%Ndot1   = 0.
    plasma%Ndot2   = 0.
    plasma%Ndot3   = 0.
@@ -455,26 +481,39 @@ SUBROUTINE InitializePlasma(plasma,params)
    plasma%Edot4   = 0.
    plasma%uEdot3  = 0.
 
+   ! 2.2- Initialize plasma: zp, kep, xip and a:
    !$OMP PARALLEL DO
-   ! Initialize plasma: zp, kep, xip and a:
    DO i = 1,params%NC
      plasma%a(i)    = 1.
      CALL loadParticles(i,plasma,params)
    END DO
    !$OMP END PARALLEL DO
 
+   ! 2.3- Assign particles to cells:
+   CALL AssignCell(plasma,mesh,params)
+
+   ! 2.4- Initialize moments:
+   ! CALL InterpolateMoments(plasma,mesh,params)
    !$OMP PARALLEL DO
    DO i = 1,params%NC
      plasma%np(i)    = 0.
      plasma%Up(i)    = 0.
      plasma%Tparp(i) = 0.
      plasma%Tperp(i) = 0.
-     plasma%Bp(i)    = 0. ! Needs to be PIC interpolated from mesh%B
-     plasma%Ep(i)    = 0.
-     plasma%dBp(i)   = 0. ! Needs to be PIC interpolated from mesh%dB
-     plasma%ddBp(i)  = 0. ! Needs to be PIC interpolated from mesh%ddB
    END DO
    !$OMP END PARALLEL DO
+
+   ! 2.5- Initialize electromagnetic field via interpolation: 
+   CALL InterpolateElectromagneticFields(plasma,mesh,params)
+
+   ! Test interpolate EM fields:
+   IF (.TRUE.) THEN
+         OPEN(unit=8,file="InterpB.txt",form="formatted",status="unknown")
+         DO i = 1,params%NC
+                 WRITE(8,*) plasma%zp(i), plasma%Bp(i), plasma%dBp(i), plasma%ddBp(i)
+         END DO
+         CLOSE(unit=8)
+   END IF
 
 END SUBROUTINE InitializePlasma
 
@@ -520,8 +559,8 @@ SUBROUTINE AllocateFieldSpline(fieldspline,params)
    CALL AllocateSpline(fieldspline%B  ,NZ,0._8,0._8)
    CALL AllocateSpline(fieldspline%dB ,NZ,0._8,0._8)
    CALL AllocateSpline(fieldspline%ddB,NZ,0._8,0._8)
-   CALL AllocateSpline(fieldspline%V  ,NZ,0._8,0._8)
-   CALL AllocateSpline(fieldspline%dV ,NZ,0._8,0._8)
+   CALL AllocateSpline(fieldspline%E  ,NZ,0._8,0._8)
+!   CALL AllocateSpline(fieldspline%dV ,NZ,0._8,0._8)
 
 END SUBROUTINE AllocateFieldSpline
 
@@ -536,8 +575,8 @@ SUBROUTINE ComputeFieldSpline(fieldspline)
    CALL ComputeSpline(fieldspline%B)
    CALL ComputeSpline(fieldspline%dB)
    CALL ComputeSpline(fieldspline%ddB)
-   CALL ComputeSpline(fieldspline%V)
-   CALL ComputeSpline(fieldspline%dV)
+   CALL ComputeSpline(fieldspline%E)
+!   CALL ComputeSpline(fieldspline%dV)
 
 END SUBROUTINE ComputeFieldSpline
 
@@ -565,6 +604,10 @@ SUBROUTINE AllocateOutput(output,params)
    ALLOCATE(output%Up(params%NC  ,jsize))
    ALLOCATE(output%Tparp(params%NC  ,jsize))
    ALLOCATE(output%Tperp(params%NC  ,jsize))
+   ALLOCATE(output%Ep(params%NC  ,jsize))
+   ALLOCATE(output%Bp(params%NC  ,jsize))
+   ALLOCATE(output%dBp(params%NC  ,jsize))
+   ALLOCATE(output%ddBp(params%NC  ,jsize))
    ALLOCATE(output%tp(jsize))
 
    ! Create array with the indices of the time steps to save:
@@ -687,6 +730,18 @@ SUBROUTINE SaveData(output,dir1)
     fileName = trim(trim(dir1)//'/'//'Tperp.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%Tperp
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'Bp.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%Bp
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'dBp.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%dBp
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'ddBp.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%ddBp
     CLOSE(unit=8)
 
     ! Saving mesh-defined quantities:
