@@ -363,7 +363,7 @@ TYPE(paramsTYP), INTENT(IN)    :: params
 INTEGER(i4) :: i, ix, frame, NZ
 INTEGER(i4), DIMENSION(3) :: ixLeft, ixRight
 REAL(r8) :: vpar, Ma, Ep, alpha, xip, vper, v, a
-REAL(r8), DIMENSION(mesh%NZmesh + 4) :: n, nU, unU, P11, P22, nUE
+REAL(r8), DIMENSION(mesh%NZmesh + 4) :: n, nU, unU, P11, P22, nUE, cf
 
 ! Initialize local mesh quantities:
 n = 0.
@@ -437,12 +437,13 @@ n(ixLeft)  = n(4)
 n(ixRight) = n(NZ+1)
 
 ! Apply magnetic compression:
-mesh%n   =  n/params%Area0
-mesh%nU  = nU/params%Area0
+cf = (mesh%B/mesh%B0)/params%Area0
+mesh%n   = n*cf
+mesh%nU  = nU*cf
 mesh%unU = unU
-mesh%P11 = P11/params%Area0
-mesh%P22 = P22/params%Area0
-mesh%nUE = nUE/params%Area0
+mesh%P11 = P11*cf
+mesh%P22 = P22*cf
+mesh%nUE = nUE*cf
 
 ! Apply scaling factor:
 mesh%n   = alpha*  mesh%n/mesh%dzm

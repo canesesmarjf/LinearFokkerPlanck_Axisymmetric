@@ -89,9 +89,7 @@ CALL ComputeFieldSpline(fieldspline)
 
 ! Initialize simulation variables:
 ! ==============================================================================
-WRITE(*,*) "Initialize Mesh"
 CALL InitializeMesh(mesh,params,fieldspline)
-WRITE(*,*) "Initialize Plasma"
 CALL InitializePlasma(plasma,mesh,params)
 
 !$OMP PARALLEL

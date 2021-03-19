@@ -1,7 +1,7 @@
 &params_nml
 ! Simulation name:
 ! ===============
-params%fileDescriptor = '2021_03_15b',
+params%fileDescriptor = '2021_03_18a',
 
 ! Magnetic field input data:
 ! =========================

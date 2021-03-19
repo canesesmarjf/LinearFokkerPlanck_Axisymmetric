@@ -303,9 +303,9 @@ TYPE meshTYP
  REAL(r8) , DIMENSION(:), ALLOCATABLE :: zm
  REAL(r8) , DIMENSION(:), ALLOCATABLE :: n, nU, nUE, P11, P22
  REAL(r8) , DIMENSION(:), ALLOCATABLE :: U, Ppar, Pper, Tpar, Tper
- REAL(r8) , DIMENSION(:), ALLOCATABLE :: E, B, dB, ddB
+ REAL(r8) , DIMENSION(:), ALLOCATABLE :: E, B, dB, ddB, A
  REAL(r8) , DIMENSION(:), ALLOCATABLE :: unU
- REAL(r8) :: LZ, zmin, zmax, dzm
+ REAL(r8) :: LZ, zmin, zmax, dzm, B0
  INTEGER(i4) :: NZmesh
 END TYPE meshTYP
 
@@ -342,6 +342,7 @@ SUBROUTINE AllocateMesh(mesh,params)
    ALLOCATE(mesh%Pper(NZmesh + 4))
    ALLOCATE(mesh%Tpar(NZmesh + 4))
    ALLOCATE(mesh%Tper(NZmesh + 4))
+   ALLOCATE(mesh%A(NZmesh + 4))
 
 END SUBROUTINE AllocateMesh
 
@@ -358,6 +359,7 @@ SUBROUTINE InitializeMesh(mesh,params,fieldspline)
    INTEGER(i4) :: i
    INTEGER(i4), DIMENSION(params%NZmesh+4) :: mg
    REAL(r8), DIMENSION(params%NZmesh+4) :: zmg
+   REAL(r8) :: z0
 
    ! Populate fields:
    mesh%NZmesh   = params%NZmesh
@@ -367,6 +369,7 @@ SUBROUTINE InitializeMesh(mesh,params,fieldspline)
    ! Derived quantities:
    mesh%LZ  = params%zmax - params%zmin
    mesh%dzm = mesh%LZ/mesh%NZmesh
+   z0 = 0.;  CALL Interp1(z0,mesh%B0, fieldspline%B)
    m = (/ (i, i=1,mesh%NZmesh, 1) /)
 
    ! Create mesh:
@@ -388,6 +391,7 @@ SUBROUTINE InitializeMesh(mesh,params,fieldspline)
    mesh%Pper = 0.
    mesh%Tpar = 0.
    mesh%Tper = 0.
+   mesh%A    = 0.
 
    ! Populate E, B, dB and ddB with fieldspline data:
    mg = (/ (i, i=1,mesh%NZmesh+4, 1) /)
@@ -397,12 +401,12 @@ SUBROUTINE InitializeMesh(mesh,params,fieldspline)
 	CALL Interp1(zmg(i),mesh%dB(i) ,fieldspline%dB )
 	CALL Interp1(zmg(i),mesh%ddB(i),fieldspline%ddB)
    END DO
-   
+  
    ! Output data to test:
    IF (.TRUE.) THEN
 	   OPEN(unit=8,file="meshB.txt",form="formatted",status="unknown")
 	   DO i = 1,SIZE(zmg)
-	 	 WRITE(8,*) zmg(i), mesh%B(i), mesh%dB(i), mesh%ddB(i)
+	 	 WRITE(8,*) zmg(i), mesh%B(i), mesh%dB(i), mesh%ddB(i), mesh%A(i)
 	   END DO
 	   CLOSE(unit=8) 
    END IF
@@ -507,7 +511,7 @@ SUBROUTINE InitializePlasma(plasma,mesh,params)
    CALL InterpolateElectromagneticFields(plasma,mesh,params)
 
    ! Test interpolate EM fields:
-   IF (.TRUE.) THEN
+   IF (.FALSE.) THEN
          OPEN(unit=8,file="InterpB.txt",form="formatted",status="unknown")
          DO i = 1,params%NC
                  WRITE(8,*) plasma%zp(i), plasma%Bp(i), plasma%dBp(i), plasma%ddBp(i)
