@@ -1,25 +1,25 @@
 #
 COMPILER = gfortran
-OPTFLAGS = -O3
+OPTFLAGS = -O3 -fopenmp
 DBGFLAGS = -g
-OBJ_1 = Modules.o linFP.o 
-OBJ_2 = fitpack.o MoveParticlePack.o CoulombCollisions.o
+OBJ = T1.o T2.o T3.o T4.o
+PROG = linFP
 
 All: $(OBJ_1) $(OBJ_2)
-	$(COMPILER) $(OPTFLAGS) -fopenmp $(OBJ_1) $(OBJ_2) -o linFP
+	$(COMPILER) $(OPTFLAGS) $(OBJ) -o $(PROG)
 	rm *.o *.mod
 
-Modules.o: Modules.f90
-	$(COMPILER) $(OPTFLAGS) -fopenmp -c Modules.f90
+T1.o: Modules.f90
+	$(COMPILER) $(OPTFLAGS) -c Modules.f90 -o T1.o
 
-linFP.o: linFP.f90
-	$(COMPILER) $(OPTFLAGS) -fopenmp -c linFP.f90
+T2.o: linFP.f90
+	$(COMPILER) $(OPTFLAGS) -c linFP.f90 -o T2.o
 
-MoveParticlePack.o: MoveParticlePack.f90
-	$(COMPILER) $(OPTFLAGS) -c -fopenmp MoveParticlePack.f90
+T3.o: MoveParticlePack.f90
+	$(COMPILER) $(OPTFLAGS) -c MoveParticlePack.f90 -o T3.o
 
-CoulombCollisions.o: CoulombCollisions.f90
-	$(COMPILER) $(OPTFLAGS) -fopenmp -c CoulombCollisions.f90
+T4.o: CoulombCollisions.f90
+	$(COMPILER) $(OPTFLAGS) -c CoulombCollisions.f90 -o T4.o
 
 clean:
 	rm *.o *.mod linFP *.dat
