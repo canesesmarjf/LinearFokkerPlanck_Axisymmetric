@@ -2,7 +2,7 @@
 COMPILER = gfortran
 OPTFLAGS = -O3 -fopenmp
 DBGFLAGS = -g
-OBJ = T1.o T2.o T3.o T4.o
+OBJ = T1.o T2.o T3.o T4.o T5.o
 PROG = linFP
 
 All: $(OBJ_1) $(OBJ_2)
@@ -20,6 +20,9 @@ T3.o: MoveParticlePack.f90
 
 T4.o: CoulombCollisions.f90
 	$(COMPILER) $(OPTFLAGS) -c CoulombCollisions.f90 -o T4.o
+
+T5.o: PIC.f90
+		$(COMPILER) $(OPTFLAGS) -c PIC.f90 -o T5.o
 
 clean:
 	rm *.o *.mod linFP *.dat

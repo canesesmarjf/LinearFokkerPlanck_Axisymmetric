@@ -16,38 +16,39 @@ TYPE(fieldSplineTYP), INTENT(IN)    :: fieldspline
 ! Declare local variables:
 REAL(r8) :: dresNum, resNum0, resNum1
 INTEGER(i4) :: i
-	
+
 ! Initialize resonance number:
 dresNum = 0.
 resNum0 = 0.
 resNum1 = 0.
 
 ! Advance particle positions and velocities:
-!$OMP PARALLEL DO FIRSTPRIVATE(dresNum, resNum0, resNum1) SCHEDULE(STATIC) 
+!$OMP PARALLEL DO FIRSTPRIVATE(dresNum, resNum0, resNum1) SCHEDULE(STATIC)
 DO i = 1,params%NC
 	! 2.1 - Reset flags:
 	CALL ResetFlags(i,plasma)
-		
+
 	! 2.2- Compute resonance number:
 	IF (params%iHeat) THEN
 		CALL CyclotronResonanceNumber(i,plasma,fieldspline,params,resNum0)
         END IF
-		
+
 	! 2.3- Advance zp, kep, xip:
 	IF (params%iPush) THEN
-		CALL  MoveParticle(i,plasma,fieldspline,params)
-        END IF
-		
+		! CALL  MoveParticle(i,plasma,fieldspline,params)
+		CALL MoveParticle_RK4(i,plasma,mesh,params)		
+  END IF
+
 	! 2.4- Check boundaries: set f1 and f2 flags
 	IF (params%iPush) THEN
 		CALL CheckBoundary(i,plasma,params)
 	END IF
-	
+
 	! 2.5- Compute resonance number:
 	IF (params%iHeat) THEN
 		CALL CyclotronResonanceNumber(i,plasma,fieldspline,params,resNum0)
         END IF
-		
+
 	! 2.6- Check resonance: set f3 flag
 	IF (params%iHeat) THEN
 		dresNum = dsign(1.d0,resNum0*resNum1)
@@ -94,27 +95,27 @@ DO i = 1,params%NC
                 E(1) = mesh%E(ix - 1)
                 E(2) = mesh%E(ix)
                 E(3) = mesh%E(ix + 1)
-                plasma%Ep(i) = w(1)*E(1) + w(2)*E(2) + w(3)*E(3)
+                plasma%Ep(i) = DOT_PRODUCT(w,E)
 
                 ! Magnetic field:
                 B(1) = mesh%B(ix - 1)
                 B(2) = mesh%B(ix)
                 B(3) = mesh%B(ix + 1)
-                plasma%Bp(i) = w(1)*B(1) + w(2)*B(2) + w(3)*B(3)
+                plasma%Bp(i) = DOT_PRODUCT(w,B)
 
                 ! Magnetic field: 1st derivative
                 dB(1) = mesh%dB(ix - 1)
                 dB(2) = mesh%dB(ix)
                 dB(3) = mesh%dB(ix + 1)
-                plasma%dBp(i) = w(1)*dB(1) + w(2)*dB(2) + w(3)*dB(3)
+                plasma%dBp(i) =  DOT_PRODUCT(w,dB)
 
                 ! Magnetic field: 2nd derivative
 		!IF (params%iHeat) THEN
 		IF (.TRUE.) THEN
 	                ddB(1) = mesh%ddB(ix - 1)
         	        ddB(2) = mesh%ddB(ix)
-	        	ddB(3) = mesh%ddB(ix + 1)
-                	plasma%ddBp(i) = w(1)*ddB(1) + w(2)*ddB(2) + w(3)*ddB(3)
+	        	      ddB(3) = mesh%ddB(ix + 1)
+                	plasma%ddBp(i) =  DOT_PRODUCT(w,ddB)
 		END IF
 	END IF
 END DO
@@ -326,19 +327,19 @@ zoffset = mesh%zmin
 !$OMP PARALLEL DO PRIVATE(zi,Z)
 DO i = 1,params%NC
 	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
-	   
+
 	! Using zm and zp, find nearest grid point (NGP):
 	zi = plasma%zp(i)
 	plasma%m(i) = NINT(0.5 + (zi - zoffset)/dz)
-		
+
 	! Compute wL(i), wC(i), wR(i)
 	Z = mesh%zm(plasma%m(i)) - zi
 	plasma%wC(i) = 0.75 - (Z/dz)**2.
 	plasma%wL(i) = 0.5*(1.5 + ((Z - dz)/dz) )**2.
 	plasma%wR(i) = 0.5*(1.5 - ((Z + dz)/dz) )**2.
-	
+
 	END IF
-END DO	
+END DO
 !$OMP END PARALLEL DO
 
 RETURN
@@ -379,14 +380,14 @@ alpha = plasma%alpha
 ! Size of mesh quantities:
 NZ = mesh%NZmesh
 ! Set the edge cell number:
-ixLeft  = (/1,2,3/) 
+ixLeft  = (/1,2,3/)
 ixRight = (/2,3,4/) + NZ
 
 ! Calculate moments and extrapolate to mesh points
 !$OMP PARALLEL DO PRIVATE(a,Ep,v,xip,vpar,vper,ix) REDUCTION(+:n, nU, unU, P11, P22, nUE)
 DO i = 1,params%NC
 	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
-		
+
 		! Derived quantities:
 		a    = plasma%a(i)
 		Ep   = e_c*plasma%kep(i)
@@ -492,7 +493,7 @@ REAL(r8)   , DIMENSION(NX), INTENT(INOUT) :: y
 ! Define local variables:
 REAL(r8), DIMENSION(NX) :: ym
 REAL(r8) :: yd
-INTEGER(i4) :: s, ii, jj, istart, iend, N 
+INTEGER(i4) :: s, ii, jj, istart, iend, N
 
 ! Half frame size:
 s = (k-1)/2
@@ -847,8 +848,8 @@ SUBROUTINE loadParticles(i,plasma,params)
   xip0 = plasma%xip(i)
 
   ! Particle position:
-  zmin = params%zmin 
-  zmax = params%zmax 
+  zmin = params%zmin
+  zmax = params%zmax
   if (params%IC_Type .EQ. 1) then
       ! Uniform load
       call random_number(X1)
