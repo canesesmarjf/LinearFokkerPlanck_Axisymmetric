@@ -22,17 +22,17 @@ REAL(r8) :: E, B, dB
 REAL(r8) :: qa, Ma, dt
 
 ! Input data:
-z  = plasma.zp(i)
-K  = plasma.kep(i)
-X  = plasma.xip(i)
-B  = plasma.Bp(i)
-E  = plasma.Ep(i)
-dB = plasma.dBp(i)
+z  = plasma%zp(i)
+K  = plasma%kep(i)
+X  = plasma%xip(i)
+B  = plasma%Bp(i)
+E  = plasma%Ep(i)
+dB = plasma%dBp(i)
 
 ! Parameters:
-Ma = params.Ma
-qa = params.qa
-dt = params.dt
+Ma = params%Ma
+qa = params%qa
+dt = params%dt
 
 ! Derived quantities:
 v  = sqrt(2.*e_c*K/Ma)
@@ -81,7 +81,7 @@ CALL CalculateF(ZN,EM,params,F)
 dZ4 = F*dt
 
 ! Assemble RK4 solution:
-ZN = Z0 + (dZ1 + 2*dZ2 + 3*dZ3 + dZ4)/6.
+ZN = Z0 + (dZ1 + 2*dZ2 + 2*dZ3 + dZ4)/6.
 
 ! End of RK solution:
 ! ==============================================================================
@@ -95,9 +95,9 @@ X = vz/v
 K = (0.5*Ma/e_c)*v**2.
 
 ! Output data:
-plasma.zp(i)  = z
-plasma.kep(i) = K
-plasma.xip(i) = X
+plasma%zp(i)  = z
+plasma%kep(i) = K
+plasma%xip(i) = X
 
 ! Notes:
 ! Electromagnetic fields needs to be interpolated at this new postion.

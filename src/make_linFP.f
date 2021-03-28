@@ -5,7 +5,7 @@ DBGFLAGS = -g
 OBJ = T1.o T2.o T3.o T4.o T5.o
 PROG = linFP
 
-All: $(OBJ_1) $(OBJ_2)
+All: $(OBJ)
 	$(COMPILER) $(OPTFLAGS) $(OBJ) -o $(PROG)
 	rm *.o *.mod
 
@@ -22,7 +22,7 @@ T4.o: CoulombCollisions.f90
 	$(COMPILER) $(OPTFLAGS) -c CoulombCollisions.f90 -o T4.o
 
 T5.o: PIC.f90
-		$(COMPILER) $(OPTFLAGS) -c PIC.f90 -o T5.o
+	$(COMPILER) $(OPTFLAGS) -c PIC.f90 -o T5.o
 
 clean:
 	rm *.o *.mod linFP *.dat

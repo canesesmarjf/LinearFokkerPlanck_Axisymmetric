@@ -183,7 +183,7 @@ NS_loop: DO j = 1,params%NS
     !$OMP END PARALLEL DO
 
     ! Field solve:
-    ! AdvanceEfield(plasma,mesh,params)
+    CALL AdvanceEfield(plasma,mesh,params)
 
     ! Interpolate electromagnetic fields to particle positions:
     CALL InterpolateElectromagneticFields(plasma,mesh,params)
