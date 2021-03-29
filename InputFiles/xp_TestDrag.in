@@ -1,7 +1,7 @@
 &params_nml
 ! Simulation name:
 ! ===============
-params%fileDescriptor = '2021_03_28b',
+params%fileDescriptor = '2021_03_28d',
 
 ! Magnetic field input data:
 ! =========================
@@ -12,7 +12,7 @@ params%nz            = 501,                                                     
 
 ! Simulation conditions:
 ! =====================
-params%NC = 200000,                                                              ! Total number of particles
+params%NC = 500000,                                                              ! Total number of particles
 params%NS = 20000,                                                              ! Total number of time steps
 params%dt = 0.5E-7,                                                             ! Time step in [s]
 params%G  = 2.5E+20,                                                            ! Real particle injection rate 
@@ -43,8 +43,8 @@ params%iDrag      = .true.,                                                     
 
 ! Collision operator conditions:
 ! ==============================
-params%Te0          = 250.,                                                      ! eV
-params%Ti0          = 250.,                                                      ! eV
+params%Te0          = 600.,                                                      ! eV
+params%Ti0          = 600.,                                                      ! eV
 params%ne0          = 0.5E+19,                                                  ! m**-3
 params%Aion         = 1.,                                                       ! Ion mass
 params%Zion         = 1.,                                                       ! Charge number for main ion species
@@ -54,11 +54,11 @@ params%CollOperType = 2,                                                        
 
 ! Particle Boundary Conditions:
 ! ============================
-params%BC_Type    = 2,                                                          ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
+params%BC_Type    = 1,                                                          ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
 params%BC_zp_mean = 0.0,                                                        ! Mean particle injection
 params%BC_zp_std  = 0.3,                                                        ! STD of particle injection
 params%BC_Ep      = 2000.,                                                      ! Drift kinetic energy
-params%BC_Tp      = 10,                                                         ! Thermal kinetic energy
+params%BC_Tp      = 600,                                                         ! Thermal kinetic energy
 params%BC_xip     = 0.707,                                                      ! Mean pitch angle where xip = cos(theta) = vpar/v
 
 ! Particle Initial Conditions:

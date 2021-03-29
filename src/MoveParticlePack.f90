@@ -487,13 +487,19 @@ USE dataTYP
 IMPLICIT NONE
 
 ! Define interface variables:
-INTEGER(i4),  INTENT(IN) :: NX, k
 REAL(r8)   , DIMENSION(NX), INTENT(INOUT) :: y
+INTEGER(i4), INTENT(IN) :: NX
+INTEGER(i4), INTENT(INOUT) :: k
 
 ! Define local variables:
 REAL(r8), DIMENSION(NX) :: ym
 REAL(r8) :: yd
 INTEGER(i4) :: s, ii, jj, istart, iend, N
+
+! Check frame:
+IF (MOD(k,2) .EQ. 0) THEN
+	k = k + 1
+END IF
 
 ! Half frame size:
 s = (k-1)/2

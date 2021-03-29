@@ -790,6 +790,14 @@ SUBROUTINE SaveData(output,dir1)
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%U
     CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'ddB_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%ddB
+    CLOSE(unit=8)
+    fileName = trim(trim(dir1)//'/'//'E_mesh.out')
+    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    WRITE(8) output%E
+    CLOSE(unit=8)
 
 
     ! Saving pcount to file:
