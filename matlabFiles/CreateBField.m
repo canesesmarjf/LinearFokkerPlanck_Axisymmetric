@@ -9,13 +9,13 @@ saveFig  = 1;
 
 % Select coil geometry:
 % =========================================================================
-coilType = 1;
-Lx = 6;         % Domain length [m]
-Lx_offset = 0;  % Offset [m]
-N = 501;        %  Number of elements on profile          
+coilType = "c";        
 
 switch coilType
-    case 1
+    case {"a","b"}
+        Lx = 6;         % Domain length [m]
+        Lx_offset = 0;  % Offset [m]
+        N = 501;        %  Number of elements on profile 
         rM       = 0.6;   % mirror coil radius in [m]
         IM       = 1.5e2; % Mirror coil current [kA]
         zM       = 1.5;   % Coil location along "z" [m]
@@ -23,6 +23,17 @@ switch coilType
         R  =     [+rM ,+rM ];
         z0 =     [-zM ,+zM ] + Lx_offset;
         I  =     [+IM ,+IM];
+    case {"c"}
+        Lx = 3;             % Domain length [m]
+        Lx_offset = 0;      % Offset [m]
+        N = 501;            %  Number of elements on profile 
+        rM       = 0.22;    % mirror coil radius in [m]
+        IM       = 15*15e3; % Mirror coil current [kA]
+        zM       = 0.875;   % Coil location along "z" [m]
+        n  =     [+25 ,+25 ];
+        R  =     [+rM ,+rM ];
+        z0 =     [-zM ,+zM ] + Lx_offset;
+        I  =     [+IM ,+IM];        
 end
 
 % Calculate magnetic field:
@@ -54,7 +65,7 @@ ylim([0,1.2*max(B)])
 % Save data to text file:
 % =========================================================================
 if saveData
-    fileName = 'Bfield_a.txt';
+    fileName = 'Bfield_c.txt';
     f = [z_B,B];
     save(fileName,'f','-ascii');
 end
