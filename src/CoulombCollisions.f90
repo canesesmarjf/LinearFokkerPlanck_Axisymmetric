@@ -24,35 +24,35 @@ DO i = 1,params%NC
 	IF (plasma%f1(i) .EQ. 0 .AND. plasma%f2(i) .EQ. 0) THEN
 		! Get nearest grid point:
 		ix = plasma%m(i) + 2
-		
+
 		! Assignment function:
 		w(1) = plasma%wL(i)
 		w(2) = plasma%wC(i)
 		w(3) = plasma%wR(i)
-		
+
 		! Plasma density:
 		n(1) = mesh%n(ix - 1)
 		n(2) = mesh%n(ix)
 		n(3) = mesh%n(ix + 1)
-		plasma%np(i) = w(1)*n(1) + w(2)*n(2) + w(3)*n(3)  
+		plasma%np(i) = w(1)*n(1) + w(2)*n(2) + w(3)*n(3)
 
 		! Parallel drift velocity:
 		U(1) = mesh%U(ix - 1)
 		U(2) = mesh%U(ix)
 		U(3) = mesh%U(ix + 1)
-		plasma%Up(i) = w(1)*U(1) + w(2)*U(2) + w(3)*U(3)  
+		plasma%Up(i) = w(1)*U(1) + w(2)*U(2) + w(3)*U(3)
 
 		! Parallel Temperature:
 		Tpar(1) = mesh%Tpar(ix - 1)
 		Tpar(2) = mesh%Tpar(ix)
 		Tpar(3) = mesh%Tpar(ix + 1)
-		plasma%Tparp(i) = w(1)*Tpar(1) + w(2)*Tpar(2) + w(3)*Tpar(3) 
+		plasma%Tparp(i) = w(1)*Tpar(1) + w(2)*Tpar(2) + w(3)*Tpar(3)
 
  		! Perpendicular Temperature:
 		Tper(1) = mesh%Tper(ix - 1)
 		Tper(2) = mesh%Tper(ix)
 		Tper(3) = mesh%Tper(ix + 1)
-		plasma%Tperp(i) = w(1)*Tper(1) + w(2)*Tper(2) + w(3)*Tper(3) 
+		plasma%Tperp(i) = w(1)*Tper(1) + w(2)*Tper(2) + w(3)*Tper(3)
 	END IF
 END DO
 !$OMP END PARALLEL DO
@@ -119,7 +119,7 @@ np0  = plasma%np(i)
 !np0  = params%ne0
 Up0  = plasma%Up(i)
 !Tp0  = params%Te0
-Tp0  = abs(plasma%Tparp(i))
+Tp0  = 0.5*abs(plasma%Tparp(i) + plasma%Tperp(i))
 
 
 ! Test particle properties:
@@ -232,7 +232,7 @@ DO kk = 1,Nstep
 	S1 = xip_pf_1*(1. - d1)
 	S2 = ( 1. - (xip_pf_1**2.) )*d1
 	call random_number(ran_num)
-	xsi1 = sign(1._r8, ran_num - 0.5_r8)	
+	xsi1 = sign(1._r8, ran_num - 0.5_r8)
 	S3 = xsi1*sqrt(S2)
 	xip_pf_1 = S1 + S3
 END DO
@@ -266,13 +266,13 @@ END IF
 IF (i .EQ. 1 .AND. NINT(plasma%tp/params%dt) .EQ. 10) THEN
 	WRITE(*,*) "recording f2"
 	OPEN(unit=8,file="f2.txt",form="formatted",status="unknown")
-	xx = 1E-4	
+	xx = 1E-4
 	DO nn = 1,params%NZ
 		yy = (phip(xx)/(xx**2.))
 		WRITE(8,*) xx, yy
 		xx = xx + 0.01/params%NZ
 	END DO
-	CLOSE(unit=8)		
+	CLOSE(unit=8)
 
 !	WRITE(*,*) "tp0 [ms]", plasma%tp*1e3
 !	WRITE(*,*) "zp0", zp0
@@ -347,7 +347,7 @@ IF (ISNAN(kep0) .OR. ISNAN(xip0) ) THEN
 
 	WRITE(*,*) "wTb: ", wTb
 	WRITE(*,*) "xab: ", xab
-        
+
 	WRITE(*,*) "nuE: ", nu_E(xab,nb,Tb,Mb,Zb,Za,Ma)
 	WRITE(*,*) "nuE*dt: ", d2
         WRITE(*,*) "E_nuE_d_nu_E_dE: ", E_nuE_d_nu_E_dE(xab)
@@ -365,22 +365,22 @@ IF (ISNAN(kep0) .OR. ISNAN(xip0) ) THEN
         WRITE(*,*) "xip_pf_1: ", xip_pf_1
 
 	OPEN(unit=8,file="f1.txt",form="formatted",status="unknown")
-	xx = xab	
+	xx = xab
 	DO nn = 1,params%NZ
 		yy = E_nuE_d_nu_E_dE(xx)
 		WRITE(8,*) xx, yy
 		xx = xx + 5./params%NZ
 	END DO
-	CLOSE(unit=8)		
+	CLOSE(unit=8)
 
 	OPEN(unit=8,file="f2.txt",form="formatted",status="unknown")
-	xx = xab	
+	xx = xab
 	DO nn = 1,params%NZ
 		yy = Gb(xx)/xx
 		WRITE(8,*) xx, yy
 		xx = xx + 5./params%NZ
 	END DO
-	CLOSE(unit=8)		
+	CLOSE(unit=8)
 
         READ(*,*) dummy
 END IF

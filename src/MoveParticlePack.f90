@@ -36,7 +36,7 @@ DO i = 1,params%NC
 	! 2.3- Advance zp, kep, xip:
 	IF (params%iPush) THEN
 		! CALL  MoveParticle(i,plasma,fieldspline,params)
-		CALL MoveParticle_RK4(i,plasma,mesh,params)		
+		CALL MoveParticle_RK4(i,plasma,mesh,params)
   END IF
 
 	! 2.4- Check boundaries: set f1 and f2 flags
@@ -363,7 +363,7 @@ TYPE(paramsTYP), INTENT(IN)    :: params
 ! Define local variables:
 INTEGER(i4) :: i, ix, frame, NZ
 INTEGER(i4), DIMENSION(3) :: ixLeft, ixRight
-REAL(r8) :: vpar, Ma, Ep, alpha, xip, vper, v, a
+REAL(r8) :: vpar, Ma, Ep, alpha, xip, vper, v, a, phi, vx
 REAL(r8), DIMENSION(mesh%NZmesh + 4) :: n, nU, unU, P11, P22, nUE, cf
 
 ! Initialize local mesh quantities:
@@ -395,6 +395,9 @@ DO i = 1,params%NC
 		xip  = plasma%xip(i)
 		vpar = v*xip
 		vper = v*sqrt(1 - xip**2.)
+		call random_number(phi)
+		phi = phi*2*pi
+		vx = vper*cos(phi)
 
 		! Mesh point with ghost cells:
 		ix = plasma%m(i) + 2
@@ -420,9 +423,9 @@ DO i = 1,params%NC
 		P11(ix+1)  = P11(ix+1)  + plasma%wR(i)*a*Ma*vpar**2.
 
 		! Stress tensor 22:
-		P22(ix-1)  = P22(ix-1)  + plasma%wL(i)*a*Ma*vper**2.
-		P22(ix)    = P22(ix)    + plasma%wC(i)*a*Ma*vper**2.
-		P22(ix+1)  = P22(ix+1)  + plasma%wR(i)*a*Ma*vper**2.
+		P22(ix-1)  = P22(ix-1)  + plasma%wL(i)*a*Ma*vx**2.
+		P22(ix)    = P22(ix)    + plasma%wC(i)*a*Ma*vx**2.
+		P22(ix+1)  = P22(ix+1)  + plasma%wR(i)*a*Ma*vx**2.
 
 		! Energy flux density:
 		nUE(ix-1)  = nUE(ix-1)  + plasma%wL(i)*a*vpar*Ep
