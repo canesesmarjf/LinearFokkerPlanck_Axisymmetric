@@ -200,7 +200,7 @@ NS_loop: DO j = 1,params%NS
     output%NR(j)  = plasma%NR
     output%NSP(j) = plasma%NSP
     output%ER(j)  = ER
-    
+
     ! Assign particle and energy rates in physical units [P/s] and [J/s]
     ! ==============================================================================
     output%Ndot1(j) = N1
@@ -227,28 +227,28 @@ NS_loop: DO j = 1,params%NS
              output%kep(i,k)   = plasma%kep(i)
              output%xip(i,k)   = plasma%xip(i)
              output%a(i,k)     = plasma%a(i)
-             output%m(i,k)     = plasma%m(i)
-             output%np(i,k)    = plasma%np(i)
-             output%Up(i,k)    = plasma%Up(i)
-             output%Tparp(i,k) = plasma%Tparp(i)
-             output%Tperp(i,k) = plasma%Tperp(i)
-             output%Bp(i,k)    = plasma%Bp(i)
-             output%dBp(i,k)   = plasma%dBp(i)
-             output%ddBp(i,k)  = plasma%ddBp(i)
+             !output%m(i,k)     = plasma%m(i)
+             !output%np(i,k)    = plasma%np(i)
+             !output%Up(i,k)    = plasma%Up(i)
+             !output%Tparp(i,k) = plasma%Tparp(i)
+             !output%Tperp(i,k) = plasma%Tperp(i)
+             !output%Bp(i,k)    = plasma%Bp(i)
+             !output%dBp(i,k)   = plasma%dBp(i)
+             !output%ddBp(i,k)  = plasma%ddBp(i)
           END DO
          !$OMP END PARALLEL DO
 
 	 ! Record mesh quantities:
 	 output%n(:,k)    = mesh%n
 	 output%nU(:,k)   = mesh%nU
-	 output%unU(:,k)  = mesh%unU
+	 !output%unU(:,k)  = mesh%unU
 	 output%nUE(:,k)  = mesh%nUE
-	 output%Ppar(:,k) = mesh%Ppar
-	 output%Pper(:,k) = mesh%Pper
+	 !output%Ppar(:,k) = mesh%Ppar
+	 !output%Pper(:,k) = mesh%Pper
 	 output%Tpar(:,k) = mesh%Tpar
 	 output%Tper(:,k) = mesh%Tper
 	 output%U(:,k)    = mesh%U
-	 output%ddB(:,k)  = mesh%ddB
+	 !output%ddB(:,k)  = mesh%ddB
 	 output%E(:,k)    = mesh%E
          ! Increment counter:
          k = k + 1

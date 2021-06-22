@@ -320,7 +320,7 @@ SUBROUTINE AllocateMesh(mesh,params)
 
    ! Declare local variables:
    INTEGER(i4) :: NZmesh
- 
+
    ! Allocate memory to mesh:
    NZmesh = params%NZmesh
    ALLOCATE(mesh%zm(NZmesh))
@@ -382,10 +382,10 @@ SUBROUTINE InitializeMesh(mesh,params,fieldspline)
    mesh%nUE  = 0.
    mesh%P11  = 0.
    mesh%P22  = 0.
-   mesh%B    = 0. 
+   mesh%B    = 0.
    mesh%E    = 0.
-   mesh%dB   = 0. 
-   mesh%ddB  = 0. 
+   mesh%dB   = 0.
+   mesh%ddB  = 0.
    mesh%U    = 0.
    mesh%Ppar = 0.
    mesh%Pper = 0.
@@ -401,14 +401,14 @@ SUBROUTINE InitializeMesh(mesh,params,fieldspline)
 	CALL Interp1(zmg(i),mesh%dB(i) ,fieldspline%dB )
 	CALL Interp1(zmg(i),mesh%ddB(i),fieldspline%ddB)
    END DO
-  
+
    ! Output data to test:
    IF (.TRUE.) THEN
 	   OPEN(unit=8,file="meshB.txt",form="formatted",status="unknown")
 	   DO i = 1,SIZE(zmg)
 	 	 WRITE(8,*) zmg(i), mesh%B(i), mesh%dB(i), mesh%ddB(i), mesh%A(i)
 	   END DO
-	   CLOSE(unit=8) 
+	   CLOSE(unit=8)
    END IF
 
 END SUBROUTINE InitializeMesh
@@ -425,8 +425,8 @@ SUBROUTINE AllocatePlasma(plasma,params)
 
    ! NC: Number of computational particles
    NC = params%NC
- 
-   ! Allocate memory: Particle quantities: 
+
+   ! Allocate memory: Particle quantities:
    ALLOCATE(plasma%zp(NC)  ,plasma%kep(NC) ,plasma%xip(NC)  ,plasma%a(NC))
    ALLOCATE(plasma%m(NC)   ,plasma%wL(NC)  ,plasma%wC(NC)   ,plasma%wR(NC))
    ALLOCATE(plasma%np(NC)  ,plasma%Up(NC)  ,plasma%Tparp(NC),plasma%Tperp(NC))
@@ -450,7 +450,7 @@ SUBROUTINE InitializePlasma(plasma,mesh,params)
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
    TYPE(meshTYP)  , INTENT(IN)    :: mesh
    TYPE(paramsTYP), INTENT(INOUT) :: params
-   
+
    ! Declare local variables:
    INTEGER(i4) :: i
 
@@ -467,7 +467,7 @@ SUBROUTINE InitializePlasma(plasma,mesh,params)
        params%qa = +params%Zion*e_c
        params%Ma = params%Aion*m_p
    END IF
-   
+
    ! 2- Initialize plasma:
    ! ===================================================================
    ! 2.1- Global quantities:
@@ -507,7 +507,7 @@ SUBROUTINE InitializePlasma(plasma,mesh,params)
    END DO
    !$OMP END PARALLEL DO
 
-   ! 2.5- Initialize electromagnetic field via interpolation: 
+   ! 2.5- Initialize electromagnetic field via interpolation:
    CALL InterpolateElectromagneticFields(plasma,mesh,params)
 
    ! Test interpolate EM fields:
@@ -529,13 +529,13 @@ SUBROUTINE ResetFlags(i,plasma)
    INTEGER(i4)    , INTENT(IN)    :: i
    TYPE(plasmaTYP), INTENT(INOUT) :: plasma
 
-   plasma%f1(i)      = 0. 
-   plasma%f2(i)      = 0. 
-   plasma%f3(i)      = 0. 
+   plasma%f1(i)      = 0.
+   plasma%f2(i)      = 0.
+   plasma%f3(i)      = 0.
    plasma%f4(i)      = 0.
-   plasma%dE1(i)     = 0. 
-   plasma%dE2(i)     = 0. 
-   plasma%dE3(i)     = 0. 
+   plasma%dE1(i)     = 0.
+   plasma%dE2(i)     = 0.
+   plasma%dE3(i)     = 0.
    plasma%dE4(i)     = 0.
    plasma%dE5(i)     = 0.
    plasma%udE3(i)    = 0.
@@ -590,13 +590,13 @@ SUBROUTINE AllocateOutput(output,params)
    ! Declare interface variables:
    TYPE(outputTYP), INTENT(INOUT) :: output
    TYPE(paramsTYP), INTENT(IN)    :: params
-   
+
    ! Declare local variables:
    INTEGER(i4) :: j, jsize, NS, NZmesh
 
    ! Determine size of temporal snapshots to record:
    jsize = (params%jend-params%jstart+1)/params%jincr
-   
+
    ! Allocate memory: Particle quantities
    ALLOCATE(output%jrng(jsize))
    ALLOCATE(output%zp(params%NC ,jsize))
@@ -622,7 +622,7 @@ SUBROUTINE AllocateOutput(output,params)
    ALLOCATE(output%NR(NS)   ,output%NSP(NS)  ,output%Eplus(NS),output%Eminus(NS),output%ER(NS))
    ALLOCATE(output%Ndot1(NS),output%Ndot2(NS),output%Ndot3(NS),output%Ndot4(NS) ,output%Ndot5(NS))
    ALLOCATE(output%Edot1(NS),output%Edot2(NS),output%Edot3(NS),output%Edot4(NS) ,output%Edot5(NS))
-  
+
   ! Allocate memory: mesh-defined quantities:
   NZmesh = params%NZmesh
   ALLOCATE(output%zm(NZmesh))
@@ -652,7 +652,7 @@ SUBROUTINE PrintParamsToTerminal(params,inputFile)
  CHARACTER*300 :: inputFile
 
  ! Print to terminal:
- WRITE(*,*) '' 
+ WRITE(*,*) ''
  WRITE(*,*) '*********************************************************************'
  WRITE(*,*) 'Input file:         ', TRIM(inputFile)
  WRITE(*,*) 'fileDescriptor:     ', TRIM(params%fileDescriptor)
@@ -690,7 +690,7 @@ SUBROUTINE SaveData(output,dir1)
 
  ! Declare local variables:
  CHARACTER*300 :: fileName
- 
+
  WRITE(*,*) "Saving data ..."
 
     ! Save particle quantities:
@@ -715,38 +715,41 @@ SUBROUTINE SaveData(output,dir1)
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%tp
     CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'m.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%m
-    CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'np.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%np
-    CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'Up.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%Up
-    CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'Tparp.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%Tparp
-    CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'Tperp.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%Tperp
-    CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'Bp.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%Bp
-    CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'dBp.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%dBp
-    CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'ddBp.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%ddBp
-    CLOSE(unit=8)
+
+    IF (.false.) THEN
+        fileName = trim(trim(dir1)//'/'//'m.out')
+        OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+        WRITE(8) output%m
+        CLOSE(unit=8)
+        fileName = trim(trim(dir1)//'/'//'np.out')
+        OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+        WRITE(8) output%np
+        CLOSE(unit=8)
+        fileName = trim(trim(dir1)//'/'//'Up.out')
+        OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+        WRITE(8) output%Up
+        CLOSE(unit=8)
+        fileName = trim(trim(dir1)//'/'//'Tparp.out')
+        OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+        WRITE(8) output%Tparp
+        CLOSE(unit=8)
+        fileName = trim(trim(dir1)//'/'//'Tperp.out')
+        OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+        WRITE(8) output%Tperp
+        CLOSE(unit=8)
+        fileName = trim(trim(dir1)//'/'//'Bp.out')
+        OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+        WRITE(8) output%Bp
+        CLOSE(unit=8)
+        fileName = trim(trim(dir1)//'/'//'dBp.out')
+        OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+        WRITE(8) output%dBp
+        CLOSE(unit=8)
+        fileName = trim(trim(dir1)//'/'//'ddBp.out')
+        OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+        WRITE(8) output%ddBp
+        CLOSE(unit=8)
+    END IF
 
     ! Saving mesh-defined quantities:
     ! -------------------------------------------------------------------------
@@ -762,22 +765,26 @@ SUBROUTINE SaveData(output,dir1)
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%nU
     CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'unU_mesh.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%unU
-    CLOSE(unit=8)
+
+    !fileName = trim(trim(dir1)//'/'//'unU_mesh.out')
+    !OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    !WRITE(8) output%unU
+    !CLOSE(unit=8)
+
     fileName = trim(trim(dir1)//'/'//'nUE_mesh.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%nUE
     CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'Ppar_mesh.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%Ppar
-    CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'Pper_mesh.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%Pper
-    CLOSE(unit=8)
+
+    !fileName = trim(trim(dir1)//'/'//'Ppar_mesh.out')
+    !OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    !WRITE(8) output%Ppar
+    !CLOSE(unit=8)
+    !fileName = trim(trim(dir1)//'/'//'Pper_mesh.out')
+    !OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    !WRITE(8) output%Pper
+    !CLOSE(unit=8)
+
     fileName = trim(trim(dir1)//'/'//'Tpar_mesh.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%Tpar
@@ -785,15 +792,17 @@ SUBROUTINE SaveData(output,dir1)
     fileName = trim(trim(dir1)//'/'//'Tper_mesh.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%Tper
-    CLOSE(unit=8)    
+    CLOSE(unit=8)
     fileName = trim(trim(dir1)//'/'//'U_mesh.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%U
     CLOSE(unit=8)
-    fileName = trim(trim(dir1)//'/'//'ddB_mesh.out')
-    OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
-    WRITE(8) output%ddB
-    CLOSE(unit=8)
+
+    !fileName = trim(trim(dir1)//'/'//'ddB_mesh.out')
+    !OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
+    !WRITE(8) output%ddB
+    !CLOSE(unit=8)
+
     fileName = trim(trim(dir1)//'/'//'E_mesh.out')
     OPEN(unit=8,file=fileName,form="unformatted",status="unknown")
     WRITE(8) output%E

@@ -1,43 +1,43 @@
 &params_nml
 ! Simulation name:
 ! ===============
-params%fileDescriptor = '2021_06_21b',
+params%fileDescriptor = 'MPEX_2021_06_22l',
 
 ! Magnetic field input data:
 ! =========================
 params%repoDir       ="/home/nfc/myRepos/LinearFokkerPlanck_Axisymmetric",
 params%BFieldFileDir = "/BfieldData",
-params%BFieldFile    = "/Bfield_c.txt",
+params%BFieldFile    = "/MPEX_Bfield_scenario_14.txt",
 params%nz            = 501,                                                     ! Number of points in BFieldFile
 
 ! Simulation conditions:
 ! =====================
 params%NC = 500000,                                                              ! Total number of particles
-params%NS = 20000,                                                              ! Total number of time steps
-params%dt = 1E-8,                                                             ! Time step in [s]
-params%G  = 2.5E+20,                                                            ! Real particle injection rate
+params%NS = 40000,                                                              ! Total number of time steps
+params%dt = 2E-8,                                                             ! Time step in [s]
+params%G  = 1E+22,                                                            ! Real particle injection rate
 
 ! Time steps to record:
 ! ====================
 params%jstart = 1,                                                              ! start frame
-params%jend   = 20000,                                                          ! end frame
-params%jincr  = 500,                                                            ! increment
+params%jend   = 40000,                                                          ! end frame
+params%jincr  = 1000,                                                            ! increment
 
 ! Domain geometry:
 ! ====================
 params%dtheta = 6.2832                                                          ! Radians
-params%r1     = 0.03                                                            ! Inner radius at reference location [m]
+params%r1     = 0.00                                                            ! Inner radius at reference location [m]
 params%r2     = 0.05                                                            ! Outer radius at reference location [m]
-params%zmax   = +1.45,                                                          ! Boundary 2 (right)
-params%zmin   = -1.45,                                                          ! Boundary 1 (left)
-params%NZmesh = 200,                                                            ! Mesh number of elements
+params%zmax   = +7.75,                                                          ! Boundary 2 (right)
+params%zmin   = -1.95,                                                          ! Boundary 1 (left)
+params%NZmesh = 400,                                                            ! Mesh number of elements
 
 ! Physics:
 ! ======================
 params%iSave      = .true.,
 params%iPush      = .true.,                                                     ! Enable RK4 particle pusher
 params%iColl      = .true.,                                                     ! Collisions or no collisions
-params%iHeat      = .false.,                                                     ! Enable RF heating operator
+params%iHeat      = .true.,                                                     ! Enable RF heating operator
 params%iPotential = .false.,                                                    ! Enable electric potential
 params%iDrag      = .true.,                                                     ! Enable plasma drag
 
@@ -45,7 +45,7 @@ params%iDrag      = .true.,                                                     
 ! ==============================
 params%Te0          = 25.,                                                      ! eV
 params%Ti0          = 25.,                                                      ! eV
-params%ne0          = 0.5E+19,                                                  ! m**-3
+params%ne0          = 0.1E+19,                                                  ! m**-3
 params%Aion         = 1.,                                                       ! Ion mass
 params%Zion         = 1.,                                                       ! Charge number for main ion species
 params%species_a    = 2,                                                        ! =1 for electrons, =2 for ions
@@ -56,7 +56,7 @@ params%CollOperType = 2,                                                        
 ! ============================
 params%BC_Type    = 1,                                                          ! 1: Isotropic plasma source, 2: NBI, 3: Periodic
 params%BC_zp_mean = 0.0,                                                        ! Mean particle injection
-params%BC_zp_std  = 0.1,                                                        ! STD of particle injection
+params%BC_zp_std  = 0.4,                                                        ! STD of particle injection
 params%BC_Ep      = 2000.,                                                      ! Drift kinetic energy
 params%BC_Tp      = 25,                                                         ! Thermal kinetic energy
 params%BC_xip     = 0.707,                                                      ! Mean pitch angle where xip = cos(theta) = vpar/v
@@ -65,20 +65,20 @@ params%BC_xip     = 0.707,                                                      
 !===================
 params%IC_Type    = 1,                                                          ! 1: uniform load, 2: gaussian load
 params%IC_zp_mean = 0.0,                                                        ! Mean particle injection
-params%IC_zp_std  = 0.3,                                                        ! STD of particle injection
+params%IC_zp_std  = 0.4,                                                        ! STD of particle injection
 params%IC_Ep      = 0.,                                                         ! Drift kinetic energy
 params%IC_Tp      = 25,                                                         ! Thermal kinetic energy
 params%IC_xip     = 0.707,                                                      ! Mean pitch angle where xip = cos(theta) = vpar/v
 
 ! RF heating operator conditions:
 ! ===============================
-params%f_RF       = 12.195E+6                                                   ! RF frequency
-params%zRes1      = 0.                                                          ! Defines interval where RF is present
-params%zRes2      = +1.5                                                        ! Defines interval where RF is present
-params%kper       = 125.                                                        ! Perpendicular wave number of EBW
-params%kpar       = 30.                                                         ! Parallel wave number of EBW
-params%Prf        = 2000000                                                      ! Mean RF power absorbed via cyclotron interaction
-params%n_harmonic = 2                                                           ! Cyclotron harmonic
+params%f_RF       = 17.073E+6                                                   ! RF frequency
+params%zRes1      = +4.5                                                          ! Defines interval where RF is present
+params%zRes2      = +5.6                                                        ! Defines interval where RF is present
+params%kper       = 100.                                                        ! Perpendicular wave number of EBW
+params%kpar       = 20.                                                         ! Parallel wave number of EBW
+params%Prf        = 50000.                                                      ! Mean RF power absorbed via cyclotron interaction
+params%n_harmonic = 1                                                           ! Cyclotron harmonic
 
 ! Electric potential conditions:
 ! =============================
